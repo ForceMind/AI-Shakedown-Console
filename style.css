@@ -56,3 +56,46 @@ body {
 .model-message pre code {
     color: inherit;
 }
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+@media (max-width: 991.98px) {
+    .chat-window {
+        height: 75vh; /* Adjust height for mobile */
+    }
+
+    .settings-drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 85%;
+        max-width: 320px;
+        height: 100%;
+        background-color: #fff;
+        z-index: 1050;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        overflow-y: auto;
+    }
+
+    .settings-drawer.is-open {
+        transform: translateX(0);
+    }
+}

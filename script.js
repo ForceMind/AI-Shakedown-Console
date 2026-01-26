@@ -1,4 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Mobile Drawer Logic ---
+    const settingsToggle = document.getElementById('settings-toggle');
+    const settingsDrawer = document.querySelector('.settings-drawer');
+    const overlay = document.querySelector('.overlay');
+
+    if (settingsToggle && settingsDrawer && overlay) {
+        settingsToggle.addEventListener('click', () => {
+            settingsDrawer.classList.toggle('is-open');
+            overlay.classList.toggle('is-open');
+        });
+
+        overlay.addEventListener('click', () => {
+            settingsDrawer.classList.remove('is-open');
+            overlay.classList.remove('is-open');
+        });
+    }
+
+
+    // --- Initialize Bootstrap Popovers ---
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+
     // --- Sanity check for marked library ---
     if (typeof marked === 'undefined') {
         console.error('Marked.js library not loaded. Markdown rendering will be disabled.');
@@ -11,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Element References ---
     const apiKeyInput = document.getElementById('api-key');
     const modelSelect = document.getElementById('model-select');
+    const modelDescription = document.getElementById('model-description');
     const systemPromptInput = document.getElementById('system-prompt');
     const maxTokensInput = document.getElementById('max-tokens');
     const presencePenaltySlider = document.getElementById('presence-penalty');
@@ -45,7 +68,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalOutputTokens = 0;
     let totalCost = 0;
 
+    // --- Model Descriptions ---
+    const modelDescriptions = {
+        'qwen-turbo': '高性价比和速度。适用于快速响应、信息总结、对话等常规应用场景。',
+        'qwen-plus': '能力与成本之间的平衡点。增强了推理、代码理解、工具使用等能力，适用于需要更高质量输出的复杂任务。',
+        'qwen-max': '性能最强的旗舰模型。为需要极强通用推理能力的复杂、多步任务而设计，在编码、分析和创作方面表现出色。',
+        'qwen-max-longcontext': 'qwen-max的长文本版本。拥有更大的上下文窗口，专为处理和理解超长文档、长篇对话或大量代码而设计。'
+    };
+
     // --- Event Listeners ---
+    modelSelect.addEventListener('change', () => {
+        const selectedModel = modelSelect.value;
+        if (modelDescription && modelDescriptions[selectedModel]) {
+            modelDescription.textContent = modelDescriptions[selectedModel];
+        }
+    });
     temperatureSlider.addEventListener('input', () => { temperatureValue.textContent = temperatureSlider.value; });
     topPSlider.addEventListener('input', () => { topPValue.textContent = topPSlider.value; });
     topKSlider.addEventListener('input', () => { topKValue.textContent = topKSlider.value; });
