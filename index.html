@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>千问大模型 Playground</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container-fluid p-4">
+        <header class="text-center mb-4">
+            <h1>千问大模型 Playground</h1>
+            <p class="lead">可视化调整参数并与千问大模型对话</p>
+        </header>
+
+        <div class="row">
+            <!-- Settings Column -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>模型设置</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="api-key" class="form-label">API Key</label>
+                            <input type="password" class="form-control" id="api-key" placeholder="在此输入您的千问 API Key">
+                        </div>
+                        <div class="mb-3">
+                            <label for="model-select" class="form-label">模型 (Model)</label>
+                            <select class="form-select" id="model-select">
+                                <option value="qwen-turbo" selected>qwen-turbo</option>
+                                <option value="qwen-plus">qwen-plus</option>
+                                <option value="qwen-max">qwen-max</option>
+                                <option value="qwen-max-longcontext">qwen-max-longcontext</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="system-prompt" class="form-label">系统提示词 (System Prompt)</label>
+                            <textarea class="form-control" id="system-prompt" rows="3">You are a helpful assistant.</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="max-tokens" class="form-label">最大长度 (Max Tokens)</label>
+                            <input type="number" class="form-control" id="max-tokens" placeholder="默认 1500" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="presence-penalty" class="form-label">话题新鲜度 (Presence Penalty): <span id="presence-penalty-value">0.0</span></label>
+                            <input type="range" class="form-range" id="presence-penalty" min="-2" max="2" step="0.1" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="frequency-penalty" class="form-label">重复度惩罚 (Frequency Penalty): <span id="frequency-penalty-value">0.0</span></label>
+                            <input type="range" class="form-range" id="frequency-penalty" min="-2" max="2" step="0.1" value="0">
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <label for="seed" class="form-label">随机种子 (Seed)</label>
+                                <input type="number" class="form-control" id="seed" placeholder="随机">
+                            </div>
+                            <div class="col">
+                                <label for="stop-sequences" class="form-label">停止符 (Stop)</label>
+                                <input type="text" class="form-control" id="stop-sequences" placeholder="英文逗号分隔">
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="mb-3">
+                            <label for="temperature" class="form-label">温度 (Temperature): <span id="temperature-value">0.85</span></label>
+                            <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.01" value="0.85">
+                        </div>
+                        <div class="mb-3">
+                            <label for="top-p" class="form-label">Top P: <span id="top-p-value">0.8</span></label>
+                            <input type="range" class="form-range" id="top-p" min="0" max="1" step="0.01" value="0.8">
+                        </div>
+                         <div class="mb-3">
+                            <label for="top-k" class="form-label">Top K: <span id="top-k-value">100</span></label>
+                            <input type="range" class="form-range" id="top-k" min="0" max="100" step="1" value="100">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="stream-toggle" checked>
+                            <label class="form-check-label" for="stream-toggle">流式输出 (Stream)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3>用量统计 (Usage)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6"><small>累计输入 (Tokens)</small></div>
+                            <div class="col-6 text-end"><strong id="total-input-tokens">0</strong></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6"><small>累计输出 (Tokens)</small></div>
+                            <div class="col-6 text-end"><strong id="total-output-tokens">0</strong></div>
+                        </div>
+                        <hr class="my-2">
+                        <div class="row">
+                            <div class="col-6"><small>预估费用 (CNY)</small></div>
+                            <div class="col-6 text-end"><strong id="total-cost">¥ 0.0000</strong></div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="cost-limit" class="form-label"><small>费用上限 (CNY)</small></label>
+                            <input type="number" class="form-control form-control-sm" id="cost-limit" placeholder="0.00 (0为无限制)" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Column -->
+            <div class="col-lg-8">
+                <div class="card">
+                     <div class="card-header">
+                        <h3>对话</h3>
+                    </div>
+                    <div class="card-body chat-window" id="chat-window">
+                        <!-- Chat messages will be appended here -->
+                        <div class="message model-message">欢迎来到千问 Playground！请在左侧输入您的 API Key 并开始对话。</div>
+                    </div>
+                    <div class="card-footer">
+                        <form id="message-form" class="d-flex">
+                            <input type="text" class="form-control" id="message-input" placeholder="输入您的消息..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary ms-2">发送</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
