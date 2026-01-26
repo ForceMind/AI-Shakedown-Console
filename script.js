@@ -1,30 +1,6 @@
+import { getEncoding } from "https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.21/dist/index.js";
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Mobile Drawer Logic ---
-    const settingsToggle = document.getElementById('settings-toggle');
-    const settingsDrawer = document.querySelector('.settings-drawer');
-    const overlay = document.querySelector('.overlay');
-
-    if (settingsToggle && settingsDrawer && overlay) {
-        settingsToggle.addEventListener('click', () => {
-            settingsDrawer.classList.toggle('is-open');
-            overlay.classList.toggle('is-open');
-        });
-
-        overlay.addEventListener('click', () => {
-            settingsDrawer.classList.remove('is-open');
-            overlay.classList.remove('is-open');
-        });
-    }
-
-
-    // --- Initialize Bootstrap Popovers ---
-    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-    const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
-
-    // --- Sanity check for marked library ---
-    if (typeof marked === 'undefined') {
-        console.error('Marked.js library not loaded. Markdown rendering will be disabled.');
-    }
 
     // --- Price Constants (CNY per 1M tokens) ---
     const INPUT_PRICE_PER_MILLION = 6.4;
@@ -49,25 +25,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const topKSlider = document.getElementById('top-k');
     const topKValue = document.getElementById('top-k-value');
     const streamToggle = document.getElementById('stream-toggle');
-
     const chatWindow = document.getElementById('chat-window');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
     const sendButton = messageForm.querySelector('button');
-
-    // Usage & Cost Elements
     const totalInputTokensEl = document.getElementById('total-input-tokens');
     const totalOutputTokensEl = document.getElementById('total-output-tokens');
     const totalCostEl = document.getElementById('total-cost');
     const costLimitInput = document.getElementById('cost-limit');
 
+    // --- Tokenizer Initialization ---
+    let encoding;
+    try {
+        encoding = getEncoding("cl100k_base");
+    } catch (e) {
+        console.error("Failed to load tokenizer", e);
+        addMessageToChat('error', '错误：加载分词器失败，无法估算Token用量。');
+    }
+
+    const getTokenCount = (text) => {
+        if (!encoding || !text) return 0;
+        try {
+            return encoding.encode(text).length;
+        } catch (e) {
+            console.error("Token counting error:", e);
+            return 0;
+        }
+    };
 
     // --- State Management ---
     let conversationHistory = [];
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     let totalCost = 0;
-
+    
     // --- Model Descriptions ---
     const modelDescriptions = {
         'qwen-turbo': '高性价比和速度。适用于快速响应、信息总结、对话等常规应用场景。',
@@ -77,6 +68,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Event Listeners ---
+    // Mobile drawer, etc. ...
+    const settingsToggle = document.getElementById('settings-toggle');
+    const settingsDrawer = document.querySelector('.settings-drawer');
+    const overlay = document.querySelector('.overlay');
+    if (settingsToggle && settingsDrawer && overlay) {
+        settingsToggle.addEventListener('click', () => {
+            settingsDrawer.classList.toggle('is-open');
+            overlay.classList.toggle('is-open');
+        });
+        overlay.addEventListener('click', () => {
+            settingsDrawer.classList.remove('is-open');
+            overlay.classList.remove('is-open');
+        });
+    }
     modelSelect.addEventListener('change', () => {
         const selectedModel = modelSelect.value;
         if (modelDescription && modelDescriptions[selectedModel]) {
@@ -89,53 +94,34 @@ document.addEventListener('DOMContentLoaded', () => {
     presencePenaltySlider.addEventListener('input', () => { presencePenaltyValue.textContent = presencePenaltySlider.value; });
     frequencyPenaltySlider.addEventListener('input', () => { frequencyPenaltyValue.textContent = frequencyPenaltySlider.value; });
 
-
-    messageForm.addEventListener('submit', (e) => {
+    messageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userMessage = messageInput.value.trim();
-        if (!userMessage) return;
-
+        if (!userMessage || sendButton.disabled) return;
         if (conversationHistory.length === 0) {
             const systemPrompt = systemPromptInput.value.trim();
-            if (systemPrompt) {
-                conversationHistory.push({ role: 'system', content: systemPrompt });
-            }
+            if (systemPrompt) conversationHistory.push({ role: 'system', content: systemPrompt });
         }
-
         addMessageToChat('user', userMessage);
         conversationHistory.push({ role: 'user', content: userMessage });
-        
         messageInput.value = '';
-        
-        callQwenAPI();
+        await callQwenAPI();
     });
 
-    // --- Main Functions ---
-
+    // --- Main API Call Logic ---
     async function callQwenAPI() {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
             addMessageToChat('error', '错误：API Key 不能为空。');
             return;
         }
+        setFormState(true, '发送中...');
         
-        if (conversationHistory.length <= 1) {
-            conversationHistory = [];
-            const systemPrompt = systemPromptInput.value.trim();
-            if (systemPrompt) {
-                 conversationHistory.push({ role: 'system', content: systemPrompt });
-            }
-            const lastMessageDiv = document.querySelector('.message:last-of-type.user-message');
-            if(lastMessageDiv) {
-                conversationHistory.push({role: 'user', content: lastMessageDiv.textContent});
-            }
-        }
-
-        setFormState(true);
+        const promptString = conversationHistory.map(m => m.content).join('\n');
+        const estimatedPromptTokens = getTokenCount(promptString);
 
         const API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
         const isStreaming = streamToggle.checked;
-        
         const requestBody = {
             model: modelSelect.value,
             messages: conversationHistory,
@@ -145,13 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             frequency_penalty: parseFloat(frequencyPenaltySlider.value),
             stream: isStreaming,
         };
-        
         const maxTokens = parseInt(maxTokensInput.value, 10);
         if (!isNaN(maxTokens) && maxTokens > 0) requestBody.max_tokens = maxTokens;
-        
         const seed = parseInt(seedInput.value, 10);
         if (!isNaN(seed)) requestBody.seed = seed;
-
         const stopSequences = stopSequencesInput.value.trim();
         if (stopSequences) requestBody.stop = stopSequences.split(',').map(s => s.trim()).filter(s => s);
 
@@ -161,18 +144,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify(requestBody)
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(`API Error: ${response.status} - ${errorData?.error?.message || 'Unknown error'}`);
             }
-
             if (isStreaming) {
-                await handleStreamResponse(response);
+                await handleStreamResponse(response, estimatedPromptTokens);
             } else {
                 await handleNonStreamResponse(response);
             }
-
         } catch (error) {
             console.error('Fetch error:', error);
             addMessageToChat('error', `发生错误: ${error.message}`);
@@ -191,14 +171,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (data.usage) {
             updateUsageAndCheckLimit(data.usage.prompt_tokens, data.usage.completion_tokens);
+        } else {
+            const promptTokens = getTokenCount(conversationHistory.slice(0,-1).map(m=>m.content).join('\n'));
+            const completionTokens = getTokenCount(modelMessage || "");
+            updateUsageAndCheckLimit(promptTokens, completionTokens);
         }
     }
 
-    async function handleStreamResponse(response) {
+    async function handleStreamResponse(response, estimatedPromptTokens) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullResponse = "";
-        let usage = null;
+        let usageFromAPI = null;
+        let estimatedCompletionTokens = 0;
         
         const modelMessageElement = addMessageToChat('assistant', '...');
         let buffer = '';
@@ -206,63 +191,58 @@ document.addEventListener('DOMContentLoaded', () => {
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop(); 
-
             for (const line of lines) {
                 if (line.trim() === '' || !line.startsWith('data:')) continue;
                 if (line.includes('[DONE]')) {
                     conversationHistory.push({ role: 'assistant', content: fullResponse });
-                    if(usage) {
-                         updateUsageAndCheckLimit(usage.prompt_tokens, usage.completion_tokens);
+                    if (usageFromAPI) {
+                        updateUsageAndCheckLimit(usageFromAPI.prompt_tokens, usageFromAPI.completion_tokens);
+                    } else {
+                        updateUsageAndCheckLimit(estimatedPromptTokens, estimatedCompletionTokens);
                     }
                     return; 
                 }
-
                 const jsonStr = line.replace('data: ', '');
                 try {
                     const chunk = JSON.parse(jsonStr);
                     const content = chunk.choices[0]?.delta?.content;
                     if (content) {
                         fullResponse += content;
-                        modelMessageElement.innerHTML = marked.parse(fullResponse);
+                        estimatedCompletionTokens += getTokenCount(content);
+                        modelMessageElement.innerHTML = marked.parse(fullResponse, { breaks: true });
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     }
-                    // Check for usage data in the chunk
                     if (chunk.usage) {
-                        usage = chunk.usage;
+                        usageFromAPI = chunk.usage;
                     }
-                } catch (e) {
-                    console.error('Error parsing stream chunk:', e, 'Chunk:', jsonStr);
-                }
+                } catch (e) { /* Ignore parsing errors */ }
             }
         }
         conversationHistory.push({ role: 'assistant', content: fullResponse });
-        if(usage) {
-            updateUsageAndCheckLimit(usage.prompt_tokens, usage.completion_tokens);
+        if (usageFromAPI) {
+            updateUsageAndCheckLimit(usageFromAPI.prompt_tokens, usageFromAPI.completion_tokens);
+        } else {
+            updateUsageAndCheckLimit(estimatedPromptTokens, estimatedCompletionTokens);
         }
     }
 
-    // --- UI & Helper Functions ---
-
     function updateUsageAndCheckLimit(promptTokens, completionTokens) {
+        if(isNaN(promptTokens) || isNaN(completionTokens)) return;
         totalInputTokens += promptTokens;
         totalOutputTokens += completionTokens;
-
         const inputCost = (totalInputTokens / 1_000_000) * INPUT_PRICE_PER_MILLION;
         const outputCost = (totalOutputTokens / 1_000_000) * OUTPUT_PRICE_PER_MILLION;
         totalCost = inputCost + outputCost;
-
         totalInputTokensEl.textContent = totalInputTokens.toLocaleString();
         totalOutputTokensEl.textContent = totalOutputTokens.toLocaleString();
         totalCostEl.textContent = `¥ ${totalCost.toFixed(4)}`;
-
         const costLimit = parseFloat(costLimitInput.value);
         if (!isNaN(costLimit) && costLimit > 0 && totalCost >= costLimit) {
             addMessageToChat('error', `费用已超上限！当前费用: ¥ ${totalCost.toFixed(4)}，上限: ¥ ${costLimit.toFixed(2)}。已停止发送消息。`);
-            setFormState(true); // Disable form permanently until page reload
+            setFormState(true, '已达上限'); 
         }
     }
 
@@ -270,25 +250,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageDiv = document.createElement('div');
         const roleClass = role === 'error' ? 'model-message error-message' : `${role}-message`;
         messageDiv.classList.add('message', ...roleClass.split(' '));
-        
         if ((role === 'assistant') && typeof marked !== 'undefined') {
-            messageDiv.innerHTML = marked.parse(content);
+            messageDiv.innerHTML = marked.parse(content, { breaks: true });
         } else {
             messageDiv.textContent = content;
         }
-
         chatWindow.appendChild(messageDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
         return messageDiv;
     }
     
-    function setFormState(isLoading) {
+    function setFormState(isLoading, text = '发送') {
         messageInput.disabled = isLoading;
         sendButton.disabled = isLoading;
-        if (isLoading) {
+        if (isLoading && text === '发送中...') {
             sendButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
         } else {
-            sendButton.textContent = '发送';
+            sendButton.textContent = text;
         }
     }
+
+    // Initialize Popovers
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 });
