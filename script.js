@@ -1,4 +1,7 @@
 const SETTINGS_STORAGE_KEY = 'ai-shakedown-console.settings.v1';
+const PROFILES_STORAGE_KEY = 'ai-shakedown-console.profiles.v1';
+const PROMPTS_STORAGE_KEY = 'ai-shakedown-console.prompts.v1';
+const CONVERSATIONS_STORAGE_KEY = 'ai-shakedown-console.conversations.v1';
 const CUSTOM_MODEL_VALUE = '__custom__';
 
 const PROVIDERS = [
@@ -10,7 +13,7 @@ const PROVIDERS = [
     {
         id: 'anthropic', name: 'Anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com',
         chatPath: '/v1/messages', modelsPath: '/v1/models', auth: 'x-api-key', model: 'claude-sonnet-4-20250514',
-        models: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'claude-3-5-haiku-20241022']
+        models: ['claude-opus-4-20250514', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022']
     },
     {
         id: 'gemini', name: 'Google Gemini', protocol: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com',
@@ -20,12 +23,12 @@ const PROVIDERS = [
     {
         id: 'deepseek', name: 'DeepSeek', protocol: 'openai', baseUrl: 'https://api.deepseek.com',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'deepseek-chat',
-        models: ['deepseek-chat', 'deepseek-reasoner']
+        models: ['deepseek-reasoner', 'deepseek-chat']
     },
     {
         id: 'qwen', name: '阿里云百炼 / 千问', protocol: 'openai', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'qwen-plus',
-        models: ['qwen-plus', 'qwen-max', 'qwen-turbo', 'qwen-long']
+        models: ['qwen-max', 'qwen-plus', 'qwen-long', 'qwen-turbo']
     },
     {
         id: 'doubao', name: '火山引擎 / 豆包', protocol: 'openai', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
@@ -44,7 +47,7 @@ const PROVIDERS = [
     {
         id: 'moonshot', name: 'Moonshot / Kimi', protocol: 'openai', baseUrl: 'https://api.moonshot.cn/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'moonshot-v1-8k',
-        models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
+        models: ['moonshot-v1-128k', 'moonshot-v1-32k', 'moonshot-v1-8k']
     },
     {
         id: 'zhipu', name: '智谱 GLM', protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
@@ -54,17 +57,17 @@ const PROVIDERS = [
     {
         id: 'siliconflow', name: '硅基流动 SiliconFlow', protocol: 'openai', baseUrl: 'https://api.siliconflow.cn/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'deepseek-ai/DeepSeek-V3',
-        models: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'Qwen/Qwen2.5-72B-Instruct']
+        models: ['deepseek-ai/DeepSeek-R1', 'deepseek-ai/DeepSeek-V3', 'Qwen/Qwen2.5-72B-Instruct']
     },
     {
         id: 'openrouter', name: 'OpenRouter', protocol: 'openai', baseUrl: 'https://openrouter.ai/api/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'openai/gpt-4o-mini',
-        models: ['openai/gpt-4o-mini', 'anthropic/claude-sonnet-4', 'google/gemini-2.5-flash']
+        models: ['anthropic/claude-sonnet-4', 'google/gemini-2.5-flash', 'openai/gpt-4o-mini']
     },
     {
         id: 'groq', name: 'Groq', protocol: 'openai', baseUrl: 'https://api.groq.com/openai/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'llama-3.3-70b-versatile',
-        models: ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b']
+        models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile']
     },
     {
         id: 'xai', name: 'xAI', protocol: 'openai', baseUrl: 'https://api.x.ai/v1',
@@ -84,12 +87,12 @@ const PROVIDERS = [
     {
         id: 'perplexity', name: 'Perplexity', protocol: 'openai', baseUrl: 'https://api.perplexity.ai',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'sonar',
-        models: ['sonar', 'sonar-pro', 'sonar-reasoning-pro']
+        models: ['sonar-reasoning-pro', 'sonar-pro', 'sonar']
     },
     {
         id: 'nvidia', name: 'NVIDIA NIM', protocol: 'openai', baseUrl: 'https://integrate.api.nvidia.com/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'bearer', model: 'meta/llama-3.3-70b-instruct',
-        models: ['meta/llama-3.3-70b-instruct', 'deepseek-ai/deepseek-r1']
+        models: ['deepseek-ai/deepseek-r1', 'meta/llama-3.3-70b-instruct']
     },
     {
         id: 'fireworks', name: 'Fireworks AI', protocol: 'openai', baseUrl: 'https://api.fireworks.ai/inference/v1',
@@ -109,7 +112,7 @@ const PROVIDERS = [
     {
         id: 'ollama', name: 'Ollama（本地）', protocol: 'openai', baseUrl: 'http://localhost:11434/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'none', model: 'llama3.2',
-        models: ['llama3.2', 'qwen2.5', 'deepseek-r1']
+        models: ['deepseek-r1', 'qwen2.5', 'llama3.2']
     },
     {
         id: 'lmstudio', name: 'LM Studio（本地）', protocol: 'openai', baseUrl: 'http://localhost:1234/v1',
@@ -129,7 +132,8 @@ const elements = {
     proxy: $('proxy-toggle'), modelSelect: $('model-select'),
     customHeaders: $('custom-headers'), extraBody: $('extra-body'),
     endpointPreview: $('endpoint-preview'), stream: $('stream-toggle'), temperature: $('temperature'),
-    topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), systemPrompt: $('system-prompt'),
+    topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), reasoningEffort: $('reasoning-effort'),
+    systemPrompt: $('system-prompt'),
     messageForm: $('message-form'), messageInput: $('message-input'), sendButton: $('send-button'),
     testButton: $('test-connection'), loadModelsButton: $('load-models'), stopButton: $('stop-request'),
     chatWindow: $('chat-window'), emptyState: $('empty-state'), emptyEndpoint: $('empty-endpoint'),
@@ -139,11 +143,19 @@ const elements = {
     inputTokens: $('total-input-tokens'), outputTokens: $('total-output-tokens'), totalRequests: $('total-requests'),
     totalCost: $('total-cost'), inputPrice: $('input-price'), outputPrice: $('output-price'), costLimit: $('cost-limit'),
     settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
-    clearSavedSettings: $('clear-saved-settings')
+    clearSavedSettings: $('clear-saved-settings'),
+    profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
+    profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
+    promptSelect: $('prompt-select'), promptName: $('prompt-name'), promptSave: $('prompt-save'),
+    promptLoad: $('prompt-load'), promptDelete: $('prompt-delete'),
+    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation')
 };
 
 const state = {
-    history: [],
+    profiles: [],
+    prompts: [],
+    conversations: [],
+    activeConversationId: '',
     controller: null,
     busy: false,
     totals: { input: 0, output: 0, requests: 0, cost: 0 },
@@ -169,6 +181,10 @@ function initialize() {
     bindEvents();
     applyProvider(PROVIDERS[0]);
     restoreSettings();
+    restoreProfiles();
+    restorePrompts();
+    restoreConversations();
+    elements.newConversation.addEventListener('click', () => createConversation());
     updateUsageDisplay();
 }
 
@@ -187,6 +203,7 @@ function bindEvents() {
         elements.chatPath.value = defaults.path;
         elements.modelsPath.value = defaults.models;
         elements.authMode.value = defaults.auth;
+        syncReasoningControl();
         updateEndpointPreview();
     });
 
@@ -198,6 +215,15 @@ function bindEvents() {
     elements.model.addEventListener('input', updateActiveModel);
     elements.modelSelect.addEventListener('change', handleModelSelection);
     elements.clearSavedSettings.addEventListener('click', clearSavedSettings);
+    elements.profileNew.addEventListener('click', startNewProfile);
+    elements.profileSave.addEventListener('click', saveProfile);
+    elements.profileLoad.addEventListener('click', loadProfile);
+    elements.profileDelete.addEventListener('click', deleteProfile);
+    elements.profileSelect.addEventListener('change', syncProfileSelection);
+    elements.promptSave.addEventListener('click', savePrompt);
+    elements.promptLoad.addEventListener('click', loadPrompt);
+    elements.promptDelete.addEventListener('click', deletePrompt);
+    elements.promptSelect.addEventListener('change', syncPromptSelection);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -233,12 +259,19 @@ function bindEvents() {
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
         elements.customHeaders, elements.extraBody, elements.stream, elements.temperature, elements.topP,
-        elements.topK, elements.maxTokens, elements.systemPrompt, elements.inputPrice, elements.outputPrice,
+        elements.topK, elements.maxTokens, elements.reasoningEffort, elements.systemPrompt,
+        elements.inputPrice, elements.outputPrice,
         elements.costLimit
     ];
     persistentElements.forEach((element) => {
         element.addEventListener('input', persistSettings);
         element.addEventListener('change', persistSettings);
+    });
+    elements.systemPrompt.addEventListener('input', () => {
+        const conversation = activeConversation();
+        if (!conversation) return;
+        conversation.systemPrompt = elements.systemPrompt.value;
+        persistConversations();
     });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closeSettings();
@@ -255,13 +288,15 @@ function applyProvider(provider) {
     elements.customHeaders.value = '';
     elements.extraBody.value = '';
     populateModels(provider.models, provider.model);
+    syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
-    setConnectionState('idle', '尚未测试', '');
+    setConnectionState('idle', '尚未检查', '');
 }
 
-function populateModels(models, selectedModel = elements.model.value.trim()) {
+function populateModels(models, selectedModel = elements.model.value.trim(), sortByStrength = false) {
     const uniqueModels = [...new Set(models.filter(Boolean))];
+    if (sortByStrength) uniqueModels.sort(compareModelsByStrength);
     elements.modelSelect.replaceChildren();
     for (const model of uniqueModels) {
         const option = document.createElement('option');
@@ -287,6 +322,57 @@ function populateModels(models, selectedModel = elements.model.value.trim()) {
     updateActiveModel();
 }
 
+const MODEL_STRENGTH_MARKERS = [
+    [/reasoning|reasoner/, 1000],
+    [/(^|[-_/])r1($|[-_/])/, 950],
+    [/(^|[-_/])opus($|[-_/])/, 900],
+    [/(^|[-_/])max($|[-_/])/, 850],
+    [/(^|[-_/])pro($|[-_/])/, 800],
+    [/(^|[-_/])large($|[-_/])/, 700],
+    [/(^|[-_/])sonnet($|[-_/])/, 650],
+    [/(^|[-_/])plus($|[-_/])/, 600],
+    [/(^|[-_/])medium($|[-_/])/, 200],
+    [/(^|[-_/])chat($|[-_/])/, 0],
+    [/(^|[-_/])air($|[-_/])/, -100],
+    [/(^|[-_/])flash($|[-_/])/, -150],
+    [/(^|[-_/])small($|[-_/])/, -250],
+    [/(^|[-_/])turbo($|[-_/])/, -300],
+    [/(^|[-_/])haiku($|[-_/])/, -300],
+    [/(^|[-_/])mini($|[-_/])/, -350],
+    [/(^|[-_/])lite($|[-_/])/, -400],
+    [/(^|[-_/])speed($|[-_/])/, -450],
+    [/(^|[-_/])nano($|[-_/])/, -550],
+    [/(^|[-_/])tiny($|[-_/])/, -600]
+];
+
+function modelStrength(model) {
+    const normalized = model.toLowerCase();
+    const marker = MODEL_STRENGTH_MARKERS.find(([pattern]) => pattern.test(normalized));
+    const parameterSize = Number(normalized.match(/(?:^|[-_/])(\d+(?:\.\d+)?)b(?:$|[-_/])/i)?.[1] || 0);
+    const versions = (normalized.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    return { score: (marker?.[1] || 0) + Math.min(parameterSize * 2, 500), versions };
+}
+
+function compareModelsByStrength(left, right) {
+    const a = modelStrength(left);
+    const b = modelStrength(right);
+    if (a.score !== b.score) return b.score - a.score;
+    const versionCount = Math.max(a.versions.length, b.versions.length);
+    for (let index = 0; index < versionCount; index += 1) {
+        const difference = (b.versions[index] || 0) - (a.versions[index] || 0);
+        if (difference) return difference;
+    }
+    return right.localeCompare(left, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function syncReasoningControl() {
+    const supported = elements.protocol.value === 'openai';
+    elements.reasoningEffort.disabled = !supported;
+    elements.reasoningEffort.title = supported
+        ? '自动表示不发送 reasoning_effort'
+        : '当前协议不使用 OpenAI reasoning_effort';
+}
+
 function handleModelSelection() {
     const selected = elements.modelSelect.value;
     if (selected === CUSTOM_MODEL_VALUE) {
@@ -305,8 +391,8 @@ function currentModelOptions() {
         .filter((value) => value && value !== CUSTOM_MODEL_VALUE);
 }
 
-function persistSettings() {
-    const settings = {
+function captureSettings() {
+    return {
         provider: elements.provider.value,
         protocol: elements.protocol.value,
         baseUrl: elements.baseUrl.value,
@@ -324,13 +410,17 @@ function persistSettings() {
         topP: elements.topP.value,
         topK: elements.topK.value,
         maxTokens: elements.maxTokens.value,
+        reasoningEffort: elements.reasoningEffort.value,
         systemPrompt: elements.systemPrompt.value,
         inputPrice: elements.inputPrice.value,
         outputPrice: elements.outputPrice.value,
         costLimit: elements.costLimit.value
     };
+}
+
+function persistSettings() {
     try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(captureSettings()));
     } catch (_) {
         // Storage can be unavailable in private or restricted browser contexts.
     }
@@ -344,7 +434,10 @@ function restoreSettings() {
         return;
     }
     if (!settings || typeof settings !== 'object') return;
+    applySettings(settings);
+}
 
+function applySettings(settings) {
     const provider = PROVIDERS.find((item) => item.id === settings.provider) || PROVIDERS[0];
     elements.provider.value = provider.id;
     applyProvider(provider);
@@ -353,6 +446,7 @@ function restoreSettings() {
         protocol: 'protocol', baseUrl: 'baseUrl', chatPath: 'chatPath', modelsPath: 'modelsPath',
         apiKey: 'apiKey', authMode: 'authMode', customHeaders: 'customHeaders', extraBody: 'extraBody',
         temperature: 'temperature', topP: 'topP', topK: 'topK', maxTokens: 'maxTokens',
+        reasoningEffort: 'reasoningEffort',
         systemPrompt: 'systemPrompt', inputPrice: 'inputPrice', outputPrice: 'outputPrice', costLimit: 'costLimit'
     };
     for (const [elementName, settingName] of Object.entries(textValues)) {
@@ -366,18 +460,198 @@ function restoreSettings() {
         ? settings.availableModels.filter((model) => typeof model === 'string')
         : provider.models;
     elements.model.value = selectedModel;
-    populateModels(availableModels, selectedModel);
+    populateModels(availableModels, selectedModel, Array.isArray(settings.availableModels));
+    syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
-    setConnectionState('idle', '尚未测试', '');
+    setConnectionState('idle', '尚未检查', '');
 }
 
 function clearSavedSettings() {
-    try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch (_) { /* Ignore storage restrictions. */ }
+    try {
+        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY]
+            .forEach((key) => localStorage.removeItem(key));
+    } catch (_) { /* Ignore storage restrictions. */ }
+    state.profiles = [];
+    state.prompts = [];
+    state.conversations = [];
+    state.activeConversationId = '';
     elements.provider.value = PROVIDERS[0].id;
     applyProvider(PROVIDERS[0]);
     elements.apiKey.value = '';
-    showToast('已清除保存的配置和 API Key');
+    elements.systemPrompt.value = '';
+    renderProfileOptions();
+    renderPromptOptions();
+    createConversation({ silent: true, systemPrompt: '' });
+    showToast('已清除配置、提示词、对话和 API Key');
+}
+
+function readStoredArray(key) {
+    try {
+        const value = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(value) ? value : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function writeStoredValue(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (_) {
+        showToast('浏览器无法保存数据，请检查站点存储权限', true);
+        return false;
+    }
+}
+
+function createId(prefix) {
+    const suffix = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return `${prefix}-${suffix}`;
+}
+
+function restoreProfiles() {
+    state.profiles = readStoredArray(PROFILES_STORAGE_KEY).filter((item) => (
+        item && typeof item.id === 'string' && typeof item.name === 'string' && item.settings
+    ));
+    renderProfileOptions();
+}
+
+function renderProfileOptions(selectedId = elements.profileSelect.value) {
+    elements.profileSelect.replaceChildren(new Option('未选择配置', ''));
+    for (const profile of state.profiles) {
+        elements.profileSelect.appendChild(new Option(profile.name, profile.id));
+    }
+    elements.profileSelect.value = state.profiles.some((item) => item.id === selectedId) ? selectedId : '';
+    syncProfileSelection();
+}
+
+function syncProfileSelection() {
+    const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    if (profile) elements.profileName.value = profile.name;
+    else if (!elements.profileSelect.value) elements.profileName.value = '';
+    elements.profileLoad.disabled = !profile;
+    elements.profileDelete.disabled = !profile;
+}
+
+function startNewProfile() {
+    elements.profileSelect.value = '';
+    elements.profileName.value = '';
+    syncProfileSelection();
+    elements.profileName.focus();
+}
+
+function saveProfile() {
+    const name = elements.profileName.value.trim();
+    if (!name) {
+        showToast('请先输入配置名称', true);
+        elements.profileName.focus();
+        return;
+    }
+    const selectedId = elements.profileSelect.value;
+    let profile = state.profiles.find((item) => item.id === selectedId);
+    if (profile) {
+        profile.name = name;
+        profile.settings = captureSettings();
+        profile.updatedAt = new Date().toISOString();
+    } else {
+        profile = { id: createId('profile'), name, settings: captureSettings(), updatedAt: new Date().toISOString() };
+        state.profiles.push(profile);
+    }
+    if (!writeStoredValue(PROFILES_STORAGE_KEY, state.profiles)) return;
+    renderProfileOptions(profile.id);
+    showToast(`已保存配置“${name}”`);
+}
+
+function loadProfile() {
+    const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    if (!profile) {
+        showToast('请先选择配置', true);
+        return;
+    }
+    applySettings(profile.settings);
+    const conversation = activeConversation();
+    if (conversation) conversation.systemPrompt = elements.systemPrompt.value;
+    persistSettings();
+    persistConversations();
+    showToast(`已加载配置“${profile.name}”`);
+}
+
+function deleteProfile() {
+    const profile = state.profiles.find((item) => item.id === elements.profileSelect.value);
+    if (!profile) return;
+    state.profiles = state.profiles.filter((item) => item.id !== profile.id);
+    writeStoredValue(PROFILES_STORAGE_KEY, state.profiles);
+    renderProfileOptions();
+    elements.profileName.value = '';
+    showToast(`已删除配置“${profile.name}”`);
+}
+
+function restorePrompts() {
+    state.prompts = readStoredArray(PROMPTS_STORAGE_KEY).filter((item) => (
+        item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.content === 'string'
+    ));
+    renderPromptOptions();
+}
+
+function renderPromptOptions(selectedId = elements.promptSelect.value) {
+    elements.promptSelect.replaceChildren(new Option('提示词库', ''));
+    for (const prompt of state.prompts) {
+        elements.promptSelect.appendChild(new Option(prompt.name, prompt.id));
+    }
+    elements.promptSelect.value = state.prompts.some((item) => item.id === selectedId) ? selectedId : '';
+    syncPromptSelection();
+}
+
+function syncPromptSelection() {
+    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
+    if (prompt) elements.promptName.value = prompt.name;
+    else if (!elements.promptSelect.value) elements.promptName.value = '';
+    elements.promptLoad.disabled = !prompt;
+    elements.promptDelete.disabled = !prompt;
+}
+
+function savePrompt() {
+    const name = elements.promptName.value.trim();
+    const content = elements.systemPrompt.value.trim();
+    if (!name || !content) {
+        showToast('请填写提示词名称和 System 内容', true);
+        return;
+    }
+    const selectedId = elements.promptSelect.value;
+    let prompt = state.prompts.find((item) => item.id === selectedId);
+    if (prompt) {
+        prompt.name = name;
+        prompt.content = content;
+        prompt.updatedAt = new Date().toISOString();
+    } else {
+        prompt = { id: createId('prompt'), name, content, updatedAt: new Date().toISOString() };
+        state.prompts.push(prompt);
+    }
+    if (!writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts)) return;
+    renderPromptOptions(prompt.id);
+    showToast(`已保存提示词“${name}”`);
+}
+
+function loadPrompt() {
+    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
+    if (!prompt) return;
+    elements.systemPrompt.value = prompt.content;
+    const conversation = activeConversation();
+    if (conversation) conversation.systemPrompt = prompt.content;
+    persistSettings();
+    persistConversations();
+    showToast(`已加载提示词“${prompt.name}”`);
+}
+
+function deletePrompt() {
+    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
+    if (!prompt) return;
+    state.prompts = state.prompts.filter((item) => item.id !== prompt.id);
+    writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts);
+    renderPromptOptions();
+    elements.promptName.value = '';
+    showToast(`已删除提示词“${prompt.name}”`);
 }
 
 function buildUrl(path, stream = elements.stream.checked, includeQueryKey = true) {
@@ -477,6 +751,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
     const temperature = numberValue(elements.temperature);
     const topP = numberValue(elements.topP);
     const topK = numberValue(elements.topK);
+    const reasoningEffort = elements.reasoningEffort.value;
     const maxTokens = overrides.maxTokens ?? numberValue(elements.maxTokens) ?? 1024;
     const extra = parseJsonObject(elements.extraBody.value, '附加请求参数');
 
@@ -520,6 +795,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
         ...(temperature !== undefined ? { temperature } : {}),
         ...(topP !== undefined ? { top_p: topP } : {}),
         ...(topK !== undefined ? { top_k: topK } : {}),
+        ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         max_tokens: maxTokens,
         stream,
         ...extra
@@ -536,11 +812,175 @@ function validateConfiguration() {
     parseJsonObject(elements.extraBody.value, '附加请求参数');
 }
 
+function activeConversation() {
+    return state.conversations.find((item) => item.id === state.activeConversationId) || null;
+}
+
+function restoreConversations() {
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem(CONVERSATIONS_STORAGE_KEY) || 'null'); } catch (_) { /* Start fresh. */ }
+    const savedConversations = Array.isArray(stored?.conversations) ? stored.conversations : [];
+    state.conversations = savedConversations.map((item, index) => ({
+        id: typeof item?.id === 'string' ? item.id : createId('conversation'),
+        title: typeof item?.title === 'string' && item.title.trim() ? item.title : `新会话 ${index + 1}`,
+        systemPrompt: typeof item?.systemPrompt === 'string' ? item.systemPrompt : '',
+        history: Array.isArray(item?.history) ? item.history.filter((message) => (
+            message && ['user', 'assistant'].includes(message.role) && typeof message.content === 'string'
+        )) : [],
+        createdAt: typeof item?.createdAt === 'string' ? item.createdAt : new Date().toISOString()
+    }));
+    if (!state.conversations.length) {
+        createConversation({ silent: true, systemPrompt: elements.systemPrompt.value });
+        return;
+    }
+    state.activeConversationId = state.conversations.some((item) => item.id === stored?.activeConversationId)
+        ? stored.activeConversationId
+        : state.conversations[0].id;
+    renderConversationTabs();
+    renderActiveConversation();
+}
+
+function persistConversations() {
+    writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
+        activeConversationId: state.activeConversationId,
+        conversations: state.conversations
+    });
+}
+
+function createConversation(options = {}) {
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    const conversation = {
+        id: createId('conversation'),
+        title: `新会话 ${state.conversations.length + 1}`,
+        systemPrompt: typeof options.systemPrompt === 'string' ? options.systemPrompt : elements.systemPrompt.value,
+        history: [],
+        createdAt: new Date().toISOString()
+    };
+    state.conversations.push(conversation);
+    state.activeConversationId = conversation.id;
+    persistConversations();
+    renderConversationTabs();
+    renderActiveConversation();
+    if (!options.silent) showToast('已新建对话窗口');
+}
+
+function switchConversation(id) {
+    if (id === state.activeConversationId) return;
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    if (!state.conversations.some((item) => item.id === id)) return;
+    state.activeConversationId = id;
+    persistConversations();
+    renderConversationTabs();
+    renderActiveConversation();
+}
+
+function closeConversation(id) {
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    const index = state.conversations.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    if (state.conversations.length === 1) {
+        const conversation = state.conversations[0];
+        conversation.history = [];
+        conversation.title = '新会话 1';
+        persistConversations();
+        renderConversationTabs();
+        renderActiveConversation();
+        return;
+    }
+    state.conversations.splice(index, 1);
+    if (id === state.activeConversationId) {
+        state.activeConversationId = state.conversations[Math.min(index, state.conversations.length - 1)].id;
+    }
+    persistConversations();
+    renderConversationTabs();
+    renderActiveConversation();
+}
+
+function renderConversationTabs() {
+    elements.conversationTabs.replaceChildren();
+    for (const conversation of state.conversations) {
+        const tab = document.createElement('div');
+        tab.className = `conversation-tab${conversation.id === state.activeConversationId ? ' active' : ''}`;
+        const selectButton = document.createElement('button');
+        selectButton.className = 'conversation-tab-title';
+        selectButton.type = 'button';
+        selectButton.role = 'tab';
+        selectButton.ariaSelected = String(conversation.id === state.activeConversationId);
+        selectButton.title = conversation.title;
+        selectButton.textContent = conversation.title;
+        selectButton.addEventListener('click', () => switchConversation(conversation.id));
+        const closeButton = document.createElement('button');
+        closeButton.className = 'conversation-tab-close';
+        closeButton.type = 'button';
+        closeButton.title = '关闭对话';
+        closeButton.setAttribute('aria-label', `关闭${conversation.title}`);
+        const closeIcon = document.createElement('i');
+        closeIcon.className = 'bi bi-x';
+        closeButton.appendChild(closeIcon);
+        closeButton.addEventListener('click', () => closeConversation(conversation.id));
+        tab.append(selectButton, closeButton);
+        elements.conversationTabs.appendChild(tab);
+    }
+    elements.conversationTabs.querySelector('.conversation-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function renderActiveConversation() {
+    const conversation = activeConversation();
+    if (!conversation) return;
+    elements.systemPrompt.value = conversation.systemPrompt;
+    elements.chatWindow.replaceChildren();
+    elements.emptyState = null;
+    elements.emptyEndpoint = null;
+    if (!conversation.history.length) {
+        renderEmptyState();
+        return;
+    }
+    for (const message of conversation.history) addMessage(message.role, message.content);
+}
+
+function renderMarkdown(element, text) {
+    if (!globalThis.marked?.parse || !globalThis.DOMPurify?.sanitize) {
+        element.textContent = text;
+        return;
+    }
+
+    const html = globalThis.marked.parse(text, { breaks: true, gfm: true });
+    element.innerHTML = globalThis.DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ['button', 'embed', 'form', 'iframe', 'input', 'object', 'select', 'style', 'textarea'],
+        FORBID_ATTR: ['style']
+    });
+    element.querySelectorAll('a[href]').forEach((link) => {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+    });
+}
+
+function setMessageContent(message, text, render = false) {
+    message.content.classList.toggle('markdown-content', render);
+    if (render) renderMarkdown(message.content, text);
+    else message.content.textContent = text;
+}
+
+function deriveConversationTitle(text) {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    return normalized.length > 18 ? `${normalized.slice(0, 18)}…` : normalized || '新会话';
+}
+
 function requestMessages(userText) {
     const system = elements.systemPrompt.value.trim();
     return [
         ...(system ? [{ role: 'system', content: system }] : []),
-        ...state.history,
+        ...(activeConversation()?.history || []),
         { role: 'user', content: userText }
     ];
 }
@@ -767,7 +1207,9 @@ async function sendMessage(event) {
         return;
     }
 
-    const priorHistory = [...state.history];
+    const conversation = activeConversation();
+    if (!conversation) return;
+    const priorHistory = [...conversation.history];
     const messages = requestMessages(userText);
     addMessage('user', userText);
     const assistant = addMessage('assistant', '', true);
@@ -779,22 +1221,30 @@ async function sendMessage(event) {
         const result = await executeRequest(messages, {
             onDelta: (text) => {
                 assistantText = text;
-                assistant.content.textContent = text;
+                setMessageContent(assistant, text);
                 scrollChatToBottom();
             }
         });
         assistantText = result.text || '';
-        assistant.content.textContent = assistantText || '（响应为空）';
+        setMessageContent(assistant, assistantText || '（响应为空）', Boolean(assistantText));
         assistant.row.classList.remove('pending');
-        state.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
+        conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
+        conversation.systemPrompt = elements.systemPrompt.value;
+        if (!priorHistory.length) conversation.title = deriveConversationTitle(userText);
+        persistConversations();
+        renderConversationTabs();
         applyUsage(result.usage);
         setConnectionState('success', '请求成功', `${result.duration} ms`);
     } catch (error) {
         assistant.row.classList.remove('pending');
         if (error.name === 'AbortError') {
-            assistant.content.textContent = assistantText || '已停止生成';
+            setMessageContent(assistant, assistantText || '已停止生成', Boolean(assistantText));
             if (assistantText) {
-                state.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
+                conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
+                conversation.systemPrompt = elements.systemPrompt.value;
+                if (!priorHistory.length) conversation.title = deriveConversationTitle(userText);
+                persistConversations();
+                renderConversationTabs();
             }
             showToast('已停止生成');
         } else {
@@ -811,26 +1261,57 @@ async function sendMessage(event) {
 }
 
 async function testConnection() {
-    if (state.busy || isCostLimitReached()) return;
+    if (state.busy) return;
+    const path = elements.modelsPath.value.trim();
+    if (!path) {
+        showToast('当前服务没有可用的只读检查接口，请直接发送实际消息', true);
+        return;
+    }
     try {
-        validateConfiguration();
+        if (elements.authMode.value !== 'none' && !elements.apiKey.value.trim()) throw new Error('请填写 API Key');
+        new URL(buildUrl(path, false, true));
+        parseJsonObject(elements.customHeaders.value, '自定义请求头');
     } catch (error) {
         showToast(error.message, true);
         return;
     }
     setBusy(true);
-    setConnectionState('idle', '测试中', '');
+    setConnectionState('idle', '检查中', '');
     try {
-        const messages = [{ role: 'user', content: 'Reply with exactly: OK' }];
-        const result = await executeRequest(messages, { stream: false, maxTokens: 8 });
-        applyUsage(result.usage);
-        setConnectionState('success', '连接正常', `${result.duration} ms`);
-        showToast(`连接成功 · ${result.duration} ms`);
+        const { url, upstreamUrl, headers } = prepareRequest(path, false);
+        delete headers['Content-Type'];
+        state.inspector.request = prettyJson({
+            method: 'GET',
+            url: maskedUrl(url),
+            ...(elements.proxy.checked ? { upstreamUrl: maskedUrl(upstreamUrl) } : {}),
+            headers: maskedHeaders(headers)
+        });
+        state.inspector.events = '连接检查不产生流式事件';
+        renderInspector();
+        elements.requestProtocol.textContent = elements.protocol.value;
+        const startedAt = performance.now();
+        state.controller = new AbortController();
+        syncControls();
+        const response = await fetch(url, { headers, signal: state.controller.signal });
+        const raw = await response.text();
+        let payload;
+        try { payload = JSON.parse(raw); } catch (_) { payload = raw; }
+        const duration = Math.round(performance.now() - startedAt);
+        elements.httpStatus.textContent = String(response.status);
+        elements.duration.textContent = `${duration} ms`;
+        state.inspector.response = prettyJson(payload || `HTTP ${response.status}`);
+        renderInspector();
+        if (!response.ok) throw new ApiError(getErrorMessage(payload, `HTTP ${response.status}`), response.status);
+        setConnectionState('success', '连接正常', `${duration} ms`);
+        showToast(`连接成功 · ${duration} ms`);
     } catch (error) {
-        const message = describeError(error);
-        setConnectionState('error', '连接失败', '');
-        showToast(message, true);
+        if (error.name !== 'AbortError') {
+            const message = describeError(error);
+            setConnectionState('error', '连接失败', '');
+            showToast(message, true);
+        }
     } finally {
+        state.controller = null;
         setBusy(false);
     }
 }
@@ -868,7 +1349,7 @@ async function loadModels() {
         if (!response.ok) throw new ApiError(getErrorMessage(payload, `HTTP ${response.status}`), response.status);
         const models = extractModels(payload);
         if (!models.length) throw new Error('响应中未找到模型列表');
-        populateModels(models);
+        populateModels(models, elements.model.value.trim(), true);
         persistSettings();
         showToast(`已读取 ${models.length} 个模型`);
     } catch (error) {
@@ -884,7 +1365,7 @@ function extractModels(payload) {
     return list.map((item) => {
         const id = typeof item === 'string' ? item : item.id || item.name || '';
         return id.replace(/^models\//, '');
-    }).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    }).filter(Boolean).sort(compareModelsByStrength);
 }
 
 function describeError(error) {
@@ -904,16 +1385,28 @@ function addMessage(role, text, pending = false) {
     avatar.textContent = role === 'user' ? 'U' : role === 'error' ? '!' : 'AI';
     const content = document.createElement('div');
     content.className = 'message-content';
-    content.textContent = text;
     row.append(avatar, content);
+    setMessageContent({ content }, text, role === 'assistant' && Boolean(text));
     elements.chatWindow.appendChild(row);
     scrollChatToBottom();
     return { row, content };
 }
 
 function clearChat() {
-    if (state.busy) state.controller?.abort();
-    state.history = [];
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    const conversation = activeConversation();
+    if (!conversation) return;
+    conversation.history = [];
+    conversation.title = '新会话';
+    persistConversations();
+    renderConversationTabs();
+    renderActiveConversation();
+}
+
+function renderEmptyState() {
     elements.chatWindow.replaceChildren();
     const empty = document.createElement('div');
     empty.className = 'empty-state';
@@ -935,7 +1428,7 @@ function clearChat() {
 }
 
 function safeOrigin() {
-    try { return new URL(elements.baseUrl.value).origin; } catch (_) { return '选择服务商与模型后开始测试'; }
+    try { return new URL(elements.baseUrl.value).origin; } catch (_) { return '选择服务商与模型后开始对话'; }
 }
 
 function applyUsage(usage = {}) {
@@ -982,7 +1475,7 @@ function setBusy(busy) {
 function syncControls() {
     const locked = isCostLimitReached();
     elements.sendButton.disabled = state.busy || locked;
-    elements.testButton.disabled = state.busy || locked;
+    elements.testButton.disabled = state.busy;
     elements.loadModelsButton.disabled = state.busy;
     elements.stopButton.disabled = !state.busy || !state.controller;
     elements.messageInput.disabled = state.busy || locked;
@@ -1048,4 +1541,8 @@ function closeSettings() {
     elements.drawerOverlay.classList.remove('is-open');
 }
 
-initialize();
+try {
+    initialize();
+} catch (error) {
+    showToast(`初始化失败：${error.message}`, true);
+}

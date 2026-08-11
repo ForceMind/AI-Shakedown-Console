@@ -1,6 +1,7 @@
 const PROXY_PATH = '/api/proxy';
 const STATUS_PATH = '/api/status';
-const WORKER_VERSION = 'proxy-2';
+const WORKER_VERSION = 'proxy-4';
+const APP_VERSION = 'v9';
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 
 const BLOCKED_REQUEST_HEADERS = new Set([
@@ -124,17 +125,35 @@ async function proxyRequest(request, env) {
     }
 }
 
+async function assetResponse(request, env) {
+    const response = await env.ASSETS.fetch(request);
+    const url = new URL(request.url);
+    const acceptsHtml = request.headers.get('Accept')?.includes('text/html');
+    const isDocument = url.pathname === '/' || url.pathname.endsWith('.html') || acceptsHtml;
+    if (!isDocument) return response;
+
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    headers.set('X-App-Version', APP_VERSION);
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+    });
+}
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
         if (url.pathname === STATUS_PATH) {
             return jsonResponse({
+                appVersion: APP_VERSION,
                 workerVersion: WORKER_VERSION,
                 allowedUpstreamsConfigured: Boolean(env.ALLOWED_UPSTREAMS),
                 assetsBindingConfigured: Boolean(env.ASSETS)
             }, 200);
         }
         if (url.pathname === PROXY_PATH) return proxyRequest(request, env);
-        return env.ASSETS.fetch(request);
+        return assetResponse(request, env);
     }
 };

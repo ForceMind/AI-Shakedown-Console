@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=9">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
+    <link rel="stylesheet" href="style.css?v=workspace-5">
 </head>
 <body>
     <header class="app-header">
@@ -20,7 +22,7 @@
         <div class="header-actions">
             <div class="connection-state" id="connection-state" data-state="idle">
                 <span class="status-dot"></span>
-                <span id="connection-state-text">尚未测试</span>
+                <span id="connection-state-text">尚未检查</span>
                 <span id="latency-text"></span>
             </div>
             <button class="icon-button mobile-only" id="settings-toggle" type="button" title="连接设置" aria-label="打开连接设置">
@@ -40,6 +42,28 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
+
+            <section class="saved-library" aria-label="已保存的连接配置">
+                <div class="library-title-row">
+                    <span>配置库</span>
+                    <button class="text-button" id="profile-new" type="button">新建</button>
+                </div>
+                <select id="profile-select" aria-label="选择已保存配置">
+                    <option value="">未选择配置</option>
+                </select>
+                <input id="profile-name" type="text" maxlength="40" autocomplete="off" placeholder="输入配置名称">
+                <div class="library-actions">
+                    <button class="secondary-button compact" id="profile-save" type="button">
+                        <i class="bi bi-floppy"></i><span>保存</span>
+                    </button>
+                    <button class="secondary-button compact" id="profile-load" type="button">
+                        <i class="bi bi-box-arrow-in-down"></i><span>加载</span>
+                    </button>
+                    <button class="icon-button" id="profile-delete" type="button" title="删除配置" aria-label="删除配置" disabled>
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </section>
 
             <div class="form-stack">
                 <label class="field">
@@ -74,7 +98,7 @@
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
-                    <small class="field-hint">保存在当前浏览器的站点数据中，清除站点数据或已保存配置后移除。</small>
+                    <small class="field-hint">保存在当前浏览器的站点数据中，点击“清除全部本地数据”或清除站点数据后移除。</small>
                 </label>
 
                 <label class="field">
@@ -104,6 +128,19 @@
                         </button>
                     </div>
                     <input id="model-input" type="text" spellcheck="false" autocomplete="off" placeholder="输入自定义模型名称" hidden>
+                    <label class="field reasoning-field" for="reasoning-effort">
+                        <span>思考强度</span>
+                        <select id="reasoning-effort" title="仅 OpenAI Compatible 协议会发送 reasoning_effort">
+                            <option value="">自动</option>
+                            <option value="none">无</option>
+                            <option value="minimal">最低</option>
+                            <option value="low">低</option>
+                            <option value="medium">中</option>
+                            <option value="high">高</option>
+                            <option value="xhigh">很高</option>
+                            <option value="max">最高</option>
+                        </select>
+                    </label>
                 </div>
 
                 <details class="advanced-settings">
@@ -123,7 +160,7 @@
                         </label>
                         <button class="secondary-button full-width" id="clear-saved-settings" type="button">
                             <i class="bi bi-trash3"></i>
-                            <span>清除已保存配置和 API Key</span>
+                            <span>清除全部本地数据</span>
                         </button>
                     </div>
                 </details>
@@ -135,7 +172,7 @@
 
                 <button class="primary-button full-width" id="test-connection" type="button">
                     <i class="bi bi-plug"></i>
-                    <span>测试连接</span>
+                    <span>检查连接</span>
                 </button>
             </div>
 
@@ -209,19 +246,41 @@
                 </div>
             </div>
 
+            <div class="conversation-bar">
+                <div class="conversation-tabs" id="conversation-tabs" role="tablist" aria-label="对话窗口"></div>
+                <button class="secondary-button compact conversation-new" id="new-conversation" type="button" title="新建对话">
+                    <i class="bi bi-plus-lg"></i><span>新对话</span>
+                </button>
+            </div>
+
             <div class="chat-window" id="chat-window" aria-live="polite">
                 <div class="empty-state" id="empty-state">
                     <div class="empty-icon"><i class="bi bi-terminal"></i></div>
                     <strong>控制台已就绪</strong>
-                    <span id="empty-endpoint">选择服务商与模型后开始测试</span>
+                    <span id="empty-endpoint">选择服务商与模型后开始对话</span>
                 </div>
             </div>
 
             <form class="composer" id="message-form">
+                <div class="prompt-library" aria-label="提示词库">
+                    <select id="prompt-select" aria-label="选择已保存提示词">
+                        <option value="">提示词库</option>
+                    </select>
+                    <input id="prompt-name" type="text" maxlength="40" autocomplete="off" placeholder="提示词名称">
+                    <button class="icon-button small" id="prompt-save" type="button" title="保存提示词" aria-label="保存提示词">
+                        <i class="bi bi-floppy"></i>
+                    </button>
+                    <button class="icon-button small" id="prompt-load" type="button" title="加载提示词" aria-label="加载提示词" disabled>
+                        <i class="bi bi-box-arrow-in-down"></i>
+                    </button>
+                    <button class="icon-button small" id="prompt-delete" type="button" title="删除提示词" aria-label="删除提示词" disabled>
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
                 <label class="system-field" for="system-prompt">System</label>
                 <textarea id="system-prompt" rows="2" placeholder="You are a helpful assistant."></textarea>
                 <div class="message-compose-row">
-                    <textarea id="message-input" rows="2" placeholder="输入测试消息" autocomplete="off"></textarea>
+                    <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off"></textarea>
                     <button class="send-button" id="send-button" type="submit" title="发送消息">
                         <i class="bi bi-arrow-up"></i>
                         <span>发送</span>
@@ -256,6 +315,9 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <script type="module" src="script.js?v=persist-settings-1"></script>
+    <div class="build-version" title="当前部署版本">v9</div>
+    <script src="vendor/marked.min.js?v=15.0.12"></script>
+    <script src="vendor/purify.min.js?v=3.2.6"></script>
+    <script type="module" src="script.js?v=workspace-5"></script>
 </body>
 </html>
