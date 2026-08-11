@@ -3,147 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>千问大模型 Playground</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <meta name="color-scheme" content="light">
+    <title>AI Shakedown Console</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container-fluid p-lg-4 p-2">
-        <header class="text-center mb-4">
-            <h1>千问大模型 Playground</h1>
-            <p class="lead">可视化调整参数并与千问大模型对话</p>
-        </header>
-
-        <div class="row">
-            <!-- Settings Column -->
-            <div class="col-lg-4 mb-4 mb-lg-0 settings-drawer">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>模型设置</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="api-key" class="form-label">API Key <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="API Key" data-bs-content="用于API认证的密钥。请从阿里云Dashscope控制台获取。"></i></label>
-                            <input type="password" class="form-control" id="api-key" placeholder="在此输入您的千问 API Key">
-                        </div>
-                        <div class="mb-3">
-                            <label for="model-select" class="form-label">模型 (Model) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="模型 (Model)" data-bs-content="选择要使用的具体模型。不同模型在性能、速度和价格上有所不同。"></i></label>
-                            <select class="form-select" id="model-select">
-                                <option value="qwen-turbo" selected>qwen-turbo</option>
-                                <option value="qwen-plus">qwen-plus</option>
-                                <option value="qwen-max">qwen-max</option>
-                                <option value="qwen-max-longcontext">qwen-max-longcontext</option>
-                            </select>
-                            <div id="model-description" class="form-text mt-2">高性价比和速度。适用于快速响应、信息总结、对话等常规应用场景。</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="system-prompt" class="form-label">系统提示词 (System Prompt) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="系统提示词 (System Prompt)" data-bs-content="设置助手的初始指令，定义其角色、行为和回答风格。这会影响整个对话。"></i></label>
-                            <textarea class="form-control" id="system-prompt" rows="3">You are a helpful assistant.</textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="max-tokens" class="form-label">最大长度 (Max Tokens) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="最大长度 (Max Tokens)" data-bs-content="设置单次响应中生成的最大文本长度（Token数）。如果留空，将使用模型默认值（如1500）。"></i></label>
-                            <input type="number" class="form-control" id="max-tokens" placeholder="默认 1500" min="1">
-                        </div>
-                        <div class="mb-3">
-                            <label for="presence-penalty" class="form-label">话题新鲜度 (Presence Penalty): <span id="presence-penalty-value">0.0</span> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="话题新鲜度 (Presence Penalty)" data-bs-content="数值在-2.0到2.0之间。正值会根据Token是否已在文本中出现来对其进行惩罚，从而增加模型谈论新话题的可能性。"></i></label>
-                            <input type="range" class="form-range" id="presence-penalty" min="-2" max="2" step="0.1" value="0">
-                        </div>
-                        <div class="mb-3">
-                            <label for="frequency-penalty" class="form-label">重复度惩罚 (Frequency Penalty): <span id="frequency-penalty-value">0.0</span> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="重复度惩罚 (Frequency Penalty)" data-bs-content="数值在-2.0到2.0之间。正值会根据Token在文本中的现有频率对其进行惩罚，从而降低模型逐字重复同一行的可能性。"></i></label>
-                            <input type="range" class="form-range" id="frequency-penalty" min="-2" max="2" step="0.1" value="0">
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col">
-                                <label for="seed" class="form-label">随机种子 (Seed) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="随机种子 (Seed)" data-bs-content="一个整数。如果指定，模型将尽力进行确定性采样，即对于相同的输入和参数，多次请求将返回相同或非常相似的输出。这对于可复现性很有用。"></i></label>
-                                <input type="number" class="form-control" id="seed" placeholder="随机">
-                            </div>
-                            <div class="col">
-                                <label for="stop-sequences" class="form-label">停止符 (Stop) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="停止符 (Stop)" data-bs-content="一个或多个字符串（用英文逗号分隔）。当模型生成这些字符串时，会立即停止生成。例如，输入'Human:'可以防止模型模仿用户继续对话。"></i></label>
-                                <input type="text" class="form-control" id="stop-sequences" placeholder="英文逗号分隔">
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="mb-3">
-                            <label for="temperature" class="form-label">温度 (Temperature): <span id="temperature-value">0.85</span> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="温度 (Temperature)" data-bs-content="数值在0到2之间。较高的值（如0.8）会使输出更随机、更有创造性；较低的值（如0.2）会使其更确定、更集中。"></i></label>
-                            <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.01" value="0.85">
-                        </div>
-                        <div class="mb-3">
-                            <label for="top-p" class="form-label">Top P: <span id="top-p-value">0.8</span> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="Top P" data-bs-content="一个0到1之间的数值。一种替代温度采样的方法，称为核采样。模型会考虑概率质量加起来为top_p的Token的结果。例如，0.1意味着只考虑构成前10%概率质量的Token。"></i></label>
-                            <input type="range" class="form-range" id="top-p" min="0" max="1" step="0.01" value="0.8">
-                        </div>
-                         <div class="mb-3">
-                            <label for="top-k" class="form-label">Top K: <span id="top-k-value">100</span> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="Top K" data-bs-content="一个整数。限制模型在生成下一个Token时，从概率最高的K个Token中进行选择。0或100表示不启用。此参数并非所有OpenAI兼容模型都支持。"></i></label>
-                            <input type="range" class="form-range" id="top-k" min="0" max="100" step="1" value="100">
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="stream-toggle" checked>
-                            <label class="form-check-label" for="stream-toggle">流式输出 (Stream) <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="流式输出 (Stream)" data-bs-content="开启后，响应会以数据流的形式逐步返回，实现打字机效果。关闭则会等待所有内容生成完毕后一次性返回。"></i></label>
-                        </div>
-                    </div>
-                </div>
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h3>用量统计 (Usage)</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-6"><small>累计输入 (Tokens)</small></div>
-                            <div class="col-6 text-end"><strong id="total-input-tokens">0</strong></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-6"><small>累计输出 (Tokens)</small></div>
-                            <div class="col-6 text-end"><strong id="total-output-tokens">0</strong></div>
-                        </div>
-                        <hr class="my-2">
-                        <div class="row">
-                            <div class="col-6"><small>预估费用 (CNY)</small></div>
-                            <div class="col-6 text-end"><strong id="total-cost">¥ 0.0000</strong></div>
-                        </div>
-                        <div class="mt-3">
-                            <label for="cost-limit" class="form-label"><small>费用上限 (CNY)</small> <i class="bi bi-info-circle" data-bs-toggle="popover" data-bs-trigger="hover focus" title="费用上限 (CNY)" data-bs-content="设置一个消费上限。当预估费用超过此值时，将自动禁用消息发送功能以防止超支。设置为0表示无限制。"></i></label>
-                            <input type="number" class="form-control form-control-sm" id="cost-limit" placeholder="0.00 (0为无限制)" min="0">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat Column -->
-            <div class="col-lg-8">
-                <div class="card">
-                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3>对话</h3>
-                        <button class="btn btn-outline-secondary d-lg-none" type="button" id="settings-toggle">
-                            <i class="bi bi-gear"></i> 设置
-                        </button>
-                    </div>
-                    <div class="card-body chat-window" id="chat-window">
-                        <!-- Chat messages will be appended here -->
-                        <div class="message model-message">欢迎来到千问 Playground！在设置里填写 API Key 后即可开始对话。你还可以调整各种参数来感受不同！</div>
-                    </div>
-                    <div class="card-footer">
-                        <form id="message-form" class="d-flex">
-                            <input type="text" class="form-control" id="message-input" placeholder="输入您的消息..." autocomplete="off">
-                            <button type="submit" class="btn btn-primary ms-2">发送</button>
-                        </form>
-                    </div>
-                </div>
+    <header class="app-header">
+        <div class="brand-block">
+            <div class="brand-mark" aria-hidden="true">AI</div>
+            <div>
+                <h1>AI Shakedown Console</h1>
+                <p>多协议 API 调试台</p>
             </div>
         </div>
-        <div class="overlay d-lg-none"></div>
-    </div>
+        <div class="header-actions">
+            <div class="connection-state" id="connection-state" data-state="idle">
+                <span class="status-dot"></span>
+                <span id="connection-state-text">尚未测试</span>
+                <span id="latency-text"></span>
+            </div>
+            <button class="icon-button mobile-only" id="settings-toggle" type="button" title="连接设置" aria-label="打开连接设置">
+                <i class="bi bi-sliders"></i>
+            </button>
+        </div>
+    </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "js-tiktoken": "https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.21/dist/index.js",
-          "base64-js": "./base64-proxy.js"
-        }
-      }
-    </script>
-    <script type="module" src="script.js"></script>
+    <main class="workspace">
+        <aside class="settings-panel" id="settings-panel" aria-label="连接和模型设置">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">CONNECTION</span>
+                    <h2>连接配置</h2>
+                </div>
+                <button class="icon-button mobile-only" id="settings-close" type="button" title="关闭设置" aria-label="关闭连接设置">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
 
+            <div class="form-stack">
+                <label class="field">
+                    <span>服务商预设</span>
+                    <select id="provider-select"></select>
+                </label>
+
+                <label class="field">
+                    <span>协议</span>
+                    <select id="protocol-select">
+                        <option value="openai">OpenAI Compatible</option>
+                        <option value="anthropic">Anthropic Messages</option>
+                        <option value="gemini">Google Gemini</option>
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Base URL</span>
+                    <input id="base-url" type="url" spellcheck="false" autocomplete="off">
+                </label>
+
+                <label class="field">
+                    <span>请求路径</span>
+                    <input id="chat-path" type="text" spellcheck="false" autocomplete="off">
+                </label>
+
+                <label class="field">
+                    <span>API Key</span>
+                    <div class="input-with-action">
+                        <input id="api-key" type="password" placeholder="sk-..." spellcheck="false" autocomplete="off">
+                        <button class="field-icon-button" id="key-visibility" type="button" title="显示或隐藏 API Key" aria-label="显示 API Key">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </label>
+
+                <label class="field">
+                    <span>认证方式</span>
+                    <select id="auth-mode">
+                        <option value="bearer">Authorization: Bearer</option>
+                        <option value="x-api-key">x-api-key</option>
+                        <option value="api-key">api-key</option>
+                        <option value="query">Query: key</option>
+                        <option value="none">无认证</option>
+                    </select>
+                </label>
+
+                <label class="toggle-row" title="通过当前网站的 Worker 或本地代理转发请求，解决浏览器跨域限制">
+                    <span>使用同域代理</span>
+                    <input id="proxy-toggle" type="checkbox">
+                    <span class="toggle-control" aria-hidden="true"></span>
+                </label>
+
+                <div class="field">
+                    <label for="model-input">模型</label>
+                    <div class="input-with-button">
+                        <input id="model-input" type="text" list="model-options" spellcheck="false" autocomplete="off">
+                        <datalist id="model-options"></datalist>
+                        <button class="secondary-button compact" id="load-models" type="button" title="从服务端读取模型">
+                            <i class="bi bi-arrow-repeat"></i>
+                            <span>读取</span>
+                        </button>
+                    </div>
+                </div>
+
+                <details class="advanced-settings">
+                    <summary>高级连接设置</summary>
+                    <div class="details-content">
+                        <label class="field">
+                            <span>模型列表路径</span>
+                            <input id="models-path" type="text" spellcheck="false">
+                        </label>
+                        <label class="field">
+                            <span>自定义请求头（JSON）</span>
+                            <textarea id="custom-headers" rows="3" spellcheck="false" placeholder='{"X-Project": "demo"}'></textarea>
+                        </label>
+                        <label class="field">
+                            <span>附加请求参数（JSON）</span>
+                            <textarea id="extra-body" rows="3" spellcheck="false" placeholder='{"response_format": {"type": "json_object"}}'></textarea>
+                        </label>
+                    </div>
+                </details>
+
+                <div class="endpoint-preview" title="最终请求地址">
+                    <i class="bi bi-link-45deg"></i>
+                    <code id="endpoint-preview"></code>
+                </div>
+
+                <button class="primary-button full-width" id="test-connection" type="button">
+                    <i class="bi bi-plug"></i>
+                    <span>测试连接</span>
+                </button>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="panel-heading compact-heading">
+                <div>
+                    <span class="eyebrow">GENERATION</span>
+                    <h2>生成参数</h2>
+                </div>
+            </div>
+
+            <div class="form-stack parameter-grid">
+                <label class="field">
+                    <span>Temperature</span>
+                    <input id="temperature" type="number" min="0" max="2" step="0.05" value="0.7">
+                </label>
+                <label class="field">
+                    <span>Top P</span>
+                    <input id="top-p" type="number" min="0" max="1" step="0.05" value="1">
+                </label>
+                <label class="field">
+                    <span>Top K</span>
+                    <input id="top-k" type="number" min="1" step="1" placeholder="不发送">
+                </label>
+                <label class="field">
+                    <span>Max Tokens</span>
+                    <input id="max-tokens" type="number" min="1" step="1" value="1024">
+                </label>
+                <label class="toggle-row span-two">
+                    <span>流式响应</span>
+                    <input id="stream-toggle" type="checkbox" checked>
+                    <span class="toggle-control" aria-hidden="true"></span>
+                </label>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="stats-header">
+                <span class="eyebrow">SESSION USAGE</span>
+                <button class="icon-button small" id="reset-stats" type="button" title="清空用量" aria-label="清空用量">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            </div>
+            <div class="stats-grid">
+                <div><span>输入</span><strong id="total-input-tokens">0</strong></div>
+                <div><span>输出</span><strong id="total-output-tokens">0</strong></div>
+                <div><span>请求</span><strong id="total-requests">0</strong></div>
+                <div><span>费用</span><strong id="total-cost">¥ 0.0000</strong></div>
+            </div>
+            <div class="cost-fields">
+                <label class="field"><span>输入价 / 百万 Token</span><input id="input-price" type="number" min="0" step="0.01" value="0"></label>
+                <label class="field"><span>输出价 / 百万 Token</span><input id="output-price" type="number" min="0" step="0.01" value="0"></label>
+                <label class="field span-two"><span>费用上限</span><input id="cost-limit" type="number" min="0" step="0.01" placeholder="0 表示不限"></label>
+            </div>
+        </aside>
+
+        <section class="chat-panel" aria-label="模型对话">
+            <div class="chat-toolbar">
+                <div>
+                    <span class="eyebrow">PLAYGROUND</span>
+                    <h2 id="active-model-title">新会话</h2>
+                </div>
+                <div class="toolbar-actions">
+                    <button class="icon-button" id="stop-request" type="button" title="停止生成" aria-label="停止生成" disabled>
+                        <i class="bi bi-stop-fill"></i>
+                    </button>
+                    <button class="icon-button" id="clear-chat" type="button" title="清空对话" aria-label="清空对话">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-window" id="chat-window" aria-live="polite">
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon"><i class="bi bi-terminal"></i></div>
+                    <strong>控制台已就绪</strong>
+                    <span id="empty-endpoint">选择服务商与模型后开始测试</span>
+                </div>
+            </div>
+
+            <form class="composer" id="message-form">
+                <label class="system-field" for="system-prompt">System</label>
+                <textarea id="system-prompt" rows="2" placeholder="You are a helpful assistant."></textarea>
+                <div class="message-compose-row">
+                    <textarea id="message-input" rows="2" placeholder="输入测试消息" autocomplete="off"></textarea>
+                    <button class="send-button" id="send-button" type="submit" title="发送消息">
+                        <i class="bi bi-arrow-up"></i>
+                        <span>发送</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="inspector-panel" aria-label="请求检查器">
+            <div class="inspector-heading">
+                <div>
+                    <span class="eyebrow">INSPECTOR</span>
+                    <h2>请求检查器</h2>
+                </div>
+                <button class="icon-button small" id="copy-inspector" type="button" title="复制当前内容" aria-label="复制当前检查器内容">
+                    <i class="bi bi-copy"></i>
+                </button>
+            </div>
+            <div class="segmented-control" role="tablist" aria-label="检查器内容">
+                <button type="button" class="active" data-inspector-tab="request" role="tab" aria-selected="true">请求</button>
+                <button type="button" data-inspector-tab="response" role="tab" aria-selected="false">响应</button>
+                <button type="button" data-inspector-tab="events" role="tab" aria-selected="false">事件</button>
+            </div>
+            <pre class="inspector-content" id="inspector-content">尚无请求</pre>
+            <div class="inspector-meta">
+                <div><span>HTTP</span><strong id="http-status">-</strong></div>
+                <div><span>耗时</span><strong id="request-duration">-</strong></div>
+                <div><span>协议</span><strong id="request-protocol">-</strong></div>
+            </div>
+        </aside>
+    </main>
+
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+    <div class="toast-region" id="toast-region" aria-live="assertive"></div>
+    <script type="module" src="script.js?v=proxy-1"></script>
 </body>
 </html>
