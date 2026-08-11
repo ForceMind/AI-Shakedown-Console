@@ -72,9 +72,10 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ## 安全和网络边界
 
-- API Key 只保存在当前页面内存中，不会写入 `localStorage`。请勿在不可信的部署页面中填写生产密钥。
+- 连接配置、生成参数、已读取模型和 API Key 会保存在当前站点的 `localStorage` 中，刷新或重启浏览器后自动恢复，直到用户点击“清除已保存配置和 API Key”或清除站点数据。
+- 持久化 API Key 会增加同源脚本、浏览器扩展和 XSS 读取密钥的风险。只应在可信部署和个人设备上使用，不要在共享设备中保存生产密钥。
 - 直连模式要求上游允许页面所在 Origin 的 CORS 请求。HTTPS 页面不能直连 HTTP 服务；本地 HTTP 页面调试 Ollama/LM Studio 时也需要正确的 CORS 配置。
-- 同域代理模式会把用户输入的 API Key 临时转发给白名单内的上游，但不会写入 Worker 配置、浏览器存储或项目文件。请勿在不可信部署中填写生产密钥。
+- 同域代理模式会把浏览器中保存的 API Key 转发给白名单内的上游，但不会写入 Worker 配置或项目文件。
 - `ALLOWED_UPSTREAMS` 必须保持最小范围。不要移除白名单校验并将 Worker 发布为任意目标代理。
 - AWS Bedrock、Google Vertex AI 等需要 SigV4/OAuth 交互式签名的平台不适合直接在浏览器中保管长期凭据，应通过自建的 OpenAI-compatible 网关接入。
 

@@ -1,3 +1,6 @@
+const SETTINGS_STORAGE_KEY = 'ai-shakedown-console.settings.v1';
+const CUSTOM_MODEL_VALUE = '__custom__';
+
 const PROVIDERS = [
     {
         id: 'openai', name: 'OpenAI', protocol: 'openai', baseUrl: 'https://api.openai.com/v1',
@@ -135,7 +138,8 @@ const elements = {
     httpStatus: $('http-status'), duration: $('request-duration'), requestProtocol: $('request-protocol'),
     inputTokens: $('total-input-tokens'), outputTokens: $('total-output-tokens'), totalRequests: $('total-requests'),
     totalCost: $('total-cost'), inputPrice: $('input-price'), outputPrice: $('output-price'), costLimit: $('cost-limit'),
-    settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region')
+    settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
+    clearSavedSettings: $('clear-saved-settings')
 };
 
 const state = {
@@ -164,6 +168,7 @@ function initialize() {
     }
     bindEvents();
     applyProvider(PROVIDERS[0]);
+    restoreSettings();
     updateUsageDisplay();
 }
 
@@ -192,6 +197,7 @@ function bindEvents() {
 
     elements.model.addEventListener('input', updateActiveModel);
     elements.modelSelect.addEventListener('change', handleModelSelection);
+    elements.clearSavedSettings.addEventListener('click', clearSavedSettings);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -223,6 +229,17 @@ function bindEvents() {
     $('settings-toggle').addEventListener('click', openSettings);
     $('settings-close').addEventListener('click', closeSettings);
     elements.drawerOverlay.addEventListener('click', closeSettings);
+    const persistentElements = [
+        elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
+        elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
+        elements.customHeaders, elements.extraBody, elements.stream, elements.temperature, elements.topP,
+        elements.topK, elements.maxTokens, elements.systemPrompt, elements.inputPrice, elements.outputPrice,
+        elements.costLimit
+    ];
+    persistentElements.forEach((element) => {
+        element.addEventListener('input', persistSettings);
+        element.addEventListener('change', persistSettings);
+    });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closeSettings();
     });
@@ -254,7 +271,7 @@ function populateModels(models, selectedModel = elements.model.value.trim()) {
     }
 
     const customOption = document.createElement('option');
-    customOption.value = '__custom__';
+    customOption.value = CUSTOM_MODEL_VALUE;
     customOption.textContent = '自定义模型…';
     elements.modelSelect.appendChild(customOption);
 
@@ -263,7 +280,7 @@ function populateModels(models, selectedModel = elements.model.value.trim()) {
         elements.model.value = selectedModel;
         elements.model.hidden = true;
     } else {
-        elements.modelSelect.value = '__custom__';
+        elements.modelSelect.value = CUSTOM_MODEL_VALUE;
         elements.model.value = selectedModel;
         elements.model.hidden = false;
     }
@@ -272,7 +289,7 @@ function populateModels(models, selectedModel = elements.model.value.trim()) {
 
 function handleModelSelection() {
     const selected = elements.modelSelect.value;
-    if (selected === '__custom__') {
+    if (selected === CUSTOM_MODEL_VALUE) {
         elements.model.hidden = false;
         elements.model.focus();
     } else {
@@ -280,6 +297,87 @@ function handleModelSelection() {
         elements.model.hidden = true;
     }
     updateEndpointPreview();
+}
+
+function currentModelOptions() {
+    return [...elements.modelSelect.options]
+        .map((option) => option.value)
+        .filter((value) => value && value !== CUSTOM_MODEL_VALUE);
+}
+
+function persistSettings() {
+    const settings = {
+        provider: elements.provider.value,
+        protocol: elements.protocol.value,
+        baseUrl: elements.baseUrl.value,
+        chatPath: elements.chatPath.value,
+        modelsPath: elements.modelsPath.value,
+        apiKey: elements.apiKey.value,
+        authMode: elements.authMode.value,
+        model: elements.model.value,
+        availableModels: currentModelOptions(),
+        proxy: elements.proxy.checked,
+        customHeaders: elements.customHeaders.value,
+        extraBody: elements.extraBody.value,
+        stream: elements.stream.checked,
+        temperature: elements.temperature.value,
+        topP: elements.topP.value,
+        topK: elements.topK.value,
+        maxTokens: elements.maxTokens.value,
+        systemPrompt: elements.systemPrompt.value,
+        inputPrice: elements.inputPrice.value,
+        outputPrice: elements.outputPrice.value,
+        costLimit: elements.costLimit.value
+    };
+    try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    } catch (_) {
+        // Storage can be unavailable in private or restricted browser contexts.
+    }
+}
+
+function restoreSettings() {
+    let settings;
+    try {
+        settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || 'null');
+    } catch (_) {
+        return;
+    }
+    if (!settings || typeof settings !== 'object') return;
+
+    const provider = PROVIDERS.find((item) => item.id === settings.provider) || PROVIDERS[0];
+    elements.provider.value = provider.id;
+    applyProvider(provider);
+
+    const textValues = {
+        protocol: 'protocol', baseUrl: 'baseUrl', chatPath: 'chatPath', modelsPath: 'modelsPath',
+        apiKey: 'apiKey', authMode: 'authMode', customHeaders: 'customHeaders', extraBody: 'extraBody',
+        temperature: 'temperature', topP: 'topP', topK: 'topK', maxTokens: 'maxTokens',
+        systemPrompt: 'systemPrompt', inputPrice: 'inputPrice', outputPrice: 'outputPrice', costLimit: 'costLimit'
+    };
+    for (const [elementName, settingName] of Object.entries(textValues)) {
+        if (typeof settings[settingName] === 'string') elements[elementName].value = settings[settingName];
+    }
+    if (typeof settings.proxy === 'boolean') elements.proxy.checked = settings.proxy;
+    if (typeof settings.stream === 'boolean') elements.stream.checked = settings.stream;
+
+    const selectedModel = typeof settings.model === 'string' ? settings.model : provider.model;
+    const availableModels = Array.isArray(settings.availableModels)
+        ? settings.availableModels.filter((model) => typeof model === 'string')
+        : provider.models;
+    elements.model.value = selectedModel;
+    populateModels(availableModels, selectedModel);
+    updateEndpointPreview();
+    updateActiveModel();
+    setConnectionState('idle', '尚未测试', '');
+}
+
+function clearSavedSettings() {
+    try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch (_) { /* Ignore storage restrictions. */ }
+    elements.provider.value = PROVIDERS[0].id;
+    applyProvider(PROVIDERS[0]);
+    elements.apiKey.value = '';
+    showToast('已清除保存的配置和 API Key');
 }
 
 function buildUrl(path, stream = elements.stream.checked, includeQueryKey = true) {
@@ -771,6 +869,7 @@ async function loadModels() {
         const models = extractModels(payload);
         if (!models.length) throw new Error('响应中未找到模型列表');
         populateModels(models);
+        persistSettings();
         showToast(`已读取 ${models.length} 个模型`);
     } catch (error) {
         if (error.name !== 'AbortError') showToast(describeError(error), true);

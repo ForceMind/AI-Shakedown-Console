@@ -74,6 +74,7 @@
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <small class="field-hint">保存在当前浏览器的站点数据中，清除站点数据或已保存配置后移除。</small>
                 </label>
 
                 <label class="field">
@@ -120,6 +121,10 @@
                             <span>附加请求参数（JSON）</span>
                             <textarea id="extra-body" rows="3" spellcheck="false" placeholder='{"response_format": {"type": "json_object"}}'></textarea>
                         </label>
+                        <button class="secondary-button full-width" id="clear-saved-settings" type="button">
+                            <i class="bi bi-trash3"></i>
+                            <span>清除已保存配置和 API Key</span>
+                        </button>
                     </div>
                 </details>
 
@@ -251,6 +256,6 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <script type="module" src="script.js?v=model-select-1"></script>
+    <script type="module" src="script.js?v=persist-settings-1"></script>
 </body>
 </html>
