@@ -123,8 +123,8 @@ const $ = (id) => document.getElementById(id);
 const elements = {
     provider: $('provider-select'), protocol: $('protocol-select'), baseUrl: $('base-url'), chatPath: $('chat-path'),
     modelsPath: $('models-path'), apiKey: $('api-key'), authMode: $('auth-mode'), model: $('model-input'),
-    proxy: $('proxy-toggle'),
-    modelOptions: $('model-options'), customHeaders: $('custom-headers'), extraBody: $('extra-body'),
+    proxy: $('proxy-toggle'), modelSelect: $('model-select'),
+    customHeaders: $('custom-headers'), extraBody: $('extra-body'),
     endpointPreview: $('endpoint-preview'), stream: $('stream-toggle'), temperature: $('temperature'),
     topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), systemPrompt: $('system-prompt'),
     messageForm: $('message-form'), messageInput: $('message-input'), sendButton: $('send-button'),
@@ -191,6 +191,7 @@ function bindEvents() {
     });
 
     elements.model.addEventListener('input', updateActiveModel);
+    elements.modelSelect.addEventListener('change', handleModelSelection);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -236,19 +237,49 @@ function applyProvider(provider) {
     elements.model.value = provider.model;
     elements.customHeaders.value = '';
     elements.extraBody.value = '';
-    populateModels(provider.models);
+    populateModels(provider.models, provider.model);
     updateEndpointPreview();
     updateActiveModel();
     setConnectionState('idle', '尚未测试', '');
 }
 
-function populateModels(models) {
-    elements.modelOptions.replaceChildren();
-    for (const model of models) {
+function populateModels(models, selectedModel = elements.model.value.trim()) {
+    const uniqueModels = [...new Set(models.filter(Boolean))];
+    elements.modelSelect.replaceChildren();
+    for (const model of uniqueModels) {
         const option = document.createElement('option');
         option.value = model;
-        elements.modelOptions.appendChild(option);
+        option.textContent = model;
+        elements.modelSelect.appendChild(option);
     }
+
+    const customOption = document.createElement('option');
+    customOption.value = '__custom__';
+    customOption.textContent = '自定义模型…';
+    elements.modelSelect.appendChild(customOption);
+
+    if (selectedModel && uniqueModels.includes(selectedModel)) {
+        elements.modelSelect.value = selectedModel;
+        elements.model.value = selectedModel;
+        elements.model.hidden = true;
+    } else {
+        elements.modelSelect.value = '__custom__';
+        elements.model.value = selectedModel;
+        elements.model.hidden = false;
+    }
+    updateActiveModel();
+}
+
+function handleModelSelection() {
+    const selected = elements.modelSelect.value;
+    if (selected === '__custom__') {
+        elements.model.hidden = false;
+        elements.model.focus();
+    } else {
+        elements.model.value = selected;
+        elements.model.hidden = true;
+    }
+    updateEndpointPreview();
 }
 
 function buildUrl(path, stream = elements.stream.checked, includeQueryKey = true) {

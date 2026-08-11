@@ -286,7 +286,8 @@ textarea:focus {
     color: var(--muted);
 }
 
-.input-with-button input {
+.input-with-button input,
+.input-with-button select {
     min-width: 0;
     flex: 1;
 }

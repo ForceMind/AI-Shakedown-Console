@@ -94,15 +94,15 @@
                 </label>
 
                 <div class="field">
-                    <label for="model-input">模型</label>
+                    <label for="model-select">模型</label>
                     <div class="input-with-button">
-                        <input id="model-input" type="text" list="model-options" spellcheck="false" autocomplete="off">
-                        <datalist id="model-options"></datalist>
+                        <select id="model-select" aria-label="模型列表"></select>
                         <button class="secondary-button compact" id="load-models" type="button" title="从服务端读取模型">
                             <i class="bi bi-arrow-repeat"></i>
                             <span>读取</span>
                         </button>
                     </div>
+                    <input id="model-input" type="text" spellcheck="false" autocomplete="off" placeholder="输入自定义模型名称" hidden>
                 </div>
 
                 <details class="advanced-settings">
@@ -251,6 +251,6 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <script type="module" src="script.js?v=proxy-1"></script>
+    <script type="module" src="script.js?v=model-select-1"></script>
 </body>
 </html>
