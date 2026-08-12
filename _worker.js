@@ -1,7 +1,7 @@
 const PROXY_PATH = '/api/proxy';
 const STATUS_PATH = '/api/status';
 const WORKER_VERSION = 'proxy-6';
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v14';
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 
 const BLOCKED_REQUEST_HEADERS = new Set([

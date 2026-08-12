@@ -424,6 +424,116 @@ textarea:focus {
     margin-top: 8px;
 }
 
+.local-codex-setup {
+    padding: 13px;
+    border: 1px solid #9ebcaf;
+    border-radius: 7px;
+    background: #f0f7f3;
+    display: grid;
+    gap: 11px;
+}
+
+.local-codex-setup[hidden] {
+    display: none;
+}
+
+.local-codex-heading,
+.local-codex-actions {
+    display: flex;
+    align-items: center;
+}
+
+.local-codex-heading {
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.local-codex-heading > div {
+    display: grid;
+    gap: 2px;
+}
+
+.local-codex-heading strong {
+    font-size: 12px;
+}
+
+.local-codex-heading small,
+.local-codex-note {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.local-codex-state {
+    padding: 4px 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.local-codex-state[data-state="success"] {
+    border-color: #72a28d;
+    background: #e4f2eb;
+    color: #205c43;
+}
+
+.local-codex-state[data-state="error"] {
+    border-color: #d7a29d;
+    background: #fbefed;
+    color: #8d3128;
+}
+
+.local-codex-setup > p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.local-codex-setup > p code {
+    color: var(--accent);
+}
+
+.compact-field {
+    gap: 5px;
+}
+
+.local-codex-actions {
+    gap: 7px;
+}
+
+.local-codex-actions button {
+    min-width: 0;
+    min-height: 36px;
+    flex: 1;
+}
+
+.local-codex-command {
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--surface);
+    display: grid;
+    gap: 4px;
+}
+
+.local-codex-command span {
+    color: var(--muted);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.local-codex-command code {
+    color: var(--accent);
+    font-size: 10px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
 .icon-button,
 .secondary-button,
 .primary-button,
