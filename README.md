@@ -2,13 +2,15 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v9` · Worker：`proxy-4`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v13` · Worker：`proxy-6`
 
 ## 功能概览
 
 - 支持 OpenAI Compatible、Anthropic Messages 和 Google Gemini 三类协议。
 - 支持流式响应、安全 Markdown 渲染、请求检查、Token 与费用统计。
 - 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
+- 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
+- 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
 - 无构建步骤，图标、Markdown 解析器和 HTML 清洗器均随站点自托管。
@@ -33,6 +35,8 @@ OpenAI Compatible 协议支持 `reasoning_effort` 思考强度。默认“自动
 - 配置库：填写名称后保存当前服务商、协议、地址、认证、API Key、模型、生成参数和费用设置；选择已保存配置后可加载、覆盖保存或删除。“新建”会退出当前选择，以便另存一份配置。
 - 提示词库：填写提示词名称和 System 内容后保存；选择提示词后可加载到当前对话、覆盖保存或删除。
 - 多对话：点击“新对话”打开新的对话页签。每个页签分别保存消息历史和 System 提示词，可随时切换或关闭；首次请求成功后，页签名称会自动取自用户消息。
+- 本地记录：点击对话标签栏的“导入记录”，可选择单个/多个文件或整个目录。Codex 通常位于 `~/.codex/sessions/`，Gemini CLI 位于 `~/.gemini/tmp/*/chats/`，Claude Code 位于 `~/.claude/projects/`。导入后会生成独立对话页签，可用当前模型继续对话。
+- 智能体角色库：点击输入区上方的“角色库”，可按部门筛选或搜索 268 个中文专家角色。选择角色后可预览完整定义，并一键替换当前对话的 System Prompt；角色标记随对话单独保存，手动修改或加载自定义提示词后自动解除。
 - 刷新恢复：当前配置、配置库、提示词库、对话页签、消息历史和当前激活页签都会自动恢复。
 
 以上数据只保存在当前站点的浏览器存储中，不会同步到其他浏览器或设备。
@@ -72,17 +76,31 @@ vendor/bootstrap-icons/fonts/bootstrap-icons.woff
 vendor/bootstrap-icons/LICENSE
 vendor/marked.LICENSE.md
 vendor/purify.LICENSE
+agents/index.json
+agents/content/**/*.md
+agents/LICENSE.agency-agents-zh
 assets/favicon.svg
 ```
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v9` 部署包：
+在项目根目录生成 `v13` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v9.zip \
-  index.html script.js style.css _worker.js vendor assets
+zip -r AI-Shakedown-Console-cf-pages-worker-v13.zip \
+  index.html script.js style.css _worker.js vendor agents assets
 ```
+
+### 发布完成定义
+
+每次完成用户可见功能或版本变更时，必须在交付前同时完成：
+
+1. 同步 `README.md`、`_worker.js`、`index.html` 及静态资源查询参数中的版本号。
+2. 执行 JavaScript 语法检查和 `git diff --check`。
+3. 在项目根目录生成 `AI-Shakedown-Console-cf-pages-worker-v<version>.zip`。
+4. 检查 ZIP 内容、文件大小和版本标识后再报告完成。
+
+该规则同时写入项目根目录的 `AGENTS.md`，作为 Codex 每次进入仓库时的必读指引。
 
 在 Pages 项目的“设置 → 变量和密钥”中，为生产环境配置普通文本变量：
 
@@ -96,8 +114,8 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v9",
-  "workerVersion": "proxy-4",
+  "appVersion": "v13",
+  "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
 }
@@ -105,9 +123,25 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v9`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v9`、`workerVersion` 为 `proxy-4`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=9`](https://ai-shakedown-console.pages.dev/?v=9) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v13`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v13`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=13`](https://ai-shakedown-console.pages.dev/?v=13) 绕过旧书签或中间缓存后再刷新。
+
+### 浏览器缓存兼容
+
+- `v13` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本和图标使用 `v13` 查询参数，避免新旧界面资源混用。
+- 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
+
+## 更新智能体角色库
+
+角色库以静态资源随站点发布，运行时不会访问 GitHub。更新上游仓库后，执行：
+
+```bash
+node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
+```
+
+导入器会读取带有 `name` 和 `description` frontmatter 的角色文件，生成轻量索引、按需加载的角色正文，并复制上游 MIT 许可。若要记录确切上游版本，可在运行时设置 `AGENCY_AGENTS_REVISION` 为对应 commit SHA。
 
 ## 自建站配置
 
@@ -144,5 +178,6 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 | [Marked](https://marked.js.org/) | 15.0.12 | MIT | Markdown 解析 |
 | [DOMPurify](https://github.com/cure53/DOMPurify) | 3.2.6 | Apache-2.0 OR MPL-2.0 | HTML 清洗 |
 | [Bootstrap Icons](https://icons.getbootstrap.com/) | 1.11.3 | MIT | 界面图标 |
+| [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) | 1.2.7 | MIT | 268 个中文智能体角色定义 |
 
-完整许可文本见 `vendor/marked.LICENSE.md`、`vendor/purify.LICENSE` 和 `vendor/bootstrap-icons/LICENSE`。项目自身使用 [MIT License](LICENSE)。
+完整许可文本见 `vendor/marked.LICENSE.md`、`vendor/purify.LICENSE`、`vendor/bootstrap-icons/LICENSE` 和 `agents/LICENSE.agency-agents-zh`。项目自身使用 [MIT License](LICENSE)。

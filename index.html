@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=9">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=13">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=workspace-5">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
     <header class="app-header">
@@ -16,7 +16,25 @@
             <div class="brand-mark" aria-hidden="true">AI</div>
             <div>
                 <h1>AI Shakedown Console</h1>
-                <p>多协议 API 调试台</p>
+                <p>模型连接与智能体工作台</p>
+            </div>
+        </div>
+        <div class="runtime-context" aria-label="当前运行上下文">
+            <div class="context-item">
+                <span>服务</span>
+                <strong id="context-provider">OpenAI</strong>
+            </div>
+            <div class="context-item">
+                <span>协议</span>
+                <strong id="context-protocol">OpenAI</strong>
+            </div>
+            <div class="context-item context-model">
+                <span>模型</span>
+                <strong id="context-model">gpt-4.1-mini</strong>
+            </div>
+            <div class="context-item context-agent" id="context-agent-item" hidden>
+                <span>角色</span>
+                <strong id="context-agent">未启用</strong>
             </div>
         </div>
         <div class="header-actions">
@@ -65,7 +83,8 @@
                 </div>
             </section>
 
-            <div class="form-stack">
+            <div class="section-label"><i class="bi bi-diagram-3"></i><span>接口与认证</span></div>
+            <div class="form-stack connection-fields">
                 <label class="field">
                     <span>服务商预设</span>
                     <select id="provider-select"></select>
@@ -233,8 +252,11 @@
         <section class="chat-panel" aria-label="模型对话">
             <div class="chat-toolbar">
                 <div>
-                    <span class="eyebrow">PLAYGROUND</span>
+                    <span class="eyebrow">ACTIVE MODEL</span>
                     <h2 id="active-model-title">新会话</h2>
+                </div>
+                <div class="chat-toolbar-status" aria-hidden="true">
+                    <span><i class="bi bi-lightning-charge"></i> API PLAYGROUND</span>
                 </div>
                 <div class="toolbar-actions">
                     <button class="icon-button" id="stop-request" type="button" title="停止生成" aria-label="停止生成" disabled>
@@ -248,6 +270,9 @@
 
             <div class="conversation-bar">
                 <div class="conversation-tabs" id="conversation-tabs" role="tablist" aria-label="对话窗口"></div>
+                <button class="secondary-button compact conversation-import" id="local-session-import" type="button" title="导入本地 AI 工具的对话记录">
+                    <i class="bi bi-folder2-open"></i><span>导入记录</span>
+                </button>
                 <button class="secondary-button compact conversation-new" id="new-conversation" type="button" title="新建对话">
                     <i class="bi bi-plus-lg"></i><span>新对话</span>
                 </button>
@@ -262,23 +287,34 @@
             </div>
 
             <form class="composer" id="message-form">
-                <div class="prompt-library" aria-label="提示词库">
-                    <select id="prompt-select" aria-label="选择已保存提示词">
-                        <option value="">提示词库</option>
-                    </select>
-                    <input id="prompt-name" type="text" maxlength="40" autocomplete="off" placeholder="提示词名称">
-                    <button class="icon-button small" id="prompt-save" type="button" title="保存提示词" aria-label="保存提示词">
-                        <i class="bi bi-floppy"></i>
+                <div class="composer-tools">
+                    <button class="agent-library-button" id="agent-library-open" type="button">
+                        <span class="agent-library-icon"><i class="bi bi-people"></i></span>
+                        <span class="agent-library-copy"><strong>智能体角色</strong><small>选择专家 System Prompt</small></span>
+                        <span class="agent-count" id="agent-count">268</span>
+                        <i class="bi bi-chevron-right"></i>
                     </button>
-                    <button class="icon-button small" id="prompt-load" type="button" title="加载提示词" aria-label="加载提示词" disabled>
-                        <i class="bi bi-box-arrow-in-down"></i>
-                    </button>
-                    <button class="icon-button small" id="prompt-delete" type="button" title="删除提示词" aria-label="删除提示词" disabled>
-                        <i class="bi bi-trash3"></i>
-                    </button>
+                    <div class="prompt-library" aria-label="提示词库">
+                        <select id="prompt-select" aria-label="选择已保存提示词">
+                            <option value="">自定义提示词库</option>
+                        </select>
+                        <input id="prompt-name" type="text" maxlength="40" autocomplete="off" placeholder="提示词名称">
+                        <button class="icon-button small" id="prompt-save" type="button" title="保存提示词" aria-label="保存提示词">
+                            <i class="bi bi-floppy"></i>
+                        </button>
+                        <button class="icon-button small" id="prompt-load" type="button" title="加载提示词" aria-label="加载提示词" disabled>
+                            <i class="bi bi-box-arrow-in-down"></i>
+                        </button>
+                        <button class="icon-button small" id="prompt-delete" type="button" title="删除提示词" aria-label="删除提示词" disabled>
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
                 </div>
-                <label class="system-field" for="system-prompt">System</label>
-                <textarea id="system-prompt" rows="2" placeholder="You are a helpful assistant."></textarea>
+                <div class="system-heading">
+                    <label class="system-field" for="system-prompt">System</label>
+                    <button class="active-agent" id="active-agent" type="button" hidden></button>
+                </div>
+                <textarea id="system-prompt" rows="2" placeholder="设置模型身份、目标和边界，例如：You are a helpful assistant."></textarea>
                 <div class="message-compose-row">
                     <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off"></textarea>
                     <button class="send-button" id="send-button" type="submit" title="发送消息">
@@ -313,11 +349,96 @@
         </aside>
     </main>
 
+    <div class="modal-backdrop" id="agent-library-modal" hidden>
+        <section class="agent-library-modal" role="dialog" aria-modal="true" aria-labelledby="agent-library-title">
+            <header class="agent-library-header">
+                <div>
+                    <span class="eyebrow">AGENCY AGENTS</span>
+                    <h2 id="agent-library-title">智能体角色库</h2>
+                </div>
+                <button class="icon-button" id="agent-library-close" type="button" title="关闭角色库" aria-label="关闭角色库">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="agent-library-filters">
+                <div class="agent-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="agent-search" type="search" autocomplete="off" placeholder="搜索角色、能力或文件名" aria-label="搜索智能体角色">
+                </div>
+                <select id="agent-department" aria-label="按部门筛选">
+                    <option value="">全部部门</option>
+                </select>
+                <span class="agent-results-count" id="agent-results-count"></span>
+            </div>
+            <div class="agent-library-body">
+                <div class="agent-list" id="agent-list" role="listbox" aria-label="智能体角色"></div>
+                <article class="agent-detail" id="agent-detail">
+                    <div class="agent-detail-empty" id="agent-detail-empty">
+                        <i class="bi bi-person-badge"></i>
+                        <span>选择一个角色</span>
+                    </div>
+                    <div id="agent-detail-content" hidden>
+                        <div class="agent-detail-heading">
+                            <div>
+                                <span class="agent-department-label" id="agent-detail-department"></span>
+                                <h3 id="agent-detail-name"></h3>
+                                <p id="agent-detail-description"></p>
+                            </div>
+                            <a class="icon-button" id="agent-source-link" href="#" target="_blank" rel="noopener noreferrer" title="查看上游角色文件" aria-label="查看上游角色文件">
+                                <i class="bi bi-github"></i>
+                            </a>
+                        </div>
+                        <div class="agent-prompt-preview markdown-content" id="agent-prompt-preview" tabindex="0"></div>
+                    </div>
+                </article>
+            </div>
+            <footer class="agent-library-footer">
+                <span id="agent-library-source">agency-agents-zh · MIT</span>
+                <button class="primary-button" id="agent-apply" type="button" disabled>
+                    <i class="bi bi-check2"></i><span>应用到当前对话</span>
+                </button>
+            </footer>
+        </section>
+    </div>
+
+    <div class="modal-backdrop" id="local-session-modal" hidden>
+        <section class="local-session-modal" role="dialog" aria-modal="true" aria-labelledby="local-session-title">
+            <header class="local-session-header">
+                <div>
+                    <span class="eyebrow">LOCAL SESSIONS</span>
+                    <h2 id="local-session-title">导入本地对话记录</h2>
+                </div>
+                <button class="icon-button" id="local-session-close" type="button" title="关闭导入" aria-label="关闭导入">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="local-session-body">
+                <p>选择 Codex、Gemini CLI、Claude Code 或其他工具产生的 JSON / JSONL 会话文件。只导入用户消息和助手正文，会忽略推理、工具调用、系统指令和凭据。</p>
+                <div class="local-session-paths" aria-label="常见的本地会话路径">
+                    <div><strong>Codex</strong><code>~/.codex/sessions/</code></div>
+                    <div><strong>Gemini CLI</strong><code>~/.gemini/tmp/*/chats/</code></div>
+                    <div><strong>Claude Code</strong><code>~/.claude/projects/</code></div>
+                </div>
+                <div class="local-session-actions">
+                    <button class="primary-button" id="local-session-files-button" type="button">
+                        <i class="bi bi-files"></i><span>选择文件</span>
+                    </button>
+                    <button class="secondary-button" id="local-session-directory-button" type="button">
+                        <i class="bi bi-folder2-open"></i><span>选择整个目录</span>
+                    </button>
+                </div>
+                <small>文件只在当前浏览器中解析，不会上传到 Worker 或 AI 服务。为避免误读密钥，认证和配置文件会自动跳过。</small>
+                <input id="local-session-files" type="file" accept=".json,.jsonl,application/json,application/x-ndjson" multiple hidden>
+                <input id="local-session-directory" type="file" accept=".json,.jsonl,application/json,application/x-ndjson" multiple webkitdirectory directory hidden>
+            </div>
+        </section>
+    </div>
+
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v9</div>
+    <div class="build-version" title="当前部署版本">v13</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=workspace-5"></script>
+    <script type="module" src="script.js?v=13"></script>
 </body>
 </html>

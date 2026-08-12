@@ -3,6 +3,10 @@ const PROFILES_STORAGE_KEY = 'ai-shakedown-console.profiles.v1';
 const PROMPTS_STORAGE_KEY = 'ai-shakedown-console.prompts.v1';
 const CONVERSATIONS_STORAGE_KEY = 'ai-shakedown-console.conversations.v1';
 const CUSTOM_MODEL_VALUE = '__custom__';
+const AGENT_CATALOG_URL = 'agents/index.json';
+const MAX_LOCAL_IMPORT_FILES = 200;
+const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
 
 const PROVIDERS = [
     {
@@ -148,7 +152,21 @@ const elements = {
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
     promptSelect: $('prompt-select'), promptName: $('prompt-name'), promptSave: $('prompt-save'),
     promptLoad: $('prompt-load'), promptDelete: $('prompt-delete'),
-    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation')
+    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
+    localSessionImport: $('local-session-import'), localSessionModal: $('local-session-modal'),
+    localSessionClose: $('local-session-close'), localSessionFilesButton: $('local-session-files-button'),
+    localSessionDirectoryButton: $('local-session-directory-button'), localSessionFiles: $('local-session-files'),
+    localSessionDirectory: $('local-session-directory'),
+    agentLibraryOpen: $('agent-library-open'), agentLibraryModal: $('agent-library-modal'),
+    agentLibraryClose: $('agent-library-close'), agentSearch: $('agent-search'),
+    agentDepartment: $('agent-department'), agentList: $('agent-list'), agentCount: $('agent-count'),
+    agentResultsCount: $('agent-results-count'), agentDetailEmpty: $('agent-detail-empty'),
+    agentDetailContent: $('agent-detail-content'), agentDetailDepartment: $('agent-detail-department'),
+    agentDetailName: $('agent-detail-name'), agentDetailDescription: $('agent-detail-description'),
+    agentPromptPreview: $('agent-prompt-preview'), agentSourceLink: $('agent-source-link'),
+    agentApply: $('agent-apply'), agentLibrarySource: $('agent-library-source'), activeAgent: $('active-agent'),
+    contextProvider: $('context-provider'), contextProtocol: $('context-protocol'), contextModel: $('context-model'),
+    contextAgent: $('context-agent'), contextAgentItem: $('context-agent-item')
 };
 
 const state = {
@@ -156,6 +174,12 @@ const state = {
     prompts: [],
     conversations: [],
     activeConversationId: '',
+    agentCatalog: null,
+    selectedAgentId: '',
+    selectedAgentContent: '',
+    agentDetailRequest: 0,
+    agentReturnFocus: null,
+    localSessionReturnFocus: null,
     controller: null,
     busy: false,
     totals: { input: 0, output: 0, requests: 0, cost: 0 },
@@ -224,6 +248,24 @@ function bindEvents() {
     elements.promptLoad.addEventListener('click', loadPrompt);
     elements.promptDelete.addEventListener('click', deletePrompt);
     elements.promptSelect.addEventListener('change', syncPromptSelection);
+    elements.agentLibraryOpen.addEventListener('click', openAgentLibrary);
+    elements.agentLibraryClose.addEventListener('click', closeAgentLibrary);
+    elements.agentSearch.addEventListener('input', renderAgentList);
+    elements.agentDepartment.addEventListener('change', renderAgentList);
+    elements.agentApply.addEventListener('click', applySelectedAgent);
+    elements.activeAgent.addEventListener('click', openActiveAgent);
+    elements.agentLibraryModal.addEventListener('click', (event) => {
+        if (event.target === elements.agentLibraryModal) closeAgentLibrary();
+    });
+    elements.localSessionImport.addEventListener('click', openLocalSessionImport);
+    elements.localSessionClose.addEventListener('click', closeLocalSessionImport);
+    elements.localSessionFilesButton.addEventListener('click', () => elements.localSessionFiles.click());
+    elements.localSessionDirectoryButton.addEventListener('click', () => elements.localSessionDirectory.click());
+    elements.localSessionFiles.addEventListener('change', handleLocalSessionImport);
+    elements.localSessionDirectory.addEventListener('change', handleLocalSessionImport);
+    elements.localSessionModal.addEventListener('click', (event) => {
+        if (event.target === elements.localSessionModal) closeLocalSessionImport();
+    });
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -271,10 +313,15 @@ function bindEvents() {
         const conversation = activeConversation();
         if (!conversation) return;
         conversation.systemPrompt = elements.systemPrompt.value;
+        conversation.activeAgent = null;
+        renderActiveAgent();
         persistConversations();
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSettings();
+        if (event.key !== 'Escape') return;
+        if (!elements.localSessionModal.hidden) closeLocalSessionImport();
+        else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
+        else closeSettings();
     });
 }
 
@@ -476,6 +523,8 @@ function clearSavedSettings() {
     state.prompts = [];
     state.conversations = [];
     state.activeConversationId = '';
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
     elements.provider.value = PROVIDERS[0].id;
     applyProvider(PROVIDERS[0]);
     elements.apiKey.value = '';
@@ -571,7 +620,11 @@ function loadProfile() {
     }
     applySettings(profile.settings);
     const conversation = activeConversation();
-    if (conversation) conversation.systemPrompt = elements.systemPrompt.value;
+    if (conversation) {
+        conversation.systemPrompt = elements.systemPrompt.value;
+        conversation.activeAgent = null;
+    }
+    renderActiveAgent();
     persistSettings();
     persistConversations();
     showToast(`已加载配置“${profile.name}”`);
@@ -595,7 +648,7 @@ function restorePrompts() {
 }
 
 function renderPromptOptions(selectedId = elements.promptSelect.value) {
-    elements.promptSelect.replaceChildren(new Option('提示词库', ''));
+    elements.promptSelect.replaceChildren(new Option('自定义提示词库', ''));
     for (const prompt of state.prompts) {
         elements.promptSelect.appendChild(new Option(prompt.name, prompt.id));
     }
@@ -638,7 +691,11 @@ function loadPrompt() {
     if (!prompt) return;
     elements.systemPrompt.value = prompt.content;
     const conversation = activeConversation();
-    if (conversation) conversation.systemPrompt = prompt.content;
+    if (conversation) {
+        conversation.systemPrompt = prompt.content;
+        conversation.activeAgent = null;
+    }
+    renderActiveAgent();
     persistSettings();
     persistConversations();
     showToast(`已加载提示词“${prompt.name}”`);
@@ -652,6 +709,183 @@ function deletePrompt() {
     renderPromptOptions();
     elements.promptName.value = '';
     showToast(`已删除提示词“${prompt.name}”`);
+}
+
+async function loadAgentCatalog() {
+    if (state.agentCatalog) return state.agentCatalog;
+    const response = await fetch(AGENT_CATALOG_URL, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`角色索引加载失败（HTTP ${response.status}）`);
+    const catalog = await response.json();
+    if (!Array.isArray(catalog?.agents)) throw new Error('角色索引格式无效');
+    state.agentCatalog = catalog;
+    elements.agentCount.textContent = String(catalog.count || catalog.agents.length);
+    elements.agentLibrarySource.textContent = `agency-agents-zh ${catalog.version || ''} · ${catalog.license || 'MIT'}`;
+    elements.agentDepartment.replaceChildren(new Option('全部部门', ''));
+    for (const department of catalog.departments || []) {
+        const count = catalog.agents.filter((agent) => agent.department === department.id).length;
+        if (count) elements.agentDepartment.appendChild(new Option(`${department.name} (${count})`, department.id));
+    }
+    return catalog;
+}
+
+async function openAgentLibrary() {
+    state.agentReturnFocus = document.activeElement;
+    elements.agentLibraryModal.hidden = false;
+    document.body.classList.add('modal-open');
+    elements.agentList.replaceChildren();
+    const loading = document.createElement('div');
+    loading.className = 'agent-list-empty';
+    loading.textContent = '正在加载角色库...';
+    elements.agentList.appendChild(loading);
+    try {
+        await loadAgentCatalog();
+        renderAgentList();
+        const activeAgentId = activeConversation()?.activeAgent?.id;
+        if (activeAgentId && activeAgentId !== state.selectedAgentId) await selectAgent(activeAgentId);
+        else if (activeAgentId) {
+            renderAgentList();
+            elements.agentList.querySelector('.agent-list-item.active')?.scrollIntoView({ block: 'nearest' });
+            if (!state.selectedAgentContent) await selectAgent(activeAgentId);
+        }
+        else elements.agentSearch.focus();
+        if (activeAgentId) elements.agentList.querySelector('.agent-list-item.active')?.focus();
+    } catch (error) {
+        elements.agentList.replaceChildren();
+        const failure = document.createElement('div');
+        failure.className = 'agent-list-empty';
+        failure.textContent = '角色库加载失败';
+        elements.agentList.appendChild(failure);
+        showToast(error.message, true);
+    }
+}
+
+function closeAgentLibrary() {
+    if (elements.agentLibraryModal.hidden) return;
+    elements.agentLibraryModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.agentReturnFocus instanceof HTMLElement) state.agentReturnFocus.focus();
+    else elements.agentLibraryOpen.focus();
+    state.agentReturnFocus = null;
+}
+
+function filteredAgents() {
+    if (!state.agentCatalog) return [];
+    const department = elements.agentDepartment.value;
+    const query = elements.agentSearch.value.trim().toLocaleLowerCase('zh-CN');
+    return state.agentCatalog.agents.filter((agent) => {
+        if (department && agent.department !== department) return false;
+        if (!query) return true;
+        return [agent.name, agent.description, agent.departmentName, agent.path]
+            .some((value) => String(value || '').toLocaleLowerCase('zh-CN').includes(query));
+    });
+}
+
+function renderAgentList() {
+    const agents = filteredAgents();
+    elements.agentResultsCount.textContent = `${agents.length} 个角色`;
+    elements.agentList.replaceChildren();
+    if (!agents.length) {
+        const empty = document.createElement('div');
+        empty.className = 'agent-list-empty';
+        empty.textContent = '没有匹配的角色';
+        elements.agentList.appendChild(empty);
+        return;
+    }
+
+    for (const agent of agents) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.role = 'option';
+        button.ariaSelected = String(agent.id === state.selectedAgentId);
+        button.className = `agent-list-item${agent.id === state.selectedAgentId ? ' active' : ''}`;
+
+        const emoji = document.createElement('span');
+        emoji.className = 'agent-list-emoji';
+        emoji.textContent = agent.emoji || '●';
+        const name = document.createElement('span');
+        name.className = 'agent-list-name';
+        name.textContent = agent.name;
+        const description = document.createElement('span');
+        description.className = 'agent-list-description';
+        description.textContent = agent.description;
+        button.append(emoji, name, description);
+        button.addEventListener('click', () => selectAgent(agent.id));
+        elements.agentList.appendChild(button);
+    }
+    elements.agentList.querySelector('.agent-list-item.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+async function selectAgent(agentId) {
+    const agent = state.agentCatalog?.agents.find((item) => item.id === agentId);
+    if (!agent) return;
+    state.selectedAgentId = agent.id;
+    state.selectedAgentContent = '';
+    elements.agentApply.disabled = true;
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = false;
+    elements.agentDetailDepartment.textContent = agent.departmentName;
+    elements.agentDetailName.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
+    elements.agentDetailDescription.textContent = agent.description;
+    elements.agentSourceLink.href = agent.sourceUrl;
+    elements.agentPromptPreview.textContent = '正在加载角色定义...';
+    renderAgentList();
+
+    const requestId = ++state.agentDetailRequest;
+    try {
+        const agentRevision = state.agentCatalog?.revision?.slice(0, 12) || state.agentCatalog?.version || 'current';
+        const response = await fetch(`${agent.contentPath}?v=${encodeURIComponent(agentRevision)}`, { cache: 'force-cache' });
+        if (!response.ok) throw new Error(`角色定义加载失败（HTTP ${response.status}）`);
+        const content = await response.text();
+        if (requestId !== state.agentDetailRequest) return;
+        state.selectedAgentContent = content.trim();
+        renderMarkdown(elements.agentPromptPreview, state.selectedAgentContent);
+        elements.agentApply.disabled = false;
+    } catch (error) {
+        if (requestId !== state.agentDetailRequest) return;
+        elements.agentPromptPreview.textContent = error.message;
+        showToast(error.message, true);
+    }
+}
+
+function applySelectedAgent() {
+    const agent = state.agentCatalog?.agents.find((item) => item.id === state.selectedAgentId);
+    const conversation = activeConversation();
+    if (!agent || !state.selectedAgentContent || !conversation) return;
+    elements.systemPrompt.value = state.selectedAgentContent;
+    conversation.systemPrompt = state.selectedAgentContent;
+    conversation.activeAgent = {
+        id: agent.id,
+        name: agent.name,
+        emoji: agent.emoji,
+        departmentName: agent.departmentName
+    };
+    persistSettings();
+    persistConversations();
+    renderActiveAgent();
+    closeAgentLibrary();
+    showToast(`已应用智能体“${agent.name}”`);
+}
+
+async function openActiveAgent() {
+    elements.agentSearch.value = '';
+    elements.agentDepartment.value = '';
+    await openAgentLibrary();
+}
+
+function renderActiveAgent() {
+    const agent = activeConversation()?.activeAgent;
+    elements.activeAgent.hidden = !agent;
+    elements.contextAgentItem.hidden = !agent;
+    if (!agent) {
+        elements.activeAgent.textContent = '';
+        elements.activeAgent.title = '';
+        elements.contextAgent.textContent = '未启用';
+        return;
+    }
+    elements.activeAgent.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
+    elements.activeAgent.title = `当前角色：${agent.name}，点击查看`;
+    elements.contextAgent.textContent = agent.name;
+    elements.contextAgent.title = agent.name;
 }
 
 function buildUrl(path, stream = elements.stream.checked, includeQueryKey = true) {
@@ -709,6 +943,16 @@ function updateEndpointPreview() {
 
 function updateActiveModel() {
     elements.activeModelTitle.textContent = elements.model.value.trim() || '未选择模型';
+    updateRuntimeContext();
+}
+
+function updateRuntimeContext() {
+    const provider = PROVIDERS.find((item) => item.id === elements.provider.value);
+    const protocolLabels = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini' };
+    elements.contextProvider.textContent = provider?.name || '自定义';
+    elements.contextProtocol.textContent = protocolLabels[elements.protocol.value] || elements.protocol.value || '-';
+    elements.contextModel.textContent = elements.model.value.trim() || '未选择';
+    elements.contextModel.title = elements.contextModel.textContent;
 }
 
 function parseJsonObject(value, fieldName) {
@@ -812,6 +1056,292 @@ function validateConfiguration() {
     parseJsonObject(elements.extraBody.value, '附加请求参数');
 }
 
+function openLocalSessionImport() {
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    state.localSessionReturnFocus = document.activeElement;
+    elements.localSessionModal.hidden = false;
+    document.body.classList.add('modal-open');
+    elements.localSessionFilesButton.focus();
+}
+
+function closeLocalSessionImport() {
+    if (elements.localSessionModal.hidden) return;
+    elements.localSessionModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    state.localSessionReturnFocus?.focus?.();
+}
+
+function localImportText(value) {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return value.map(localImportText).filter(Boolean).join('');
+    if (!value || typeof value !== 'object') return '';
+    if (['tool_result', 'tool_use', 'function_call', 'function_response'].includes(value.type)) return '';
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.output_text === 'string') return value.output_text;
+    if (typeof value.input_text === 'string') return value.input_text;
+    if (value.content !== undefined) return localImportText(value.content);
+    if (value.parts !== undefined) return localImportText(value.parts);
+    if (value.message !== undefined) return localImportText(value.message);
+    return '';
+}
+
+function appendImportedMessage(history, role, content) {
+    const text = localImportText(content).replace(/\r\n/g, '\n').trim();
+    if (!text || !['user', 'assistant'].includes(role)) return;
+    if (/^<(environment_context|permissions instructions|app-context|skills_instructions)>/i.test(text)) return;
+    const previous = history.at(-1);
+    if (previous?.role === role) {
+        if (previous.content !== text) previous.content += `\n\n${text}`;
+        return;
+    }
+    history.push({ role, content: text });
+}
+
+function parseJsonLines(text) {
+    const records = [];
+    for (const line of text.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        try { records.push(JSON.parse(line)); } catch (_) { /* Ignore partial or non-JSON lines. */ }
+    }
+    return records;
+}
+
+function importedConversation(source, externalId, title, history, createdAt, file) {
+    if (!history.some((message) => message.role === 'user')) return null;
+    const firstUser = history.find((message) => message.role === 'user')?.content || '本地会话';
+    const cleanTitle = typeof title === 'string' && title.trim() ? title.trim() : deriveConversationTitle(firstUser);
+    const sourceLabel = { codex: 'Codex', gemini: 'Gemini', claude: 'Claude', generic: '本地' }[source] || '本地';
+    const fallbackId = `${file.name}:${file.size}:${file.lastModified}`;
+    return {
+        id: createId('conversation'),
+        title: `${sourceLabel} · ${cleanTitle}`.slice(0, 52),
+        systemPrompt: '',
+        activeAgent: null,
+        history,
+        createdAt: typeof createdAt === 'string' && !Number.isNaN(Date.parse(createdAt))
+            ? createdAt
+            : new Date(file.lastModified || Date.now()).toISOString(),
+        importedFrom: {
+            source,
+            fileName: file.name,
+            sourceKey: `${source}:${externalId || fallbackId}`
+        }
+    };
+}
+
+function parseCodexSession(records, file) {
+    const isCodex = records.some((record) => (
+        record?.type === 'session_meta' ||
+        (record?.type === 'event_msg' && ['user_message', 'agent_message'].includes(record?.payload?.type))
+    ));
+    if (!isCodex) return null;
+
+    const metadata = records.find((record) => record?.type === 'session_meta')?.payload || {};
+    const eventHistory = [];
+    for (const record of records) {
+        if (record?.type !== 'event_msg') continue;
+        const payload = record.payload || {};
+        if (payload.type === 'user_message') appendImportedMessage(eventHistory, 'user', payload.message);
+        if (payload.type === 'agent_message' && payload.phase === 'final_answer') {
+            appendImportedMessage(eventHistory, 'assistant', payload.message);
+        }
+    }
+
+    const history = eventHistory.some((message) => message.role === 'user') ? eventHistory : [];
+    if (!history.length) {
+        for (const record of records) {
+            const payload = record?.type === 'response_item' ? record.payload : null;
+            if (payload?.type !== 'message' || !['user', 'assistant'].includes(payload.role)) continue;
+            if (payload.role === 'assistant' && payload.phase && payload.phase !== 'final_answer') continue;
+            appendImportedMessage(history, payload.role, payload.content);
+        }
+    }
+    return importedConversation(
+        'codex',
+        metadata.session_id || metadata.id,
+        '',
+        history,
+        metadata.timestamp || records[0]?.timestamp,
+        file
+    );
+}
+
+function applyGeminiRecord(messages, record) {
+    if (!record || typeof record !== 'object') return;
+    if (typeof record.$rewindTo === 'string') {
+        const index = messages.findIndex((message) => message?.id === record.$rewindTo);
+        if (index >= 0) messages.splice(index);
+        else messages.length = 0;
+        return;
+    }
+    if (Array.isArray(record?.$set?.messages)) {
+        messages.splice(0, messages.length, ...record.$set.messages);
+        return;
+    }
+    if (typeof record.id === 'string' && ['user', 'gemini'].includes(record.type)) {
+        const index = messages.findIndex((message) => message?.id === record.id);
+        if (index >= 0) messages[index] = record;
+        else messages.push(record);
+    }
+}
+
+function parseGeminiSession(records, root, file) {
+    const initial = root && !Array.isArray(root) ? root : records.find((record) => (
+        typeof record?.sessionId === 'string' && typeof record?.projectHash === 'string'
+    ));
+    const isGemini = Boolean(initial) || records.some((record) => ['gemini'].includes(record?.type));
+    if (!isGemini) return null;
+
+    const metadata = { ...(initial || {}) };
+    const messages = [];
+    if (Array.isArray(initial?.messages)) messages.push(...initial.messages);
+    for (const record of records) {
+        if (record?.$set && typeof record.$set === 'object') Object.assign(metadata, record.$set);
+        applyGeminiRecord(messages, record);
+    }
+    const history = [];
+    for (const message of messages) {
+        if (message?.type === 'user') appendImportedMessage(history, 'user', message.displayContent || message.content);
+        if (message?.type === 'gemini') appendImportedMessage(history, 'assistant', message.displayContent || message.content);
+    }
+    return importedConversation(
+        'gemini',
+        metadata.sessionId,
+        metadata.summary,
+        history,
+        metadata.startTime || metadata.lastUpdated,
+        file
+    );
+}
+
+function parseClaudeSession(records, file) {
+    const isClaude = records.some((record) => (
+        ['user', 'assistant'].includes(record?.type) && record?.message && typeof record.message === 'object'
+    ));
+    if (!isClaude) return null;
+    const history = [];
+    for (const record of records) {
+        if (!['user', 'assistant'].includes(record?.type)) continue;
+        appendImportedMessage(history, record.type, record.message?.content);
+    }
+    const metadata = records.find((record) => record?.sessionId) || {};
+    return importedConversation('claude', metadata.sessionId, '', history, metadata.timestamp, file);
+}
+
+function parseGenericSession(root, records, file) {
+    let messages = [];
+    let metadata = {};
+    if (Array.isArray(root)) messages = root;
+    else if (Array.isArray(root?.messages)) {
+        messages = root.messages;
+        metadata = root;
+    } else if (Array.isArray(root?.history)) {
+        messages = root.history;
+        metadata = root;
+    } else if (records.some((record) => ['user', 'assistant'].includes(record?.role))) {
+        messages = records;
+    }
+    if (!messages.length) return null;
+    const history = [];
+    for (const message of messages) {
+        const role = message?.role === 'model' ? 'assistant' : message?.role;
+        if (!['user', 'assistant'].includes(role)) continue;
+        appendImportedMessage(history, role, message.content ?? message.parts ?? message.text);
+    }
+    return importedConversation(
+        'generic',
+        metadata.id || metadata.sessionId || metadata.conversationId,
+        metadata.title || metadata.name || metadata.summary,
+        history,
+        metadata.createdAt || metadata.startTime || metadata.timestamp,
+        file
+    );
+}
+
+function parseLocalSessionFile(text, file) {
+    let root = null;
+    try { root = JSON.parse(text); } catch (_) { /* JSONL is handled below. */ }
+    const records = Array.isArray(root) ? root : parseJsonLines(text);
+    return parseCodexSession(records, file)
+        || parseGeminiSession(records, root, file)
+        || parseClaudeSession(records, file)
+        || parseGenericSession(root, records, file);
+}
+
+function isSensitiveLocalFile(file) {
+    const baseName = file.name.toLowerCase();
+    return /^(auth|oauth_creds|settings|config|credentials?|secrets?|tokens?)(\.|$)/i.test(baseName);
+}
+
+async function handleLocalSessionImport(event) {
+    const input = event.currentTarget;
+    const selected = Array.from(input.files || []);
+    input.value = '';
+    closeLocalSessionImport();
+    if (!selected.length) return;
+
+    const candidates = selected
+        .filter((file) => /\.jsonl?$/i.test(file.name) && !isSensitiveLocalFile(file))
+        .filter((file) => file.size <= MAX_LOCAL_IMPORT_FILE_BYTES)
+        .sort((left, right) => right.lastModified - left.lastModified)
+        .slice(0, MAX_LOCAL_IMPORT_FILES);
+    const files = [];
+    let totalBytes = 0;
+    for (const file of candidates) {
+        if (totalBytes + file.size > MAX_LOCAL_IMPORT_TOTAL_BYTES) continue;
+        files.push(file);
+        totalBytes += file.size;
+    }
+    if (!files.length) {
+        showToast('没有找到可读取的 JSON / JSONL 会话文件', true);
+        return;
+    }
+
+    elements.localSessionImport.disabled = true;
+    const parsed = [];
+    let unreadable = 0;
+    for (const file of files) {
+        try {
+            const conversation = parseLocalSessionFile(await file.text(), file);
+            if (conversation) parsed.push(conversation);
+            else unreadable += 1;
+        } catch (_) {
+            unreadable += 1;
+        }
+    }
+    elements.localSessionImport.disabled = false;
+
+    const existingKeys = new Set(state.conversations.map((item) => item.importedFrom?.sourceKey).filter(Boolean));
+    const imported = parsed.filter((item) => {
+        const key = item.importedFrom.sourceKey;
+        if (existingKeys.has(key)) return false;
+        existingKeys.add(key);
+        return true;
+    });
+    if (!imported.length) {
+        showToast(parsed.length ? '所选会话已经导入' : '未识别到可导入的对话内容', true);
+        return;
+    }
+
+    const previousConversations = state.conversations;
+    const previousActiveId = state.activeConversationId;
+    imported.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
+    state.conversations = [...state.conversations, ...imported];
+    state.activeConversationId = imported.at(-1).id;
+    if (!persistConversations()) {
+        state.conversations = previousConversations;
+        state.activeConversationId = previousActiveId;
+        return;
+    }
+    renderConversationTabs();
+    renderActiveConversation();
+    const skipped = unreadable + (parsed.length - imported.length);
+    showToast(`已导入 ${imported.length} 个本地对话${skipped ? `，跳过 ${skipped} 个文件` : ''}`);
+}
+
 function activeConversation() {
     return state.conversations.find((item) => item.id === state.activeConversationId) || null;
 }
@@ -824,10 +1354,25 @@ function restoreConversations() {
         id: typeof item?.id === 'string' ? item.id : createId('conversation'),
         title: typeof item?.title === 'string' && item.title.trim() ? item.title : `新会话 ${index + 1}`,
         systemPrompt: typeof item?.systemPrompt === 'string' ? item.systemPrompt : '',
+        activeAgent: item?.activeAgent && typeof item.activeAgent.id === 'string' && typeof item.activeAgent.name === 'string'
+            ? {
+                id: item.activeAgent.id,
+                name: item.activeAgent.name,
+                emoji: typeof item.activeAgent.emoji === 'string' ? item.activeAgent.emoji : '',
+                departmentName: typeof item.activeAgent.departmentName === 'string' ? item.activeAgent.departmentName : ''
+            }
+            : null,
         history: Array.isArray(item?.history) ? item.history.filter((message) => (
             message && ['user', 'assistant'].includes(message.role) && typeof message.content === 'string'
         )) : [],
-        createdAt: typeof item?.createdAt === 'string' ? item.createdAt : new Date().toISOString()
+        createdAt: typeof item?.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+        importedFrom: item?.importedFrom && typeof item.importedFrom.sourceKey === 'string'
+            ? {
+                source: typeof item.importedFrom.source === 'string' ? item.importedFrom.source : 'generic',
+                fileName: typeof item.importedFrom.fileName === 'string' ? item.importedFrom.fileName : '',
+                sourceKey: item.importedFrom.sourceKey
+            }
+            : null
     }));
     if (!state.conversations.length) {
         createConversation({ silent: true, systemPrompt: elements.systemPrompt.value });
@@ -841,7 +1386,7 @@ function restoreConversations() {
 }
 
 function persistConversations() {
-    writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
+    return writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
         activeConversationId: state.activeConversationId,
         conversations: state.conversations
     });
@@ -852,10 +1397,12 @@ function createConversation(options = {}) {
         showToast('请先停止当前生成', true);
         return;
     }
+    const inheritedAgent = options.activeAgent === undefined ? activeConversation()?.activeAgent : options.activeAgent;
     const conversation = {
         id: createId('conversation'),
         title: `新会话 ${state.conversations.length + 1}`,
         systemPrompt: typeof options.systemPrompt === 'string' ? options.systemPrompt : elements.systemPrompt.value,
+        activeAgent: inheritedAgent ? { ...inheritedAgent } : null,
         history: [],
         createdAt: new Date().toISOString()
     };
@@ -915,7 +1462,9 @@ function renderConversationTabs() {
         selectButton.type = 'button';
         selectButton.role = 'tab';
         selectButton.ariaSelected = String(conversation.id === state.activeConversationId);
-        selectButton.title = conversation.title;
+        selectButton.title = conversation.importedFrom
+            ? `${conversation.title}\n导入自 ${conversation.importedFrom.fileName}`
+            : conversation.title;
         selectButton.textContent = conversation.title;
         selectButton.addEventListener('click', () => switchConversation(conversation.id));
         const closeButton = document.createElement('button');
@@ -937,6 +1486,7 @@ function renderActiveConversation() {
     const conversation = activeConversation();
     if (!conversation) return;
     elements.systemPrompt.value = conversation.systemPrompt;
+    renderActiveAgent();
     elements.chatWindow.replaceChildren();
     elements.emptyState = null;
     elements.emptyEndpoint = null;
@@ -969,6 +1519,33 @@ function setMessageContent(message, text, render = false) {
     message.content.classList.toggle('markdown-content', render);
     if (render) renderMarkdown(message.content, text);
     else message.content.textContent = text;
+}
+
+function createStreamingMarkdownRenderer(message) {
+    let latestText = '';
+    let frameId = 0;
+
+    const flush = () => {
+        frameId = 0;
+        setMessageContent(message, latestText, Boolean(latestText));
+        scrollChatToBottom();
+    };
+
+    return {
+        update(text) {
+            latestText = text;
+            if (!frameId) frameId = requestAnimationFrame(flush);
+        },
+        finish(text = latestText) {
+            latestText = text;
+            if (frameId) cancelAnimationFrame(frameId);
+            flush();
+        },
+        cancel() {
+            if (frameId) cancelAnimationFrame(frameId);
+            frameId = 0;
+        }
+    };
 }
 
 function deriveConversationTitle(text) {
@@ -1213,6 +1790,7 @@ async function sendMessage(event) {
     const messages = requestMessages(userText);
     addMessage('user', userText);
     const assistant = addMessage('assistant', '', true);
+    const streamRenderer = createStreamingMarkdownRenderer(assistant);
     elements.messageInput.value = '';
     let assistantText = '';
     setBusy(true);
@@ -1221,12 +1799,11 @@ async function sendMessage(event) {
         const result = await executeRequest(messages, {
             onDelta: (text) => {
                 assistantText = text;
-                setMessageContent(assistant, text);
-                scrollChatToBottom();
+                streamRenderer.update(text);
             }
         });
         assistantText = result.text || '';
-        setMessageContent(assistant, assistantText || '（响应为空）', Boolean(assistantText));
+        streamRenderer.finish(assistantText || '（响应为空）');
         assistant.row.classList.remove('pending');
         conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
         conversation.systemPrompt = elements.systemPrompt.value;
@@ -1238,7 +1815,7 @@ async function sendMessage(event) {
     } catch (error) {
         assistant.row.classList.remove('pending');
         if (error.name === 'AbortError') {
-            setMessageContent(assistant, assistantText || '已停止生成', Boolean(assistantText));
+            streamRenderer.finish(assistantText || '已停止生成');
             if (assistantText) {
                 conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
                 conversation.systemPrompt = elements.systemPrompt.value;
@@ -1248,6 +1825,7 @@ async function sendMessage(event) {
             }
             showToast('已停止生成');
         } else {
+            streamRenderer.cancel();
             const message = describeError(error);
             assistant.row.classList.add('error');
             assistant.content.textContent = message;
@@ -1477,6 +2055,7 @@ function syncControls() {
     elements.sendButton.disabled = state.busy || locked;
     elements.testButton.disabled = state.busy;
     elements.loadModelsButton.disabled = state.busy;
+    elements.localSessionImport.disabled = state.busy;
     elements.stopButton.disabled = !state.busy || !state.controller;
     elements.messageInput.disabled = state.busy || locked;
     elements.sendButton.querySelector('span').textContent = locked ? '已达上限' : state.busy ? '请求中' : '发送';
