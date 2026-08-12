@@ -7,10 +7,37 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
-const LOCAL_CODEX_PROVIDER_ID = 'codex-local';
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
+
+const LOCAL_TOOL_PROVIDERS = {
+    'codex-local': {
+        tool: 'codex', name: 'Codex（本机登录）', title: '本机 Codex', cli: 'Codex CLI',
+        protocol: 'codex', model: 'gpt-5.6-terra', models: ['gpt-5.6-terra'],
+        description: '复用 Codex CLI 的 ChatGPT 或 API Key 登录，通过官方 App Server 读取模型并连续对话。'
+    },
+    'antigravity-local': {
+        tool: 'antigravity', name: 'Antigravity（本机登录）', title: '本机 Antigravity', cli: 'Antigravity CLI（agy）',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 Antigravity CLI 的 Google 登录。官方非交互模式是单轮调用，桥接会自动带入当前网页对话。'
+    },
+    'gemini-cli-local': {
+        tool: 'gemini', name: 'Gemini CLI（本机登录）', title: '本机 Gemini CLI', cli: 'Gemini CLI',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 Gemini CLI 的本机认证，以无头 JSON 模式调用；可继续手动填写 CLI 支持的模型名称。'
+    },
+    'claude-code-local': {
+        tool: 'claude', name: 'Claude Code（本机登录）', title: '本机 Claude Code', cli: 'Claude Code',
+        protocol: 'local-cli', model: 'sonnet', models: ['opus', 'sonnet', 'haiku', 'fable'],
+        description: '复用 Claude Code 的本机认证，以禁用工具的 print 模式调用，避免网页对话修改本机文件。'
+    },
+    'opencode-local': {
+        tool: 'opencode', name: 'OpenCode（本机登录）', title: '本机 OpenCode', cli: 'OpenCode CLI',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 OpenCode 已配置的模型供应商认证，以非交互 JSON 模式调用并读取本机模型列表。'
+    }
+};
 
 const PROVIDERS = [
     {
@@ -117,11 +144,10 @@ const PROVIDERS = [
         chatPath: '/chat/completions?api-version=2024-10-21', modelsPath: '', auth: 'api-key', model: 'YOUR-DEPLOYMENT',
         models: []
     },
-    {
-        id: LOCAL_CODEX_PROVIDER_ID, name: 'Codex（本机登录）', protocol: 'codex', baseUrl: `http://127.0.0.1:${LOCAL_CODEX_DEFAULT_PORT}`,
-        chatPath: '/v1/chat/completions', modelsPath: '/v1/models', auth: 'none', model: 'gpt-5.6-terra',
-        models: ['gpt-5.6-terra']
-    },
+    ...Object.entries(LOCAL_TOOL_PROVIDERS).map(([id, tool]) => ({
+        id, name: tool.name, protocol: tool.protocol, baseUrl: `http://127.0.0.1:${LOCAL_CODEX_DEFAULT_PORT}`,
+        chatPath: '/v1/chat/completions', modelsPath: '/v1/models', auth: 'none', model: tool.model, models: tool.models
+    })),
     {
         id: 'ollama', name: 'Ollama（本地）', protocol: 'openai', baseUrl: 'http://localhost:11434/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'none', model: 'llama3.2',
@@ -169,6 +195,8 @@ const elements = {
     localCodexSetup: $('local-codex-setup'), localCodexPlatform: $('local-codex-platform'),
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
     localCodexCheck: $('local-codex-check'), localCodexCommand: $('local-codex-command'),
+    localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
+    localToolNote: $('local-tool-note'),
     agentLibraryOpen: $('agent-library-open'), agentLibraryModal: $('agent-library-modal'),
     agentLibraryClose: $('agent-library-close'), agentSearch: $('agent-search'),
     agentDepartment: $('agent-department'), agentList: $('agent-list'), agentCount: $('agent-count'),
@@ -192,7 +220,7 @@ const state = {
     agentDetailRequest: 0,
     agentReturnFocus: null,
     localSessionReturnFocus: null,
-    localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos' },
+    localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     controller: null,
     busy: false,
     totals: { input: 0, output: 0, requests: 0, cost: 0 },
@@ -233,8 +261,9 @@ function bindEvents() {
     });
 
     elements.protocol.addEventListener('change', () => {
-        if (elements.protocol.value === 'codex') {
-            const provider = PROVIDERS.find((item) => item.id === LOCAL_CODEX_PROVIDER_ID);
+        if (['codex', 'local-cli'].includes(elements.protocol.value)) {
+            const providerId = elements.protocol.value === 'codex' ? 'codex-local' : 'antigravity-local';
+            const provider = PROVIDERS.find((item) => item.id === providerId);
             elements.provider.value = provider.id;
             applyProvider(provider);
             persistSettings();
@@ -362,11 +391,19 @@ function detectLocalPlatform() {
 function restoreLocalCodexPairing() {
     state.localCodex.platform = detectLocalPlatform();
     let pairing = null;
-    const fragment = new URLSearchParams(window.location.hash.slice(1)).get('codex_bridge');
-    if (fragment) {
-        const [portText, token] = fragment.split('.', 2);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const localFragment = hashParams.get('local_bridge');
+    const legacyFragment = hashParams.get('codex_bridge');
+    if (localFragment || legacyFragment) {
+        const parts = (localFragment || legacyFragment).split('.');
+        const tool = localFragment ? parts.shift() : 'codex';
+        const portText = parts.shift();
+        const token = parts.join('.');
         const port = Number(portText);
-        if (token && Number.isInteger(port) && port >= 1024 && port <= 65535) pairing = { token, port };
+        const supportedTool = Object.values(LOCAL_TOOL_PROVIDERS).some((item) => item.tool === tool);
+        if (supportedTool && token && Number.isInteger(port) && port >= 1024 && port <= 65535) {
+            pairing = { token, port, tool };
+        }
         const cleanUrl = new URL(window.location.href);
         cleanUrl.hash = '';
         history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}`);
@@ -377,6 +414,7 @@ function restoreLocalCodexPairing() {
     if (pairing && typeof pairing.token === 'string' && Number.isInteger(Number(pairing.port))) {
         state.localCodex.token = pairing.token;
         state.localCodex.port = Number(pairing.port);
+        state.localCodex.tool = typeof pairing.tool === 'string' ? pairing.tool : 'codex';
         saveLocalCodexPairing();
     }
     elements.localCodexPlatform.value = state.localCodex.platform;
@@ -387,7 +425,8 @@ function saveLocalCodexPairing() {
     try {
         sessionStorage.setItem(LOCAL_CODEX_SESSION_KEY, JSON.stringify({
             token: state.localCodex.token,
-            port: state.localCodex.port
+            port: state.localCodex.port,
+            tool: state.localCodex.tool
         }));
     } catch (_) { /* Session storage can be unavailable. */ }
 }
@@ -398,12 +437,18 @@ function setLocalCodexStatus(status, text) {
 }
 
 function updateLocalCodexCommand() {
+    const tool = currentLocalTool()?.tool || 'codex';
+    const slug = tool === 'antigravity' ? 'antigravity' : tool;
     const commands = {
-        macos: 'bash ~/Downloads/ai-shakedown-codex-macos.command',
-        windows: 'powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-codex-windows.ps1"',
-        linux: 'bash ~/Downloads/ai-shakedown-codex-linux.sh'
+        macos: `bash ~/Downloads/ai-shakedown-${slug}-macos.command`,
+        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows.ps1"`,
+        linux: `bash ~/Downloads/ai-shakedown-${slug}-linux.sh`
     };
     elements.localCodexCommand.textContent = commands[state.localCodex.platform] || commands.macos;
+}
+
+function currentLocalTool() {
+    return LOCAL_TOOL_PROVIDERS[elements.provider.value] || null;
 }
 
 function syncLocalCodexMode(enabled) {
@@ -415,7 +460,8 @@ function syncLocalCodexMode(enabled) {
     fixedFields.forEach((element) => { element.disabled = enabled; });
     $('key-visibility').disabled = enabled;
     if (enabled) {
-        elements.protocol.value = 'codex';
+        const tool = currentLocalTool();
+        elements.protocol.value = tool.protocol;
         elements.baseUrl.value = `http://127.0.0.1:${state.localCodex.port}`;
         elements.chatPath.value = '/v1/chat/completions';
         elements.modelsPath.value = '/v1/models';
@@ -423,15 +469,22 @@ function syncLocalCodexMode(enabled) {
         elements.proxy.checked = false;
         elements.customHeaders.value = '';
         elements.extraBody.value = '';
-        setLocalCodexStatus(state.localCodex.token ? 'idle' : 'error', state.localCodex.token ? '等待检测' : '需要运行脚本');
+        elements.localToolTitle.textContent = tool.title;
+        elements.localToolDescription.innerHTML = `${tool.description} 启动脚本只监听 <code>127.0.0.1</code>，不会把凭据交给网页。`;
+        elements.localToolNote.textContent = `需要本机已安装并登录 ${tool.cli}，以及 Node.js 18 或更高版本。关闭脚本终端即停止本地连接。`;
+        const paired = state.localCodex.token && state.localCodex.tool === tool.tool;
+        setLocalCodexStatus(paired ? 'idle' : 'error', paired ? '等待检测' : '需要运行脚本');
+        updateLocalCodexCommand();
     }
 }
 
 function localCodexLauncherSpec(platform) {
+    const tool = currentLocalTool()?.tool || 'codex';
+    const slug = tool === 'antigravity' ? 'antigravity' : tool;
     return {
-        macos: { template: 'assets/launch-codex-macos.command', fileName: 'ai-shakedown-codex-macos.command' },
-        windows: { template: 'assets/launch-codex-windows.ps1', fileName: 'ai-shakedown-codex-windows.ps1' },
-        linux: { template: 'assets/launch-codex-linux.sh', fileName: 'ai-shakedown-codex-linux.sh' }
+        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos.command` },
+        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows.ps1` },
+        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux.sh` }
     }[platform];
 }
 
@@ -442,6 +495,8 @@ function createLocalCodexToken() {
 
 async function downloadLocalCodexLauncher() {
     if (state.busy) return;
+    const tool = currentLocalTool();
+    if (!tool) return;
     const spec = localCodexLauncherSpec(state.localCodex.platform);
     if (!spec) return;
     elements.localCodexDownload.disabled = true;
@@ -460,7 +515,10 @@ async function downloadLocalCodexLauncher() {
             .replaceAll('__BRIDGE_URL__', bridgeUrl.href)
             .replaceAll('__RETURN_URL__', returnUrl.href)
             .replaceAll('__BRIDGE_TOKEN__', token)
-            .replaceAll('__BRIDGE_PORT__', String(port));
+            .replaceAll('__BRIDGE_PORT__', String(port))
+            .replaceAll('__LOCAL_PROVIDER__', tool.tool)
+            .replaceAll('__CLI_COMMAND__', tool.tool === 'antigravity' ? 'agy' : tool.tool)
+            .replaceAll('__CLI_LABEL__', tool.cli);
         const blobUrl = URL.createObjectURL(new Blob([launcher], { type: 'text/plain;charset=utf-8' }));
         const link = document.createElement('a');
         link.href = blobUrl;
@@ -471,6 +529,7 @@ async function downloadLocalCodexLauncher() {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
         state.localCodex.token = token;
         state.localCodex.port = port;
+        state.localCodex.tool = tool.tool;
         elements.baseUrl.value = `http://127.0.0.1:${port}`;
         saveLocalCodexPairing();
         setLocalCodexStatus('idle', '脚本已下载');
@@ -485,7 +544,10 @@ async function downloadLocalCodexLauncher() {
 }
 
 function localCodexAuthorizationHeaders(contentType = false) {
-    if (!state.localCodex.token) throw new Error('请先下载并运行本地 Codex 启动脚本');
+    const tool = currentLocalTool();
+    if (!state.localCodex.token || state.localCodex.tool !== tool?.tool) {
+        throw new Error(`请先下载并运行本机 ${tool?.cli || 'AI 工具'} 启动脚本`);
+    }
     return {
         Authorization: `Bearer ${state.localCodex.token}`,
         ...(contentType ? { 'Content-Type': 'application/json' } : {})
@@ -494,6 +556,7 @@ function localCodexAuthorizationHeaders(contentType = false) {
 
 async function testLocalCodexConnection() {
     if (state.busy) return;
+    const tool = currentLocalTool();
     setLocalCodexStatus('idle', '检测中');
     setConnectionState('idle', '检查中', '');
     const startedAt = performance.now();
@@ -504,12 +567,13 @@ async function testLocalCodexConnection() {
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(getErrorMessage(payload, `HTTP ${response.status}`));
+        if (payload.provider !== tool.tool) throw new Error(`当前桥接连接的是 ${payload.label || payload.provider}，请重新下载并运行 ${tool.cli} 脚本`);
         const duration = Math.round(performance.now() - startedAt);
         const account = payload.account || {};
-        const accountLabel = account.email || account.planType || account.type || '已登录';
+        const accountLabel = account.planType || payload.version || account.type || '已连接';
         setLocalCodexStatus('success', accountLabel);
-        setConnectionState('success', '本机 Codex 已连接', `${duration} ms`);
-        showToast(`本机 Codex 已连接 · ${accountLabel}`);
+        setConnectionState('success', `${tool.title}已连接`, `${duration} ms`);
+        showToast(`${tool.title}已连接 · ${accountLabel}`);
     } catch (error) {
         setLocalCodexStatus('error', '连接失败');
         setConnectionState('error', '连接失败', '');
@@ -530,7 +594,7 @@ function applyProvider(provider) {
     elements.customHeaders.value = '';
     elements.extraBody.value = '';
     populateModels(provider.models, provider.model);
-    syncLocalCodexMode(provider.id === LOCAL_CODEX_PROVIDER_ID);
+    syncLocalCodexMode(Boolean(LOCAL_TOOL_PROVIDERS[provider.id]));
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
@@ -704,7 +768,7 @@ function applySettings(settings) {
         : provider.models;
     elements.model.value = selectedModel;
     populateModels(availableModels, selectedModel, Array.isArray(settings.availableModels));
-    syncLocalCodexMode(provider.id === LOCAL_CODEX_PROVIDER_ID);
+    syncLocalCodexMode(Boolean(LOCAL_TOOL_PROVIDERS[provider.id]));
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
@@ -719,6 +783,7 @@ function clearSavedSettings() {
     try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore storage restrictions. */ }
     state.localCodex.token = '';
     state.localCodex.port = LOCAL_CODEX_DEFAULT_PORT;
+    state.localCodex.tool = '';
     state.profiles = [];
     state.prompts = [];
     state.conversations = [];
@@ -1148,7 +1213,7 @@ function updateActiveModel() {
 
 function updateRuntimeContext() {
     const provider = PROVIDERS.find((item) => item.id === elements.provider.value);
-    const protocolLabels = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini', codex: 'Codex Local' };
+    const protocolLabels = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini', codex: 'Codex Local', 'local-cli': 'Local CLI' };
     elements.contextProvider.textContent = provider?.name || '自定义';
     elements.contextProtocol.textContent = protocolLabels[elements.protocol.value] || elements.protocol.value || '-';
     elements.contextModel.textContent = elements.model.value.trim() || '未选择';
@@ -1181,7 +1246,7 @@ function buildHeaders() {
         headers['anthropic-dangerous-direct-browser-access'] = 'true';
     }
     const merged = { ...headers, ...parseJsonObject(elements.customHeaders.value, '自定义请求头') };
-    if (elements.provider.value === LOCAL_CODEX_PROVIDER_ID) {
+    if (currentLocalTool()) {
         Object.assign(merged, localCodexAuthorizationHeaders());
         merged['X-AI-Shakedown-Conversation'] = activeConversation()?.id || 'default';
     }
@@ -1200,7 +1265,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
     const temperature = numberValue(elements.temperature);
     const topP = numberValue(elements.topP);
     const topK = numberValue(elements.topK);
-    const reasoningEffort = elements.reasoningEffort.value;
+    const reasoningEffort = ['openai', 'codex'].includes(protocol) ? elements.reasoningEffort.value : '';
     const maxTokens = overrides.maxTokens ?? numberValue(elements.maxTokens) ?? 1024;
     const extra = parseJsonObject(elements.extraBody.value, '附加请求参数');
 
@@ -1252,8 +1317,8 @@ function buildRequestBody(messages, stream, overrides = {}) {
 }
 
 function validateConfiguration() {
-    if (elements.provider.value === LOCAL_CODEX_PROVIDER_ID && !state.localCodex.token) {
-        throw new Error('请先下载并运行本地 Codex 启动脚本');
+    if (currentLocalTool() && (!state.localCodex.token || state.localCodex.tool !== currentLocalTool().tool)) {
+        throw new Error(`请先下载并运行本机 ${currentLocalTool().cli} 启动脚本`);
     }
     if (!elements.baseUrl.value.trim()) throw new Error('请填写 Base URL');
     if (!elements.chatPath.value.trim()) throw new Error('请填写请求路径');
@@ -2051,7 +2116,7 @@ async function sendMessage(event) {
 
 async function testConnection() {
     if (state.busy) return;
-    if (elements.provider.value === LOCAL_CODEX_PROVIDER_ID) {
+    if (currentLocalTool()) {
         await testLocalCodexConnection();
         return;
     }
@@ -2164,8 +2229,8 @@ function extractModels(payload) {
 function describeError(error) {
     if (error.name === 'AbortError') return '请求已取消';
     if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) {
-        if (elements.provider.value === LOCAL_CODEX_PROVIDER_ID) {
-            return '无法连接本机 Codex。请运行下载的启动脚本并保持终端开启；若浏览器阻止本地网络访问，请允许访问 127.0.0.1。';
+        if (currentLocalTool()) {
+            return `无法连接${currentLocalTool().title}。请运行下载的启动脚本并保持终端开启；若浏览器阻止本地网络访问，请允许访问 127.0.0.1。`;
         }
         return '无法连接服务。请检查 URL、CORS、HTTPS/HTTP 混合内容以及自建服务是否已启动。';
     }

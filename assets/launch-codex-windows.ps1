@@ -4,6 +4,9 @@ $BridgeUrl = "__BRIDGE_URL__"
 $ReturnUrl = "__RETURN_URL__"
 $BridgeToken = "__BRIDGE_TOKEN__"
 $BridgePort = "__BRIDGE_PORT__"
+$LocalProvider = "__LOCAL_PROVIDER__"
+$CliCommand = "__CLI_COMMAND__"
+$CliLabel = "__CLI_LABEL__"
 
 function Stop-WithMessage([string]$Message) {
     Write-Host ""
@@ -17,15 +20,20 @@ try {
     $NodeMajor = [int](& $NodeCommand.Source -p "Number(process.versions.node.split('.')[0])")
     if ($NodeMajor -lt 18) { Stop-WithMessage "Node.js 版本过低，需要 18 或更高版本。" }
 
-    $CodexCommand = Get-Command codex.cmd -ErrorAction SilentlyContinue
-    if (-not $CodexCommand) { $CodexCommand = Get-Command codex.exe -ErrorAction SilentlyContinue }
-    if (-not $CodexCommand) { $CodexCommand = Get-Command codex -ErrorAction SilentlyContinue }
-    if (-not $CodexCommand) { Stop-WithMessage "没有找到 Codex CLI，请先安装并运行 codex login。" }
-    $CodexBin = $CodexCommand.Source
-    & $CodexBin login status *> $null
-    if ($LASTEXITCODE -ne 0) { Stop-WithMessage "Codex 尚未登录，请先运行 codex login。" }
+    $LocalCliCommand = Get-Command "$CliCommand.cmd" -ErrorAction SilentlyContinue
+    if (-not $LocalCliCommand) { $LocalCliCommand = Get-Command "$CliCommand.exe" -ErrorAction SilentlyContinue }
+    if (-not $LocalCliCommand) { $LocalCliCommand = Get-Command $CliCommand -ErrorAction SilentlyContinue }
+    if (-not $LocalCliCommand) { Stop-WithMessage "没有找到 $CliLabel，请先安装并完成登录。" }
+    $LocalCliBin = $LocalCliCommand.Source
+    if ($LocalProvider -eq "codex") {
+        & $LocalCliBin login status *> $null
+        if ($LASTEXITCODE -ne 0) { Stop-WithMessage "Codex 尚未登录，请先运行 codex login。" }
+    } else {
+        & $LocalCliBin --version *> $null
+        if ($LASTEXITCODE -ne 0) { Stop-WithMessage "$CliLabel 无法运行，请先单独启动它并完成登录。" }
+    }
 
-    $BridgeFile = Join-Path ([IO.Path]::GetTempPath()) ("ai-shakedown-codex-bridge-" + [guid]::NewGuid().ToString("N") + ".mjs")
+    $BridgeFile = Join-Path ([IO.Path]::GetTempPath()) ("ai-shakedown-local-ai-bridge-" + [guid]::NewGuid().ToString("N") + ".mjs")
     Invoke-WebRequest -UseBasicParsing -Uri $BridgeUrl -OutFile $BridgeFile
     $Origin = ([Uri]$ReturnUrl).GetLeftPart([System.UriPartial]::Authority)
 
@@ -33,9 +41,10 @@ try {
     $env:AI_SHAKEDOWN_BRIDGE_PORT = $BridgePort
     $env:AI_SHAKEDOWN_ALLOWED_ORIGIN = $Origin
     $env:AI_SHAKEDOWN_RETURN_URL = $ReturnUrl
-    $env:AI_SHAKEDOWN_CODEX_BIN = $CodexBin
+    $env:AI_SHAKEDOWN_LOCAL_PROVIDER = $LocalProvider
+    $env:AI_SHAKEDOWN_LOCAL_CLI_BIN = $LocalCliBin
 
-    Write-Host "正在启动 AI Shakedown Console 本地 Codex 连接……"
+    Write-Host "正在启动 AI Shakedown Console 本地 $CliLabel 连接……"
     & $NodeCommand.Source $BridgeFile
 } catch {
     Stop-WithMessage $_.Exception.Message

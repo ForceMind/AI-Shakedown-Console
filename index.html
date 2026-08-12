@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=14">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=15">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
     <header class="app-header">
@@ -90,15 +90,15 @@
                     <select id="provider-select"></select>
                 </label>
 
-                <section class="local-codex-setup" id="local-codex-setup" aria-label="本地 Codex 连接" hidden>
+                <section class="local-codex-setup" id="local-codex-setup" aria-label="本地 AI 工具连接" hidden>
                     <div class="local-codex-heading">
                         <div>
-                            <strong>本机 Codex</strong>
+                            <strong id="local-tool-title">本机 AI 工具</strong>
                             <small>Beta · 复用本机登录</small>
                         </div>
                         <span class="local-codex-state" id="local-codex-status" data-state="idle">尚未连接</span>
                     </div>
-                    <p>下载并运行适合当前系统的启动脚本。脚本只在 <code>127.0.0.1</code> 启动受随机令牌保护的桥接服务，不会把 Codex 凭据交给网页。</p>
+                    <p id="local-tool-description">下载并运行适合当前系统的启动脚本。脚本只在 <code>127.0.0.1</code> 启动受随机令牌保护的桥接服务，不会把本地 AI 工具凭据交给网页。</p>
                     <label class="field compact-field" for="local-codex-platform">
                         <span>检测到的系统</span>
                         <select id="local-codex-platform">
@@ -119,7 +119,7 @@
                         <span>下载后运行</span>
                         <code id="local-codex-command"></code>
                     </div>
-                    <small class="local-codex-note">需要本机已安装并登录 Codex CLI，以及 Node.js 18 或更高版本。关闭脚本终端即停止本地连接。</small>
+                    <small class="local-codex-note" id="local-tool-note">需要本机已安装并登录对应 CLI，以及 Node.js 18 或更高版本。关闭脚本终端即停止本地连接。</small>
                 </section>
 
                 <label class="field">
@@ -129,6 +129,7 @@
                         <option value="anthropic">Anthropic Messages</option>
                         <option value="gemini">Google Gemini</option>
                         <option value="codex">Codex App Server</option>
+                        <option value="local-cli">Local CLI Bridge</option>
                     </select>
                 </label>
 
@@ -470,9 +471,9 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v14</div>
+    <div class="build-version" title="当前部署版本">v15</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=14"></script>
+    <script type="module" src="script.js?v=15"></script>
 </body>
 </html>

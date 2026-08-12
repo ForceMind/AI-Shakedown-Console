@@ -8,4 +8,4 @@
 - Package exactly the deployable site inputs: `index.html`, `script.js`, `style.css`, `_worker.js`, `vendor/`, `agents/`, and `assets/`.
 - Before handing off, run JavaScript syntax checks, `git diff --check`, list the ZIP contents, and report the archive path and size.
 - Never remove older release archives unless the user explicitly asks.
-
+- When the user expects a GitHub update, finish the release by committing and pushing the intended branch; run GitHub network commands outside the filesystem sandbox first instead of treating sandbox authentication failures as real account failures.
