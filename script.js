@@ -7,7 +7,7 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v17';
+const APP_VERSION = 'v18';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
 
@@ -195,6 +195,7 @@ const elements = {
     localCodexSetup: $('local-codex-setup'), localCodexPlatform: $('local-codex-platform'),
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
     localCodexCheck: $('local-codex-check'), localCodexCommand: $('local-codex-command'),
+    localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
     localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
     localToolNote: $('local-tool-note'),
     agentLibraryOpen: $('agent-library-open'), agentLibraryModal: $('agent-library-modal'),
@@ -322,6 +323,7 @@ function bindEvents() {
     });
     elements.localCodexDownload.addEventListener('click', downloadLocalCodexLauncher);
     elements.localCodexCheck.addEventListener('click', testLocalCodexConnection);
+    elements.localCodexCopyCommand.addEventListener('click', copyLocalCodexCommand);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -440,11 +442,21 @@ function updateLocalCodexCommand() {
     const tool = currentLocalTool()?.tool || 'codex';
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     const commands = {
-        macos: `bash ~/Downloads/ai-shakedown-${slug}-macos.command`,
-        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows.ps1"`,
-        linux: `bash ~/Downloads/ai-shakedown-${slug}-linux.sh`
+        macos: `bash "$HOME/Downloads/ai-shakedown-${slug}-macos-${APP_VERSION}.command"`,
+        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows-${APP_VERSION}.ps1"`,
+        linux: `bash "$HOME/Downloads/ai-shakedown-${slug}-linux-${APP_VERSION}.sh"`
     };
     elements.localCodexCommand.textContent = commands[state.localCodex.platform] || commands.macos;
+    elements.localCodexGuide.hidden = state.localCodex.platform !== 'macos';
+}
+
+async function copyLocalCodexCommand() {
+    try {
+        await navigator.clipboard.writeText(elements.localCodexCommand.textContent);
+        showToast('运行命令已复制');
+    } catch (_) {
+        showToast('无法自动复制，请手动选择命令', true);
+    }
 }
 
 function currentLocalTool() {
@@ -471,7 +483,7 @@ function syncLocalCodexMode(enabled) {
         elements.extraBody.value = '';
         elements.localToolTitle.textContent = tool.title;
         elements.localToolDescription.innerHTML = `${tool.description} 启动脚本只监听 <code>127.0.0.1</code>，不会把凭据交给网页。`;
-        elements.localToolNote.textContent = `需要本机已安装并登录 ${tool.cli}，以及 Node.js 18 或更高版本。关闭脚本终端即停止本地连接。`;
+        elements.localToolNote.textContent = `脚本会检查 Node.js、${tool.cli} 和登录状态；新版启动器会停止同工具的旧桥接，端口冲突时自动换用空闲端口。`;
         const paired = state.localCodex.token && state.localCodex.tool === tool.tool;
         setLocalCodexStatus(paired ? 'idle' : 'error', paired ? '等待检测' : '需要运行脚本');
         updateLocalCodexCommand();
@@ -482,9 +494,9 @@ function localCodexLauncherSpec(platform) {
     const tool = currentLocalTool()?.tool || 'codex';
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     return {
-        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos.command` },
-        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows.ps1` },
-        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux.sh` }
+        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos-${APP_VERSION}.command` },
+        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows-${APP_VERSION}.ps1` },
+        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux-${APP_VERSION}.sh` }
     }[platform];
 }
 
@@ -514,6 +526,7 @@ async function downloadLocalCodexLauncher() {
         const launcher = template
             .replaceAll('__BRIDGE_URL__', bridgeUrl.href)
             .replaceAll('__RETURN_URL__', returnUrl.href)
+            .replaceAll('__APP_VERSION__', APP_VERSION)
             .replaceAll('__BRIDGE_TOKEN__', token)
             .replaceAll('__BRIDGE_PORT__', String(port))
             .replaceAll('__LOCAL_PROVIDER__', tool.tool)
@@ -534,7 +547,7 @@ async function downloadLocalCodexLauncher() {
         saveLocalCodexPairing();
         setLocalCodexStatus('idle', '脚本已下载');
         updateEndpointPreview();
-        showToast('启动脚本已下载，运行后页面会自动重新打开并连接');
+        showToast(`${APP_VERSION} 自检启动脚本已下载，运行后页面会自动重新打开并连接`);
     } catch (error) {
         setLocalCodexStatus('error', '下载失败');
         showToast(error.message, true);

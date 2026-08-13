@@ -519,11 +519,28 @@ textarea:focus {
     gap: 4px;
 }
 
+.local-codex-command > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .local-codex-command span {
     color: var(--muted);
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+}
+
+.local-codex-command .text-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 9px;
+    cursor: pointer;
 }
 
 .local-codex-command code {
@@ -532,6 +549,45 @@ textarea:focus {
     line-height: 1.45;
     overflow-wrap: anywhere;
     user-select: all;
+}
+
+.local-codex-guide {
+    padding-top: 2px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.55;
+}
+
+.local-codex-guide[hidden] {
+    display: none;
+}
+
+.local-codex-guide summary {
+    padding-top: 8px;
+    color: var(--accent);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.local-codex-guide ol {
+    margin: 9px 0 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 7px;
+}
+
+.local-codex-guide p {
+    margin: 9px 0 0;
+}
+
+.local-codex-guide a {
+    color: var(--accent);
+}
+
+.local-codex-guide code {
+    color: var(--accent);
+    overflow-wrap: anywhere;
 }
 
 .icon-button,

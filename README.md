@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v17` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v18` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -10,7 +10,7 @@
 - 支持流式响应、安全 Markdown 渲染、请求检查、Token 与费用统计。
 - 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
 - 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
-- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应启动脚本后即可检测工具、读取模型并直接对话。启动脚本会优先使用系统 Node.js，并自动回退到 Codex 桌面版自带的 Node 运行时。
+- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应自检启动脚本后即可检测工具、读取模型并直接对话。启动器会检查 Node.js、CLI 和登录状态，停止同工具旧桥接；端口冲突时自动寻找空闲端口，并优先复用系统或 Codex 桌面版自带的 Node 运行时。
 - 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
@@ -44,6 +44,36 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 - 刷新恢复：当前配置、配置库、提示词库、对话页签、消息历史和当前激活页签都会自动恢复。
 
 以上数据只保存在当前站点的浏览器存储中，不会同步到其他浏览器或设备。
+
+## 本机桥接环境与 macOS 教程
+
+启动器会先完成环境自检，不会静默安装或修改系统软件：
+
+- Node.js：需要 18 或更高版本。macOS 和 Linux 会依次查找系统 `PATH`、Codex 桌面版自带运行时和常见安装目录；Windows 也会检查 Codex 自带运行时。使用 Codex 桌面版且运行时可用时，无需另外安装 Node.js。
+- 本地 CLI：需要提前安装所选工具并完成登录。Codex 可按照 [OpenAI 官方 Codex CLI 教程](https://developers.openai.com/codex/cli/)安装；macOS/Linux 官方安装命令为 `curl -fsSL https://chatgpt.com/codex/install.sh | sh`，首次运行 `codex` 时完成登录。
+- 下载工具：macOS/Linux 需要系统自带的 `curl`；Windows 使用 PowerShell 的 `Invoke-WebRequest`。
+
+macOS 从下载到连接：
+
+1. 在“服务商预设”选择所需的“本机登录”工具，系统选择 `macOS`。
+2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v18 为 `ai-shakedown-codex-macos-v18.command`，因此新版不会覆盖旧版文件。
+3. 打开“终端”，复制网页给出的命令运行：
+
+   ```bash
+   bash "$HOME/Downloads/ai-shakedown-codex-macos-v18.command"
+   ```
+
+   不要双击 `.command` 文件。通过 `bash` 读取脚本不依赖可执行权限，因此不需要 `chmod +x`。
+4. 如果 macOS 弹出“终端想要访问下载文件夹”，选择允许。若此前拒绝，可到“系统设置 → 隐私与安全性 → 文件与文件夹 → 终端”开启“下载”访问；不需要开启完整磁盘访问。
+5. 自检通过后脚本会启动仅监听 `127.0.0.1` 的桥接，并用实际端口重新打开网页。回到页面点击“检测连接”或“读取”模型即可。
+
+停止、更新和端口处理：
+
+- 正常停止：在显示“本地桥接已启动”的终端按 `Control + C`。
+- 下载更新：直接下载并运行新版脚本。启动器会通过状态文件停止同一工具的旧桥接，也会清理没有状态文件的旧版 AI Shakedown 桥接，避免网页继续连接内存中的旧代码。
+- 端口冲突：网页会预选一个本地端口。若该端口被其他程序占用，启动器不会结束无关程序，而是在 100 个候选端口内寻找下一个空闲端口，并将实际端口随配对地址传回网页。
+- 自动停止失败：回到旧桥接终端按 `Control + C`，再运行新脚本。启动器不会对无法确认归属的进程执行强制结束。
+- 浏览器下载出现 `(1)`：优先使用刚下载的最新文件，或删除同版本旧下载后重新下载，使文件名与网页命令一致。
 
 ## 运行
 
@@ -88,10 +118,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v17` 部署包：
+在项目根目录生成 `v18` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v17.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v18.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -118,7 +148,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v17",
+  "appVersion": "v18",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -127,14 +157,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v17`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v17`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=17`](https://ai-shakedown-console.pages.dev/?v=17) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v18`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v18`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=18`](https://ai-shakedown-console.pages.dev/?v=18) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v17` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v17` 查询参数，避免新旧界面资源混用。
+- `v18` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v18` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -168,11 +198,11 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 - AWS Bedrock、Google Vertex AI 等需要 SigV4/OAuth 交互式签名的平台不适合直接在浏览器中保管长期凭据，应通过自建的 OpenAI-compatible 网关接入。
 - 本地启动脚本不会读取、上传或显示各 CLI 的认证文件；登录状态和令牌刷新仍由本机 CLI 负责。桥接只监听 `127.0.0.1`，校验下载时生成的随机 Bearer 令牌和网页 Origin。页面配对令牌不写入持久化配置。
 - Codex 以 `read-only` 沙盒和 `never` 审批策略启动；Gemini 使用 `plan` 审批模式；Claude Code 禁用内置与 MCP 工具并启用安全/计划模式；OpenCode 注入 `permission: deny` 的运行时配置。Antigravity 目前没有已文档化的等价禁用工具参数，因此桥接在独立临时工作目录中运行 `agy -p`，同时加入纯对话安全指令；它仍应视为 Beta，不要用来处理不可信提示词或敏感本地环境。
-- 本地桥接依赖 Node.js 18+ 和所选 CLI。关闭脚本所在终端后立即停止；升级 CLI 后如有兼容变化，应重新下载最新版脚本。实现依据见 [Codex App Server](https://developers.openai.com/codex/app-server/)、[Antigravity CLI](https://codelabs.developers.google.com/antigravity-cli-hands-on)、[Gemini CLI 无头模式](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/headless.md)、[Claude Code CLI](https://code.claude.com/docs/en/cli-usage) 和 [OpenCode CLI](https://opencode.ai/docs/cli/) 官方文档。
+- 本地桥接依赖 Node.js 18+ 和所选 CLI。启动器将进程号、实际端口和版本写入当前用户的状态目录，仅用于安全停止同工具旧桥接；正常退出时会删除状态文件。关闭脚本所在终端后立即停止；升级 CLI 后如有兼容变化，应重新下载最新版脚本。实现依据见 [Codex CLI](https://developers.openai.com/codex/cli/)、[Codex App Server](https://developers.openai.com/codex/app-server/)、[Antigravity CLI](https://codelabs.developers.google.com/antigravity-cli-hands-on)、[Gemini CLI 无头模式](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/headless.md)、[Claude Code CLI](https://code.claude.com/docs/en/cli-usage) 和 [OpenCode CLI](https://opencode.ai/docs/cli/) 官方文档。
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v17` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v18` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。
