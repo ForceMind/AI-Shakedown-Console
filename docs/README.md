@@ -47,7 +47,7 @@
 ## 文档约定
 
 - 命令默认在项目根目录运行，除非文中另有说明。
-- `v24` 表示网页与 PWA 资源版本；`proxy-6` 表示 Worker 接口版本，两者独立。
+- `v25` 表示网页与 PWA 资源版本；`proxy-6` 表示 Worker 接口版本，两者独立。
 - 页面显示文字以当前发布版为准；文档中的目录和按钮名称与中文版界面一致。
 - 本机桥接统称“本机 AI”，实际支持 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode。
 

@@ -1,17 +1,17 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v24`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v24`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v25`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v25`;
 const APP_SHELL = [
     '/',
     '/index.html',
-    '/style.css?v=24',
-    '/script.js?v=24',
-    '/assets/manifest.webmanifest?v=24',
-    '/assets/favicon.svg?v=24',
-    '/assets/apple-touch-icon.png?v=24',
-    '/assets/icon-192.png?v=24',
-    '/assets/icon-512.png?v=24',
-    '/assets/icon-maskable-512.png?v=24',
+    '/style.css?v=25',
+    '/script.js?v=25',
+    '/assets/manifest.webmanifest?v=25',
+    '/assets/favicon.svg?v=25',
+    '/assets/apple-touch-icon.png?v=25',
+    '/assets/icon-192.png?v=25',
+    '/assets/icon-512.png?v=25',
+    '/assets/icon-maskable-512.png?v=25',
     '/vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff',

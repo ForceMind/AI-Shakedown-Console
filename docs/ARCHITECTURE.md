@@ -102,7 +102,7 @@ Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单
 - 随机端口起点；
 - 随机配对令牌。
 
-启动器负责环境检查、下载桥接、识别旧进程、选择空闲端口、后台启动和重新打开配对页面。
+启动器负责环境检查、下载桥接、识别旧进程、选择空闲端口和后台启动。页面在限定的 100 个候选端口中使用随机挑战寻找桥接；只有响应提供与候选端口绑定的正确 HMAC 证明后，页面才发送当前随机令牌，因此被无关服务占用的端口不会收到配对秘密。桥接等待现有客户端连接，只有没有客户端时才唤起已安装应用或回退到默认浏览器，从而避免重复窗口。
 
 ### PWA
 
@@ -122,7 +122,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 
 - 候选窗已经出现，但 `Enter` 被误当成发送，属于前端组合事件处理范围；
 - 拼音按键已输入，但候选窗完全不出现，首先属于 App Shim、macOS 文本服务或输入法的原生边界；
-- 重新安装 PWA 会重建 App Shim、应用登记和文本输入上下文，但不等同于发布新的网页资源。
+- 重新安装 Edge PWA 会重建 App Shim、应用登记和文本输入上下文，但浏览器更新后可能复发，也不等同于发布新的网页资源；macOS 第三方输入法的长期方案是 Safari“添加到程序坞”。
 
 这个边界用于避免把原生候选窗故障误判为缓存问题并反复提高网页版本。详细恢复流程见 [故障排查](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
 
@@ -150,6 +150,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 | `ai-shakedown-console.conversations.v1` | localStorage | 对话、消息、System 和激活项 |
 | `ai-shakedown-console.conversation-sidebar.v1` | localStorage | 左侧列表偏好 |
 | `ai-shakedown-console.help-intro.v1` | localStorage | 首次帮助状态 |
+| `ai-shakedown-console.pwa-ime-notice.v1` | localStorage | Edge PWA 输入法长期方案提示版本 |
 | `ai-shakedown-console.local-codex.v1` | sessionStorage | 本机工具、端口和配对令牌 |
 
 当前数据结构没有云同步、加密或账号隔离。改变现有 key/schema 时必须提供向后兼容读取或清晰迁移说明。

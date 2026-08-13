@@ -164,7 +164,8 @@ try {
     [IO.File]::WriteAllLines($PidFile, @([string]$BridgeProcess.Id, [string]$BridgePort, $LauncherVersion))
     Write-Host ""
     Write-Host "本地 $CliLabel 桥接已在后台启动（PID $($BridgeProcess.Id)，端口 $BridgePort）。" -ForegroundColor Green
-    Write-Host "现在可以关闭 PowerShell。停止连接请回到网页设置，点击“停止后台连接”。"
+    Write-Host "已打开的应用会自动连接且不会重复开窗；如果应用已关闭，桥接会尝试重新打开它。"
+    Write-Host "现在可以关闭 PowerShell。停止连接请回到应用设置，点击“停止后台连接”。"
     Write-Host "日志位置：$LogFile"
 } catch {
     Remove-Item $BridgeDownload -Force -ErrorAction SilentlyContinue
