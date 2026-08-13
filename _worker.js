@@ -1,7 +1,7 @@
 const PROXY_PATH = '/api/proxy';
 const STATUS_PATH = '/api/status';
-const WORKER_VERSION = 'proxy-4';
-const APP_VERSION = 'v9';
+const WORKER_VERSION = 'proxy-6';
+const APP_VERSION = 'v22';
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 
 const BLOCKED_REQUEST_HEADERS = new Set([
@@ -130,11 +130,29 @@ async function assetResponse(request, env) {
     const url = new URL(request.url);
     const acceptsHtml = request.headers.get('Accept')?.includes('text/html');
     const isDocument = url.pathname === '/' || url.pathname.endsWith('.html') || acceptsHtml;
-    if (!isDocument) return response;
+    const isAgentIndex = url.pathname === '/agents/index.json';
+    const isAgentContent = url.pathname.startsWith('/agents/content/');
+    const isServiceWorker = url.pathname === '/assets/service-worker.js';
+    const isManifest = url.pathname === '/assets/manifest.webmanifest';
+    if (!isDocument && !isAgentIndex && !isAgentContent && !isServiceWorker && !isManifest) return response;
 
     const headers = new Headers(response.headers);
-    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    headers.set('X-App-Version', APP_VERSION);
+    if (isDocument) {
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        headers.set('X-App-Version', APP_VERSION);
+    } else if (isAgentIndex) {
+        headers.set('Cache-Control', 'no-cache, must-revalidate');
+    } else if (isServiceWorker || isManifest) {
+        headers.set('Cache-Control', 'no-cache, must-revalidate');
+        if (isServiceWorker) {
+            headers.set('Content-Type', 'application/javascript; charset=utf-8');
+            headers.set('Service-Worker-Allowed', '/');
+        } else {
+            headers.set('Content-Type', 'application/manifest+json; charset=utf-8');
+        }
+    } else {
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    }
     return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,

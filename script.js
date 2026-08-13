@@ -3,6 +3,44 @@ const PROFILES_STORAGE_KEY = 'ai-shakedown-console.profiles.v1';
 const PROMPTS_STORAGE_KEY = 'ai-shakedown-console.prompts.v1';
 const CONVERSATIONS_STORAGE_KEY = 'ai-shakedown-console.conversations.v1';
 const CUSTOM_MODEL_VALUE = '__custom__';
+const AGENT_CATALOG_URL = 'agents/index.json';
+const MAX_LOCAL_IMPORT_FILES = 200;
+const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
+const APP_VERSION = 'v22';
+const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
+const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
+const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
+const CONVERSATION_SIDEBAR_THRESHOLD = 4;
+const LOCAL_CODEX_DEFAULT_PORT = 4510;
+
+const LOCAL_TOOL_PROVIDERS = {
+    'codex-local': {
+        tool: 'codex', name: 'Codex（本机登录）', title: '本机 Codex', cli: 'Codex CLI',
+        protocol: 'codex', model: 'gpt-5.6-terra', models: ['gpt-5.6-terra'],
+        description: '复用 Codex CLI 的 ChatGPT 或 API Key 登录，通过官方 App Server 读取模型并连续对话。'
+    },
+    'antigravity-local': {
+        tool: 'antigravity', name: 'Antigravity（本机登录）', title: '本机 Antigravity', cli: 'Antigravity CLI（agy）',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 Antigravity CLI 的 Google 登录。官方非交互模式是单轮调用，桥接会自动带入当前网页对话。'
+    },
+    'gemini-cli-local': {
+        tool: 'gemini', name: 'Gemini CLI（本机登录）', title: '本机 Gemini CLI', cli: 'Gemini CLI',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 Gemini CLI 的本机认证，以无头 JSON 模式调用；可继续手动填写 CLI 支持的模型名称。'
+    },
+    'claude-code-local': {
+        tool: 'claude', name: 'Claude Code（本机登录）', title: '本机 Claude Code', cli: 'Claude Code',
+        protocol: 'local-cli', model: 'sonnet', models: ['opus', 'sonnet', 'haiku', 'fable'],
+        description: '复用 Claude Code 的本机认证，以禁用工具的 print 模式调用，避免网页对话修改本机文件。'
+    },
+    'opencode-local': {
+        tool: 'opencode', name: 'OpenCode（本机登录）', title: '本机 OpenCode', cli: 'OpenCode CLI',
+        protocol: 'local-cli', model: 'auto', models: ['auto'],
+        description: '复用 OpenCode 已配置的模型供应商认证，以非交互 JSON 模式调用并读取本机模型列表。'
+    }
+};
 
 const PROVIDERS = [
     {
@@ -109,6 +147,10 @@ const PROVIDERS = [
         chatPath: '/chat/completions?api-version=2024-10-21', modelsPath: '', auth: 'api-key', model: 'YOUR-DEPLOYMENT',
         models: []
     },
+    ...Object.entries(LOCAL_TOOL_PROVIDERS).map(([id, tool]) => ({
+        id, name: tool.name, protocol: tool.protocol, baseUrl: `http://127.0.0.1:${LOCAL_CODEX_DEFAULT_PORT}`,
+        chatPath: '/v1/chat/completions', modelsPath: '/v1/models', auth: 'none', model: tool.model, models: tool.models
+    })),
     {
         id: 'ollama', name: 'Ollama（本地）', protocol: 'openai', baseUrl: 'http://localhost:11434/v1',
         chatPath: '/chat/completions', modelsPath: '/models', auth: 'none', model: 'llama3.2',
@@ -135,6 +177,13 @@ const elements = {
     topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), reasoningEffort: $('reasoning-effort'),
     systemPrompt: $('system-prompt'),
     messageForm: $('message-form'), messageInput: $('message-input'), sendButton: $('send-button'),
+    helpOpen: $('help-open'), helpModal: $('help-modal'), helpClose: $('help-close'), helpConfirm: $('help-confirm'),
+    helpEnvironmentLabel: $('help-environment-label'), helpSendShortcut: $('help-send-shortcut'),
+    helpNewlineShortcut: $('help-newline-shortcut'), helpNewlineNote: $('help-newline-note'),
+    helpPlatformNote: $('help-platform-note'),
+    macosLaunchHelpModal: $('macos-launch-help-modal'), macosLaunchHelpClose: $('macos-launch-help-close'),
+    macosLaunchHelpConfirm: $('macos-launch-help-confirm'), macosLaunchHelpFile: $('macos-launch-help-file'),
+    macosLaunchHelpCommand: $('macos-launch-help-command'), macosLaunchHelpCopy: $('macos-launch-help-copy'),
     testButton: $('test-connection'), loadModelsButton: $('load-models'), stopButton: $('stop-request'),
     chatWindow: $('chat-window'), emptyState: $('empty-state'), emptyEndpoint: $('empty-endpoint'),
     activeModelTitle: $('active-model-title'), connectionState: $('connection-state'),
@@ -142,13 +191,43 @@ const elements = {
     httpStatus: $('http-status'), duration: $('request-duration'), requestProtocol: $('request-protocol'),
     inputTokens: $('total-input-tokens'), outputTokens: $('total-output-tokens'), totalRequests: $('total-requests'),
     totalCost: $('total-cost'), inputPrice: $('input-price'), outputPrice: $('output-price'), costLimit: $('cost-limit'),
-    settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
+    workspaceSidebar: $('workspace-sidebar'), settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
+    settingsToggle: $('settings-toggle'), settingsToggleIcon: $('settings-toggle-icon'),
+    settingsToggleLabel: $('settings-toggle-label'), settingsInspector: $('settings-inspector'),
+    sidebarConversationsButton: $('sidebar-conversations-button'), sidebarSettingsButton: $('sidebar-settings-button'),
+    conversationSidebar: $('conversation-sidebar'), conversationSidebarList: $('conversation-sidebar-list'),
+    conversationSidebarCount: $('conversation-sidebar-count'), conversationSidebarToggle: $('conversation-sidebar-toggle'),
+    sidebarNewConversation: $('sidebar-new-conversation'), sidebarImportConversations: $('sidebar-import-conversations'),
     clearSavedSettings: $('clear-saved-settings'),
+    pwaInstallCard: $('pwa-install-card'), pwaInstallButton: $('pwa-install-button'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
-    promptSelect: $('prompt-select'), promptName: $('prompt-name'), promptSave: $('prompt-save'),
-    promptLoad: $('prompt-load'), promptDelete: $('prompt-delete'),
-    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation')
+    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
+    localSessionImport: $('local-session-import'), localSessionModal: $('local-session-modal'),
+    localSessionClose: $('local-session-close'), localSessionFilesButton: $('local-session-files-button'),
+    localSessionDirectoryButton: $('local-session-directory-button'), localSessionFiles: $('local-session-files'),
+    localSessionDirectory: $('local-session-directory'),
+    localCodexSetup: $('local-codex-setup'), localCodexPlatform: $('local-codex-platform'),
+    localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
+    localCodexCheck: $('local-codex-check'), localCodexStop: $('local-codex-stop'), localCodexCommand: $('local-codex-command'),
+    localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
+    localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
+    localToolNote: $('local-tool-note'),
+    agentLibraryOpen: $('agent-library-open'), agentLibraryModal: $('agent-library-modal'),
+    agentLibraryClose: $('agent-library-close'), agentSearch: $('agent-search'),
+    agentDepartment: $('agent-department'), agentList: $('agent-list'), agentCount: $('agent-count'),
+    agentResultsCount: $('agent-results-count'), agentDetailEmpty: $('agent-detail-empty'),
+    agentDetailContent: $('agent-detail-content'), agentDetailDepartment: $('agent-detail-department'),
+    agentDetailName: $('agent-detail-name'), agentDetailDescription: $('agent-detail-description'),
+    agentPromptPreview: $('agent-prompt-preview'), agentSourceLink: $('agent-source-link'),
+    agentApply: $('agent-apply'), agentLibrarySource: $('agent-library-source'), activeAgent: $('active-agent'),
+    agentBuiltInTab: $('agent-built-in-tab'), agentCustomTab: $('agent-custom-tab'),
+    customAgentCount: $('custom-agent-count'), customAgentNew: $('custom-agent-new'),
+    customAgentEditor: $('custom-agent-editor'), customAgentName: $('custom-agent-name'),
+    customAgentPrompt: $('custom-agent-prompt'), customAgentSave: $('custom-agent-save'),
+    customAgentDelete: $('custom-agent-delete'),
+    contextProvider: $('context-provider'), contextProtocol: $('context-protocol'), contextModel: $('context-model'),
+    contextAgent: $('context-agent'), contextAgentItem: $('context-agent-item')
 };
 
 const state = {
@@ -156,6 +235,19 @@ const state = {
     prompts: [],
     conversations: [],
     activeConversationId: '',
+    agentCatalog: null,
+    selectedAgentId: '',
+    selectedAgentContent: '',
+    agentLibraryMode: 'built-in',
+    agentDetailRequest: 0,
+    agentReturnFocus: null,
+    pwaInstallPrompt: null,
+    pwaUpdateWorker: null,
+    pwaRefreshing: false,
+    localSessionReturnFocus: null,
+    helpReturnFocus: null,
+    macosLaunchHelpReturnFocus: null,
+    localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     controller: null,
     busy: false,
     totals: { input: 0, output: 0, requests: 0, cost: 0 },
@@ -172,6 +264,7 @@ class ApiError extends Error {
 }
 
 function initialize() {
+    restoreLocalCodexPairing();
     for (const provider of PROVIDERS) {
         const option = document.createElement('option');
         option.value = provider.id;
@@ -185,7 +278,13 @@ function initialize() {
     restorePrompts();
     restoreConversations();
     elements.newConversation.addEventListener('click', () => createConversation());
+    elements.sidebarNewConversation.addEventListener('click', () => createConversation());
+    elements.sidebarImportConversations.addEventListener('click', openLocalSessionImport);
     updateUsageDisplay();
+    renderHelpEnvironment();
+    maybeShowHelpIntro();
+    initializeWorkspaceLayout();
+    initializePwa();
 }
 
 function bindEvents() {
@@ -195,6 +294,14 @@ function bindEvents() {
     });
 
     elements.protocol.addEventListener('change', () => {
+        if (['codex', 'local-cli'].includes(elements.protocol.value)) {
+            const providerId = elements.protocol.value === 'codex' ? 'codex-local' : 'antigravity-local';
+            const provider = PROVIDERS.find((item) => item.id === providerId);
+            elements.provider.value = provider.id;
+            applyProvider(provider);
+            persistSettings();
+            return;
+        }
         const defaults = {
             openai: { path: '/chat/completions', models: '/models', auth: 'bearer' },
             anthropic: { path: '/v1/messages', models: '/v1/models', auth: 'x-api-key' },
@@ -220,10 +327,53 @@ function bindEvents() {
     elements.profileLoad.addEventListener('click', loadProfile);
     elements.profileDelete.addEventListener('click', deleteProfile);
     elements.profileSelect.addEventListener('change', syncProfileSelection);
-    elements.promptSave.addEventListener('click', savePrompt);
-    elements.promptLoad.addEventListener('click', loadPrompt);
-    elements.promptDelete.addEventListener('click', deletePrompt);
-    elements.promptSelect.addEventListener('change', syncPromptSelection);
+    elements.agentLibraryOpen.addEventListener('click', openAgentLibrary);
+    elements.agentLibraryClose.addEventListener('click', closeAgentLibrary);
+    elements.agentSearch.addEventListener('input', renderAgentList);
+    elements.agentDepartment.addEventListener('change', renderAgentList);
+    elements.agentApply.addEventListener('click', applySelectedAgent);
+    elements.agentBuiltInTab.addEventListener('click', () => setAgentLibraryMode('built-in'));
+    elements.agentCustomTab.addEventListener('click', () => setAgentLibraryMode('custom'));
+    elements.customAgentNew.addEventListener('click', startNewCustomAgent);
+    elements.customAgentSave.addEventListener('click', saveCustomAgent);
+    elements.customAgentDelete.addEventListener('click', deleteCustomAgent);
+    elements.customAgentPrompt.addEventListener('input', () => {
+        state.selectedAgentContent = elements.customAgentPrompt.value.trim();
+        elements.agentApply.disabled = !state.selectedAgentContent;
+    });
+    elements.activeAgent.addEventListener('click', openActiveAgent);
+    elements.agentLibraryModal.addEventListener('click', (event) => {
+        if (event.target === elements.agentLibraryModal) closeAgentLibrary();
+    });
+    elements.localSessionImport.addEventListener('click', openLocalSessionImport);
+    elements.localSessionClose.addEventListener('click', closeLocalSessionImport);
+    elements.localSessionFilesButton.addEventListener('click', () => elements.localSessionFiles.click());
+    elements.localSessionDirectoryButton.addEventListener('click', () => elements.localSessionDirectory.click());
+    elements.localSessionFiles.addEventListener('change', handleLocalSessionImport);
+    elements.localSessionDirectory.addEventListener('change', handleLocalSessionImport);
+    elements.localSessionModal.addEventListener('click', (event) => {
+        if (event.target === elements.localSessionModal) closeLocalSessionImport();
+    });
+    elements.helpOpen.addEventListener('click', () => openHelp(false));
+    elements.helpClose.addEventListener('click', closeHelp);
+    elements.helpConfirm.addEventListener('click', closeHelp);
+    elements.helpModal.addEventListener('click', (event) => {
+        if (event.target === elements.helpModal) closeHelp();
+    });
+    elements.macosLaunchHelpClose.addEventListener('click', closeMacosLauncherHelp);
+    elements.macosLaunchHelpConfirm.addEventListener('click', closeMacosLauncherHelp);
+    elements.macosLaunchHelpCopy.addEventListener('click', copyMacosLauncherCommand);
+    elements.macosLaunchHelpModal.addEventListener('click', (event) => {
+        if (event.target === elements.macosLaunchHelpModal) closeMacosLauncherHelp();
+    });
+    elements.localCodexPlatform.addEventListener('change', () => {
+        state.localCodex.platform = elements.localCodexPlatform.value;
+        updateLocalCodexCommand();
+    });
+    elements.localCodexDownload.addEventListener('click', downloadLocalCodexLauncher);
+    elements.localCodexCheck.addEventListener('click', testLocalCodexConnection);
+    elements.localCodexStop.addEventListener('click', stopLocalCodexConnection);
+    elements.localCodexCopyCommand.addEventListener('click', copyLocalCodexCommand);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
     elements.loadModelsButton.addEventListener('click', loadModels);
@@ -246,15 +396,19 @@ function bindEvents() {
     });
 
     elements.messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (!event.isComposing && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
             elements.messageForm.requestSubmit();
         }
     });
 
-    $('settings-toggle').addEventListener('click', openSettings);
+    elements.settingsToggle.addEventListener('click', toggleSettings);
     $('settings-close').addEventListener('click', closeSettings);
-    elements.drawerOverlay.addEventListener('click', closeSettings);
+    elements.sidebarConversationsButton.addEventListener('click', openConversationSidebar);
+    elements.sidebarSettingsButton.addEventListener('click', openSettings);
+    elements.conversationSidebarToggle.addEventListener('click', openConversationSidebar);
+    elements.drawerOverlay.addEventListener('click', closeWorkspaceSidebar);
+    window.addEventListener('resize', syncWorkspaceMode);
     const persistentElements = [
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
@@ -271,11 +425,431 @@ function bindEvents() {
         const conversation = activeConversation();
         if (!conversation) return;
         conversation.systemPrompt = elements.systemPrompt.value;
+        conversation.activeAgent = null;
+        renderActiveAgent();
         persistConversations();
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSettings();
+        if (event.key !== 'Escape') return;
+        if (!elements.macosLaunchHelpModal.hidden) closeMacosLauncherHelp();
+        else if (!elements.helpModal.hidden) closeHelp();
+        else if (!elements.localSessionModal.hidden) closeLocalSessionImport();
+        else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
+        else closeSettings();
     });
+}
+
+function isStandalonePwa() {
+    return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+function syncPwaInstallCard() {
+    elements.pwaInstallCard.hidden = !state.pwaInstallPrompt || isStandalonePwa();
+}
+
+async function installPwa() {
+    const prompt = state.pwaInstallPrompt;
+    if (!prompt) return;
+    elements.pwaInstallButton.disabled = true;
+    try {
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+            state.pwaInstallPrompt = null;
+            syncPwaInstallCard();
+            showToast('AI Shakedown Console 已安装');
+        }
+    } finally {
+        elements.pwaInstallButton.disabled = false;
+    }
+}
+
+function showPwaUpdate(worker) {
+    if (state.pwaUpdateWorker === worker) return;
+    state.pwaUpdateWorker = worker;
+    showActionToast('发现新版本，刷新后即可使用', '立即刷新', () => {
+        state.pwaRefreshing = true;
+        worker.postMessage({ type: 'SKIP_WAITING' });
+    });
+}
+
+async function initializePwa() {
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        state.pwaInstallPrompt = event;
+        syncPwaInstallCard();
+    });
+    window.addEventListener('appinstalled', () => {
+        state.pwaInstallPrompt = null;
+        syncPwaInstallCard();
+    });
+    elements.pwaInstallButton.addEventListener('click', installPwa);
+
+    if (!('serviceWorker' in navigator) || !globalThis.isSecureContext) return;
+    try {
+        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const registration = await navigator.serviceWorker.register(`/assets/service-worker.js?v=${assetVersion}`, { scope: '/' });
+        if (registration.waiting && navigator.serviceWorker.controller) showPwaUpdate(registration.waiting);
+        registration.addEventListener('updatefound', () => {
+            const worker = registration.installing;
+            worker?.addEventListener('statechange', () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) showPwaUpdate(worker);
+            });
+        });
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!state.pwaRefreshing) return;
+            window.location.reload();
+        });
+    } catch (error) {
+        console.warn('PWA 初始化失败', error);
+    }
+}
+
+function detectClientEnvironment() {
+    const raw = `${navigator.userAgentData?.platform || ''} ${navigator.platform || ''} ${navigator.userAgent || ''}`.toLowerCase();
+    const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+    const touch = navigator.maxTouchPoints > 0 || coarsePointer;
+    if (raw.includes('android')) {
+        return {
+            label: 'Android 触摸设备', send: '点击发送按钮', newline: 'Enter / 换行键',
+            newlineNote: '外接键盘可用 Shift + Enter',
+            note: '触摸设备建议点击发送按钮；连接外接键盘后也可用 Ctrl + Enter 发送。'
+        };
+    }
+    const ios = /iphone|ipad|ipod/.test(raw) || (raw.includes('mac') && touch && navigator.maxTouchPoints > 1);
+    if (ios) {
+        return {
+            label: 'iPhone / iPad 触摸设备', send: '点击发送按钮', newline: 'Return / 换行键',
+            newlineNote: '外接键盘可用 Shift + Enter',
+            note: '触摸设备建议点击发送按钮；连接外接键盘后也可用 ⌘ + Enter 发送。'
+        };
+    }
+    const platform = detectLocalPlatform();
+    if (platform === 'windows') {
+        return {
+            label: 'Windows 桌面', send: 'Ctrl + Enter', newline: 'Shift + Enter',
+            newlineNote: '普通 Enter 也会换行', note: '已按 Windows 键盘显示快捷键。'
+        };
+    }
+    if (platform === 'linux') {
+        return {
+            label: 'Linux 桌面', send: 'Ctrl + Enter', newline: 'Shift + Enter',
+            newlineNote: '普通 Enter 也会换行', note: '已按 Linux 键盘显示快捷键。'
+        };
+    }
+    return {
+        label: 'macOS 桌面', send: '⌘ + Enter', newline: 'Shift + Enter',
+        newlineNote: '普通 Enter 也会换行', note: '已按 macOS 键盘显示快捷键。'
+    };
+}
+
+function renderHelpEnvironment() {
+    const environment = detectClientEnvironment();
+    elements.helpEnvironmentLabel.textContent = environment.label;
+    elements.helpSendShortcut.textContent = environment.send;
+    elements.helpNewlineShortcut.textContent = environment.newline;
+    elements.helpNewlineNote.textContent = environment.newlineNote;
+    elements.helpPlatformNote.textContent = environment.note;
+    elements.helpOpen.title = `使用帮助：${environment.send} 发送，${environment.newline} 换行`;
+    elements.helpOpen.setAttribute('aria-label', `打开使用帮助；${environment.send} 发送，${environment.newline} 换行`);
+    elements.sendButton.title = `发送消息（${environment.send}）`;
+}
+
+function markHelpIntroSeen() {
+    try { localStorage.setItem(HELP_INTRO_STORAGE_KEY, '1'); } catch (_) { /* Storage can be unavailable. */ }
+}
+
+function helpIntroSeen() {
+    try { return localStorage.getItem(HELP_INTRO_STORAGE_KEY) === '1'; } catch (_) { return false; }
+}
+
+function maybeShowHelpIntro() {
+    if (helpIntroSeen()) return;
+    window.setTimeout(() => openHelp(true), 250);
+}
+
+function openHelp(automatic = false) {
+    renderHelpEnvironment();
+    state.helpReturnFocus = automatic ? null : document.activeElement;
+    elements.helpModal.hidden = false;
+    document.body.classList.add('modal-open');
+    markHelpIntroSeen();
+    window.requestAnimationFrame(() => (automatic ? elements.helpConfirm : elements.helpClose).focus());
+}
+
+function closeHelp() {
+    if (elements.helpModal.hidden) return;
+    elements.helpModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.helpReturnFocus?.focus) state.helpReturnFocus.focus();
+    else elements.messageInput.focus();
+    state.helpReturnFocus = null;
+}
+
+function openMacosLauncherHelp(fileName) {
+    elements.macosLaunchHelpFile.textContent = fileName;
+    elements.macosLaunchHelpCommand.textContent = elements.localCodexCommand.textContent;
+    state.macosLaunchHelpReturnFocus = document.activeElement;
+    elements.macosLaunchHelpModal.hidden = false;
+    document.body.classList.add('modal-open');
+    window.requestAnimationFrame(() => elements.macosLaunchHelpCopy.focus({ preventScroll: true }));
+}
+
+function closeMacosLauncherHelp() {
+    if (elements.macosLaunchHelpModal.hidden) return;
+    elements.macosLaunchHelpModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.macosLaunchHelpReturnFocus?.focus) state.macosLaunchHelpReturnFocus.focus();
+    state.macosLaunchHelpReturnFocus = null;
+}
+
+async function copyMacosLauncherCommand() {
+    try {
+        await navigator.clipboard.writeText(elements.macosLaunchHelpCommand.textContent);
+        showToast('macOS 运行命令已复制，请粘贴到终端并按回车');
+    } catch (_) {
+        showToast('无法自动复制，请手动选择命令', true);
+    }
+}
+
+function detectLocalPlatform() {
+    const platform = `${navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || ''}`.toLowerCase();
+    if (platform.includes('win')) return 'windows';
+    if (platform.includes('linux') || platform.includes('x11')) return 'linux';
+    return 'macos';
+}
+
+function restoreLocalCodexPairing() {
+    state.localCodex.platform = detectLocalPlatform();
+    let pairing = null;
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const localFragment = hashParams.get('local_bridge');
+    const legacyFragment = hashParams.get('codex_bridge');
+    if (localFragment || legacyFragment) {
+        const parts = (localFragment || legacyFragment).split('.');
+        const tool = localFragment ? parts.shift() : 'codex';
+        const portText = parts.shift();
+        const token = parts.join('.');
+        const port = Number(portText);
+        const supportedTool = Object.values(LOCAL_TOOL_PROVIDERS).some((item) => item.tool === tool);
+        if (supportedTool && token && Number.isInteger(port) && port >= 1024 && port <= 65535) {
+            pairing = { token, port, tool };
+        }
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.hash = '';
+        history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}`);
+    }
+    if (!pairing) {
+        try { pairing = JSON.parse(sessionStorage.getItem(LOCAL_CODEX_SESSION_KEY) || 'null'); } catch (_) { /* Ignore. */ }
+    }
+    if (pairing && typeof pairing.token === 'string' && Number.isInteger(Number(pairing.port))) {
+        state.localCodex.token = pairing.token;
+        state.localCodex.port = Number(pairing.port);
+        state.localCodex.tool = typeof pairing.tool === 'string' ? pairing.tool : 'codex';
+        saveLocalCodexPairing();
+    }
+    elements.localCodexPlatform.value = state.localCodex.platform;
+    updateLocalCodexCommand();
+}
+
+function saveLocalCodexPairing() {
+    try {
+        sessionStorage.setItem(LOCAL_CODEX_SESSION_KEY, JSON.stringify({
+            token: state.localCodex.token,
+            port: state.localCodex.port,
+            tool: state.localCodex.tool
+        }));
+    } catch (_) { /* Session storage can be unavailable. */ }
+}
+
+function setLocalCodexStatus(status, text) {
+    elements.localCodexStatus.dataset.state = status;
+    elements.localCodexStatus.textContent = text;
+}
+
+function updateLocalCodexCommand() {
+    const tool = currentLocalTool()?.tool || 'codex';
+    const slug = tool === 'antigravity' ? 'antigravity' : tool;
+    const commands = {
+        macos: `bash "$HOME/Downloads/ai-shakedown-${slug}-macos.command"`,
+        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows.ps1"`,
+        linux: `bash "$HOME/Downloads/ai-shakedown-${slug}-linux.sh"`
+    };
+    elements.localCodexCommand.textContent = commands[state.localCodex.platform] || commands.macos;
+    elements.localCodexGuide.hidden = state.localCodex.platform !== 'macos';
+}
+
+async function copyLocalCodexCommand() {
+    try {
+        await navigator.clipboard.writeText(elements.localCodexCommand.textContent);
+        showToast('运行命令已复制');
+    } catch (_) {
+        showToast('无法自动复制，请手动选择命令', true);
+    }
+}
+
+function currentLocalTool() {
+    return LOCAL_TOOL_PROVIDERS[elements.provider.value] || null;
+}
+
+function syncLocalCodexMode(enabled) {
+    elements.localCodexSetup.hidden = !enabled;
+    const fixedFields = [
+        elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
+        elements.apiKey, elements.authMode, elements.proxy, elements.customHeaders, elements.extraBody
+    ];
+    fixedFields.forEach((element) => { element.disabled = enabled; });
+    $('key-visibility').disabled = enabled;
+    if (enabled) {
+        const tool = currentLocalTool();
+        elements.protocol.value = tool.protocol;
+        elements.baseUrl.value = `http://127.0.0.1:${state.localCodex.port}`;
+        elements.chatPath.value = '/v1/chat/completions';
+        elements.modelsPath.value = '/v1/models';
+        elements.authMode.value = 'none';
+        elements.proxy.checked = false;
+        elements.customHeaders.value = '';
+        elements.extraBody.value = '';
+        elements.localToolTitle.textContent = tool.title;
+        elements.localToolDescription.innerHTML = `${tool.description} 启动脚本只监听 <code>127.0.0.1</code>，不会把凭据交给网页。`;
+        elements.localToolNote.textContent = `脚本会检查 Node.js、${tool.cli} 和登录状态；新版启动器会停止同工具的旧桥接，端口冲突时自动换用空闲端口。`;
+        const paired = state.localCodex.token && state.localCodex.tool === tool.tool;
+        setLocalCodexStatus(paired ? 'idle' : 'error', paired ? '等待检测' : '需要运行脚本');
+        updateLocalCodexCommand();
+    }
+}
+
+function localCodexLauncherSpec(platform) {
+    const tool = currentLocalTool()?.tool || 'codex';
+    const slug = tool === 'antigravity' ? 'antigravity' : tool;
+    return {
+        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos.command` },
+        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows.ps1` },
+        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux.sh` }
+    }[platform];
+}
+
+function createLocalCodexToken() {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
+async function downloadLocalCodexLauncher() {
+    if (state.busy) return;
+    const tool = currentLocalTool();
+    if (!tool) return;
+    const spec = localCodexLauncherSpec(state.localCodex.platform);
+    if (!spec) return;
+    elements.localCodexDownload.disabled = true;
+    try {
+        const token = createLocalCodexToken();
+        const port = LOCAL_CODEX_DEFAULT_PORT + crypto.getRandomValues(new Uint16Array(1))[0] % 90;
+        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const templateUrl = new URL(`${spec.template}?v=${assetVersion}`, window.location.href);
+        const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${assetVersion}`, window.location.href);
+        const returnUrl = new URL(window.location.href);
+        returnUrl.search = '';
+        returnUrl.hash = '';
+        const response = await fetch(templateUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`启动脚本下载失败（HTTP ${response.status}）`);
+        const template = await response.text();
+        const launcher = template
+            .replaceAll('__BRIDGE_URL__', bridgeUrl.href)
+            .replaceAll('__RETURN_URL__', returnUrl.href)
+            .replaceAll('__APP_VERSION__', APP_VERSION)
+            .replaceAll('__BRIDGE_TOKEN__', token)
+            .replaceAll('__BRIDGE_PORT__', String(port))
+            .replaceAll('__LOCAL_PROVIDER__', tool.tool)
+            .replaceAll('__CLI_COMMAND__', tool.tool === 'antigravity' ? 'agy' : tool.tool)
+            .replaceAll('__CLI_LABEL__', tool.cli);
+        const blobUrl = URL.createObjectURL(new Blob([launcher], { type: 'text/plain;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = spec.fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        state.localCodex.token = token;
+        state.localCodex.port = port;
+        state.localCodex.tool = tool.tool;
+        elements.baseUrl.value = `http://127.0.0.1:${port}`;
+        saveLocalCodexPairing();
+        setLocalCodexStatus('idle', '脚本已下载');
+        updateEndpointPreview();
+        showToast('自检启动脚本已下载，运行后页面会自动重新打开并连接');
+        if (state.localCodex.platform === 'macos') openMacosLauncherHelp(spec.fileName);
+    } catch (error) {
+        setLocalCodexStatus('error', '下载失败');
+        showToast(error.message, true);
+    } finally {
+        elements.localCodexDownload.disabled = state.busy;
+    }
+}
+
+function localCodexAuthorizationHeaders(contentType = false) {
+    const tool = currentLocalTool();
+    if (!state.localCodex.token || state.localCodex.tool !== tool?.tool) {
+        throw new Error(`请先下载并运行本机 ${tool?.cli || 'AI 工具'} 启动脚本`);
+    }
+    return {
+        Authorization: `Bearer ${state.localCodex.token}`,
+        ...(contentType ? { 'Content-Type': 'application/json' } : {})
+    };
+}
+
+async function testLocalCodexConnection() {
+    if (state.busy) return;
+    const tool = currentLocalTool();
+    setLocalCodexStatus('idle', '检测中');
+    setConnectionState('idle', '检查中', '');
+    const startedAt = performance.now();
+    try {
+        const response = await fetch(`http://127.0.0.1:${state.localCodex.port}/status`, {
+            headers: localCodexAuthorizationHeaders(),
+            cache: 'no-store'
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(getErrorMessage(payload, `HTTP ${response.status}`));
+        if (payload.provider !== tool.tool) throw new Error(`当前桥接连接的是 ${payload.label || payload.provider}，请重新下载并运行 ${tool.cli} 脚本`);
+        const duration = Math.round(performance.now() - startedAt);
+        const account = payload.account || {};
+        const accountLabel = account.planType || payload.version || account.type || '已连接';
+        setLocalCodexStatus('success', accountLabel);
+        setConnectionState('success', `${tool.title}已连接`, `${duration} ms`);
+        elements.localCodexStop.disabled = false;
+        showToast(`${tool.title}已连接 · ${accountLabel}；桥接在后台运行，终端可以关闭`);
+    } catch (error) {
+        setLocalCodexStatus('error', '连接失败');
+        setConnectionState('error', '连接失败', '');
+        const message = error instanceof TypeError
+            ? '未检测到本地桥接。请运行刚下载的脚本；显示后台启动成功后即可关闭终端。'
+            : error.message;
+        showToast(message, true);
+    }
+}
+
+async function stopLocalCodexConnection() {
+    if (state.busy || !state.localCodex.token) return;
+    const tool = currentLocalTool();
+    try {
+        elements.localCodexStop.disabled = true;
+        const response = await fetch(`http://127.0.0.1:${state.localCodex.port}/shutdown`, {
+            method: 'POST',
+            headers: localCodexAuthorizationHeaders(true)
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(getErrorMessage(payload, `HTTP ${response.status}`));
+        try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore. */ }
+        state.localCodex.token = '';
+        state.localCodex.tool = '';
+        setLocalCodexStatus('idle', '已停止');
+        setConnectionState('idle', '后台连接已停止', '');
+        showToast(`${tool?.title || '本地连接'}已停止`);
+    } catch (error) {
+        elements.localCodexStop.disabled = false;
+        showToast(error instanceof TypeError ? '无法连接后台桥接，可能已经停止' : error.message, true);
+    }
 }
 
 function applyProvider(provider) {
@@ -288,6 +862,7 @@ function applyProvider(provider) {
     elements.customHeaders.value = '';
     elements.extraBody.value = '';
     populateModels(provider.models, provider.model);
+    syncLocalCodexMode(Boolean(LOCAL_TOOL_PROVIDERS[provider.id]));
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
@@ -366,10 +941,10 @@ function compareModelsByStrength(left, right) {
 }
 
 function syncReasoningControl() {
-    const supported = elements.protocol.value === 'openai';
+    const supported = ['openai', 'codex'].includes(elements.protocol.value);
     elements.reasoningEffort.disabled = !supported;
     elements.reasoningEffort.title = supported
-        ? '自动表示不发送 reasoning_effort'
+        ? `自动表示不发送${elements.protocol.value === 'codex' ? ' Codex effort' : ' reasoning_effort'}`
         : '当前协议不使用 OpenAI reasoning_effort';
 }
 
@@ -461,6 +1036,7 @@ function applySettings(settings) {
         : provider.models;
     elements.model.value = selectedModel;
     populateModels(availableModels, selectedModel, Array.isArray(settings.availableModels));
+    syncLocalCodexMode(Boolean(LOCAL_TOOL_PROVIDERS[provider.id]));
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
@@ -469,21 +1045,28 @@ function applySettings(settings) {
 
 function clearSavedSettings() {
     try {
-        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY]
+        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY, HELP_INTRO_STORAGE_KEY, CONVERSATION_SIDEBAR_STORAGE_KEY]
             .forEach((key) => localStorage.removeItem(key));
     } catch (_) { /* Ignore storage restrictions. */ }
+    try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore storage restrictions. */ }
+    state.localCodex.token = '';
+    state.localCodex.port = LOCAL_CODEX_DEFAULT_PORT;
+    state.localCodex.tool = '';
     state.profiles = [];
     state.prompts = [];
     state.conversations = [];
     state.activeConversationId = '';
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
     elements.provider.value = PROVIDERS[0].id;
     applyProvider(PROVIDERS[0]);
     elements.apiKey.value = '';
     elements.systemPrompt.value = '';
     renderProfileOptions();
-    renderPromptOptions();
+    updateAgentCount();
+    document.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
     createConversation({ silent: true, systemPrompt: '' });
-    showToast('已清除配置、提示词、对话和 API Key');
+    showToast('已清除配置、自定义智能体、对话、API Key 和帮助提示状态');
 }
 
 function readStoredArray(key) {
@@ -571,7 +1154,11 @@ function loadProfile() {
     }
     applySettings(profile.settings);
     const conversation = activeConversation();
-    if (conversation) conversation.systemPrompt = elements.systemPrompt.value;
+    if (conversation) {
+        conversation.systemPrompt = elements.systemPrompt.value;
+        conversation.activeAgent = null;
+    }
+    renderActiveAgent();
     persistSettings();
     persistConversations();
     showToast(`已加载配置“${profile.name}”`);
@@ -591,35 +1178,37 @@ function restorePrompts() {
     state.prompts = readStoredArray(PROMPTS_STORAGE_KEY).filter((item) => (
         item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.content === 'string'
     ));
-    renderPromptOptions();
+    updateAgentCount();
 }
 
-function renderPromptOptions(selectedId = elements.promptSelect.value) {
-    elements.promptSelect.replaceChildren(new Option('提示词库', ''));
-    for (const prompt of state.prompts) {
-        elements.promptSelect.appendChild(new Option(prompt.name, prompt.id));
-    }
-    elements.promptSelect.value = state.prompts.some((item) => item.id === selectedId) ? selectedId : '';
-    syncPromptSelection();
+function updateAgentCount() {
+    const builtInCount = state.agentCatalog?.count || state.agentCatalog?.agents?.length || 268;
+    elements.agentCount.textContent = String(builtInCount + state.prompts.length);
+    elements.customAgentCount.textContent = String(state.prompts.length);
 }
 
-function syncPromptSelection() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
-    if (prompt) elements.promptName.value = prompt.name;
-    else if (!elements.promptSelect.value) elements.promptName.value = '';
-    elements.promptLoad.disabled = !prompt;
-    elements.promptDelete.disabled = !prompt;
+function startNewCustomAgent() {
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = false;
+    elements.customAgentName.value = '';
+    elements.customAgentPrompt.value = elements.systemPrompt.value;
+    elements.customAgentDelete.disabled = true;
+    elements.agentApply.disabled = !elements.customAgentPrompt.value.trim();
+    renderAgentList();
+    elements.customAgentName.focus();
 }
 
-function savePrompt() {
-    const name = elements.promptName.value.trim();
-    const content = elements.systemPrompt.value.trim();
+function saveCustomAgent() {
+    const name = elements.customAgentName.value.trim();
+    const content = elements.customAgentPrompt.value.trim();
     if (!name || !content) {
-        showToast('请填写提示词名称和 System 内容', true);
+        showToast('请填写智能体名称和 System 定义', true);
         return;
     }
-    const selectedId = elements.promptSelect.value;
-    let prompt = state.prompts.find((item) => item.id === selectedId);
+    let prompt = state.prompts.find((item) => item.id === state.selectedAgentId);
     if (prompt) {
         prompt.name = name;
         prompt.content = content;
@@ -629,29 +1218,292 @@ function savePrompt() {
         state.prompts.push(prompt);
     }
     if (!writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts)) return;
-    renderPromptOptions(prompt.id);
-    showToast(`已保存提示词“${name}”`);
+    state.selectedAgentId = prompt.id;
+    state.selectedAgentContent = content;
+    elements.customAgentDelete.disabled = false;
+    elements.agentApply.disabled = false;
+    updateAgentCount();
+    renderAgentList();
+    showToast(`已保存自定义智能体“${name}”`);
 }
 
-function loadPrompt() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
-    if (!prompt) return;
-    elements.systemPrompt.value = prompt.content;
-    const conversation = activeConversation();
-    if (conversation) conversation.systemPrompt = prompt.content;
-    persistSettings();
-    persistConversations();
-    showToast(`已加载提示词“${prompt.name}”`);
-}
-
-function deletePrompt() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
+function deleteCustomAgent() {
+    const prompt = state.prompts.find((item) => item.id === state.selectedAgentId);
     if (!prompt) return;
     state.prompts = state.prompts.filter((item) => item.id !== prompt.id);
     writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts);
-    renderPromptOptions();
-    elements.promptName.value = '';
-    showToast(`已删除提示词“${prompt.name}”`);
+    updateAgentCount();
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    renderAgentList();
+    startNewCustomAgent();
+    showToast(`已删除自定义智能体“${prompt.name}”`);
+}
+
+async function loadAgentCatalog() {
+    if (state.agentCatalog) return state.agentCatalog;
+    const response = await fetch(AGENT_CATALOG_URL, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`角色索引加载失败（HTTP ${response.status}）`);
+    const catalog = await response.json();
+    if (!Array.isArray(catalog?.agents)) throw new Error('角色索引格式无效');
+    state.agentCatalog = catalog;
+    updateAgentCount();
+    elements.agentLibrarySource.textContent = `agency-agents-zh ${catalog.version || ''} · ${catalog.license || 'MIT'}`;
+    elements.agentDepartment.replaceChildren(new Option('全部部门', ''));
+    for (const department of catalog.departments || []) {
+        const count = catalog.agents.filter((agent) => agent.department === department.id).length;
+        if (count) elements.agentDepartment.appendChild(new Option(`${department.name} (${count})`, department.id));
+    }
+    return catalog;
+}
+
+function setAgentLibraryMode(mode) {
+    state.agentLibraryMode = mode === 'custom' ? 'custom' : 'built-in';
+    const custom = state.agentLibraryMode === 'custom';
+    elements.agentBuiltInTab.classList.toggle('active', !custom);
+    elements.agentBuiltInTab.setAttribute('aria-selected', String(!custom));
+    elements.agentCustomTab.classList.toggle('active', custom);
+    elements.agentCustomTab.setAttribute('aria-selected', String(custom));
+    elements.agentDepartment.hidden = custom;
+    elements.customAgentNew.hidden = !custom;
+    elements.customAgentSave.hidden = !custom;
+    elements.customAgentDelete.hidden = !custom;
+    elements.agentLibrarySource.textContent = custom
+        ? '自定义智能体 · 仅保存在当前浏览器'
+        : `agency-agents-zh ${state.agentCatalog?.version || ''} · ${state.agentCatalog?.license || 'MIT'}`;
+    elements.agentSearch.placeholder = custom ? '搜索自定义智能体' : '搜索角色、能力或文件名';
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    elements.agentDetailEmpty.hidden = false;
+    elements.agentDetailEmpty.querySelector('span').textContent = custom ? '选择或新建一个自定义智能体' : '选择一个角色';
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = true;
+    elements.agentApply.disabled = true;
+    elements.customAgentDelete.disabled = true;
+    renderAgentList();
+}
+
+async function openAgentLibrary() {
+    state.agentReturnFocus = document.activeElement;
+    elements.agentLibraryModal.hidden = false;
+    document.body.classList.add('modal-open');
+    elements.agentList.replaceChildren();
+    const loading = document.createElement('div');
+    loading.className = 'agent-list-empty';
+    loading.textContent = '正在加载角色库...';
+    elements.agentList.appendChild(loading);
+    try {
+        await loadAgentCatalog();
+        const activeAgent = activeConversation()?.activeAgent;
+        const activeAgentId = activeAgent?.id;
+        setAgentLibraryMode(activeAgent?.custom ? 'custom' : state.agentLibraryMode);
+        if (activeAgentId && activeAgentId !== state.selectedAgentId) await selectAgent(activeAgentId);
+        else if (activeAgentId) {
+            renderAgentList();
+            elements.agentList.querySelector('.agent-list-item.active')?.scrollIntoView({ block: 'nearest' });
+            if (!state.selectedAgentContent) await selectAgent(activeAgentId);
+        }
+        else elements.agentSearch.focus();
+        if (activeAgentId) elements.agentList.querySelector('.agent-list-item.active')?.focus();
+    } catch (error) {
+        elements.agentList.replaceChildren();
+        const failure = document.createElement('div');
+        failure.className = 'agent-list-empty';
+        failure.textContent = '角色库加载失败';
+        elements.agentList.appendChild(failure);
+        showToast(error.message, true);
+    }
+}
+
+function closeAgentLibrary() {
+    if (elements.agentLibraryModal.hidden) return;
+    elements.agentLibraryModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.agentReturnFocus instanceof HTMLElement) state.agentReturnFocus.focus();
+    else elements.agentLibraryOpen.focus();
+    state.agentReturnFocus = null;
+}
+
+function filteredAgents() {
+    const query = elements.agentSearch.value.trim().toLocaleLowerCase('zh-CN');
+    if (state.agentLibraryMode === 'custom') {
+        return state.prompts.filter((agent) => !query || [agent.name, agent.content]
+            .some((value) => String(value || '').toLocaleLowerCase('zh-CN').includes(query)));
+    }
+    if (!state.agentCatalog) return [];
+    const department = elements.agentDepartment.value;
+    return state.agentCatalog.agents.filter((agent) => {
+        if (department && agent.department !== department) return false;
+        if (!query) return true;
+        return [agent.name, agent.description, agent.departmentName, agent.path]
+            .some((value) => String(value || '').toLocaleLowerCase('zh-CN').includes(query));
+    });
+}
+
+function renderAgentList() {
+    const agents = filteredAgents();
+    const custom = state.agentLibraryMode === 'custom';
+    elements.agentResultsCount.textContent = `${agents.length} 个${custom ? '自定义' : '角色'}`;
+    elements.agentList.replaceChildren();
+    if (!agents.length) {
+        const empty = document.createElement('div');
+        empty.className = 'agent-list-empty';
+        empty.textContent = custom ? '还没有自定义智能体，点击“新建自定义”开始' : '没有匹配的角色';
+        elements.agentList.appendChild(empty);
+        return;
+    }
+
+    for (const agent of agents) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.role = 'option';
+        button.ariaSelected = String(agent.id === state.selectedAgentId);
+        button.className = `agent-list-item${agent.id === state.selectedAgentId ? ' active' : ''}`;
+
+        const emoji = document.createElement('span');
+        emoji.className = 'agent-list-emoji';
+        emoji.textContent = custom ? '✦' : (agent.emoji || '●');
+        const name = document.createElement('span');
+        name.className = 'agent-list-name';
+        name.textContent = agent.name;
+        const description = document.createElement('span');
+        description.className = 'agent-list-description';
+        description.textContent = custom ? '自定义 System 智能体' : agent.description;
+        button.append(emoji, name, description);
+        button.addEventListener('click', () => selectAgent(agent.id));
+        elements.agentList.appendChild(button);
+    }
+    elements.agentList.querySelector('.agent-list-item.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+async function selectAgent(agentId) {
+    if (state.agentLibraryMode === 'custom') {
+        selectCustomAgent(agentId);
+        return;
+    }
+    const agent = state.agentCatalog?.agents.find((item) => item.id === agentId);
+    if (!agent) return;
+    state.selectedAgentId = agent.id;
+    state.selectedAgentContent = '';
+    elements.agentApply.disabled = true;
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = false;
+    elements.agentDetailDepartment.textContent = agent.departmentName;
+    elements.agentDetailName.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
+    elements.agentDetailDescription.textContent = agent.description;
+    elements.agentSourceLink.href = agent.sourceUrl;
+    elements.agentPromptPreview.textContent = '正在加载角色定义...';
+    renderAgentList();
+
+    const requestId = ++state.agentDetailRequest;
+    try {
+        const agentRevision = state.agentCatalog?.revision?.slice(0, 12) || state.agentCatalog?.version || 'current';
+        const response = await fetch(`${agent.contentPath}?v=${encodeURIComponent(agentRevision)}`, { cache: 'force-cache' });
+        if (!response.ok) throw new Error(`角色定义加载失败（HTTP ${response.status}）`);
+        const content = await response.text();
+        if (requestId !== state.agentDetailRequest) return;
+        state.selectedAgentContent = content.trim();
+        renderMarkdown(elements.agentPromptPreview, state.selectedAgentContent);
+        elements.agentApply.disabled = false;
+    } catch (error) {
+        if (requestId !== state.agentDetailRequest) return;
+        elements.agentPromptPreview.textContent = error.message;
+        showToast(error.message, true);
+    }
+}
+
+function selectCustomAgent(agentId) {
+    const agent = state.prompts.find((item) => item.id === agentId);
+    if (!agent) return;
+    state.selectedAgentId = agent.id;
+    state.selectedAgentContent = agent.content;
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = false;
+    elements.customAgentName.value = agent.name;
+    elements.customAgentPrompt.value = agent.content;
+    elements.customAgentDelete.disabled = false;
+    elements.agentApply.disabled = false;
+    renderAgentList();
+}
+
+function applySelectedAgent() {
+    const conversation = activeConversation();
+    if (!state.selectedAgentContent || !conversation) return;
+    if (state.agentLibraryMode === 'custom') {
+        const name = elements.customAgentName.value.trim();
+        const content = elements.customAgentPrompt.value.trim();
+        if (!name || !content) {
+            showToast('请填写智能体名称和 System 定义', true);
+            return;
+        }
+        let savedAgent = state.prompts.find((item) => item.id === state.selectedAgentId);
+        if (savedAgent) {
+            savedAgent.name = name;
+            savedAgent.content = content;
+            savedAgent.updatedAt = new Date().toISOString();
+        } else {
+            savedAgent = { id: createId('prompt'), name, content, updatedAt: new Date().toISOString() };
+            state.prompts.push(savedAgent);
+        }
+        if (!writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts)) return;
+        state.selectedAgentId = savedAgent.id;
+        state.selectedAgentContent = content;
+        updateAgentCount();
+        elements.systemPrompt.value = state.selectedAgentContent;
+        conversation.systemPrompt = state.selectedAgentContent;
+        conversation.activeAgent = {
+            id: savedAgent.id,
+            name,
+            emoji: '✦',
+            departmentName: '自定义',
+            custom: true
+        };
+        persistSettings();
+        persistConversations();
+        renderActiveAgent();
+        closeAgentLibrary();
+        showToast(`已应用自定义智能体“${name}”`);
+        return;
+    }
+    const agent = state.agentCatalog?.agents.find((item) => item.id === state.selectedAgentId);
+    if (!agent) return;
+    elements.systemPrompt.value = state.selectedAgentContent;
+    conversation.systemPrompt = state.selectedAgentContent;
+    conversation.activeAgent = {
+        id: agent.id,
+        name: agent.name,
+        emoji: agent.emoji,
+        departmentName: agent.departmentName
+    };
+    persistSettings();
+    persistConversations();
+    renderActiveAgent();
+    closeAgentLibrary();
+    showToast(`已应用智能体“${agent.name}”`);
+}
+
+async function openActiveAgent() {
+    elements.agentSearch.value = '';
+    elements.agentDepartment.value = '';
+    state.agentLibraryMode = activeConversation()?.activeAgent?.custom ? 'custom' : 'built-in';
+    await openAgentLibrary();
+}
+
+function renderActiveAgent() {
+    const agent = activeConversation()?.activeAgent;
+    elements.activeAgent.hidden = !agent;
+    elements.contextAgentItem.hidden = !agent;
+    if (!agent) {
+        elements.activeAgent.textContent = '';
+        elements.activeAgent.title = '';
+        elements.contextAgent.textContent = '未启用';
+        return;
+    }
+    elements.activeAgent.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
+    elements.activeAgent.title = `当前角色：${agent.name}，点击查看`;
+    elements.contextAgent.textContent = agent.name;
+    elements.contextAgent.title = agent.name;
 }
 
 function buildUrl(path, stream = elements.stream.checked, includeQueryKey = true) {
@@ -709,6 +1561,16 @@ function updateEndpointPreview() {
 
 function updateActiveModel() {
     elements.activeModelTitle.textContent = elements.model.value.trim() || '未选择模型';
+    updateRuntimeContext();
+}
+
+function updateRuntimeContext() {
+    const provider = PROVIDERS.find((item) => item.id === elements.provider.value);
+    const protocolLabels = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini', codex: 'Codex Local', 'local-cli': 'Local CLI' };
+    elements.contextProvider.textContent = provider?.name || '自定义';
+    elements.contextProtocol.textContent = protocolLabels[elements.protocol.value] || elements.protocol.value || '-';
+    elements.contextModel.textContent = elements.model.value.trim() || '未选择';
+    elements.contextModel.title = elements.contextModel.textContent;
 }
 
 function parseJsonObject(value, fieldName) {
@@ -736,7 +1598,12 @@ function buildHeaders() {
         headers['anthropic-version'] = '2023-06-01';
         headers['anthropic-dangerous-direct-browser-access'] = 'true';
     }
-    return { ...headers, ...parseJsonObject(elements.customHeaders.value, '自定义请求头') };
+    const merged = { ...headers, ...parseJsonObject(elements.customHeaders.value, '自定义请求头') };
+    if (currentLocalTool()) {
+        Object.assign(merged, localCodexAuthorizationHeaders());
+        merged['X-AI-Shakedown-Conversation'] = activeConversation()?.id || 'default';
+    }
+    return merged;
 }
 
 function numberValue(element) {
@@ -751,7 +1618,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
     const temperature = numberValue(elements.temperature);
     const topP = numberValue(elements.topP);
     const topK = numberValue(elements.topK);
-    const reasoningEffort = elements.reasoningEffort.value;
+    const reasoningEffort = ['openai', 'codex'].includes(protocol) ? elements.reasoningEffort.value : '';
     const maxTokens = overrides.maxTokens ?? numberValue(elements.maxTokens) ?? 1024;
     const extra = parseJsonObject(elements.extraBody.value, '附加请求参数');
 
@@ -803,6 +1670,9 @@ function buildRequestBody(messages, stream, overrides = {}) {
 }
 
 function validateConfiguration() {
+    if (currentLocalTool() && (!state.localCodex.token || state.localCodex.tool !== currentLocalTool().tool)) {
+        throw new Error(`请先下载并运行本机 ${currentLocalTool().cli} 启动脚本`);
+    }
     if (!elements.baseUrl.value.trim()) throw new Error('请填写 Base URL');
     if (!elements.chatPath.value.trim()) throw new Error('请填写请求路径');
     if (!elements.model.value.trim()) throw new Error('请填写模型名称');
@@ -812,8 +1682,319 @@ function validateConfiguration() {
     parseJsonObject(elements.extraBody.value, '附加请求参数');
 }
 
+function openLocalSessionImport() {
+    if (state.busy) {
+        showToast('请先停止当前生成', true);
+        return;
+    }
+    state.localSessionReturnFocus = document.activeElement;
+    elements.localSessionModal.hidden = false;
+    document.body.classList.add('modal-open');
+    elements.localSessionFilesButton.focus();
+}
+
+function closeLocalSessionImport() {
+    if (elements.localSessionModal.hidden) return;
+    elements.localSessionModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    state.localSessionReturnFocus?.focus?.();
+}
+
+function localImportText(value) {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return value.map(localImportText).filter(Boolean).join('');
+    if (!value || typeof value !== 'object') return '';
+    if (['tool_result', 'tool_use', 'function_call', 'function_response'].includes(value.type)) return '';
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.output_text === 'string') return value.output_text;
+    if (typeof value.input_text === 'string') return value.input_text;
+    if (value.content !== undefined) return localImportText(value.content);
+    if (value.parts !== undefined) return localImportText(value.parts);
+    if (value.message !== undefined) return localImportText(value.message);
+    return '';
+}
+
+function appendImportedMessage(history, role, content) {
+    const text = localImportText(content).replace(/\r\n/g, '\n').trim();
+    if (!text || !['user', 'assistant'].includes(role)) return;
+    if (/^<(environment_context|permissions instructions|app-context|skills_instructions)>/i.test(text)) return;
+    const previous = history.at(-1);
+    if (previous?.role === role) {
+        if (previous.content !== text) previous.content += `\n\n${text}`;
+        return;
+    }
+    history.push({ role, content: text });
+}
+
+function parseJsonLines(text) {
+    const records = [];
+    for (const line of text.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        try { records.push(JSON.parse(line)); } catch (_) { /* Ignore partial or non-JSON lines. */ }
+    }
+    return records;
+}
+
+function importedConversation(source, externalId, title, history, createdAt, file) {
+    if (!history.some((message) => message.role === 'user')) return null;
+    const firstUser = history.find((message) => message.role === 'user')?.content || '本地会话';
+    const cleanTitle = typeof title === 'string' && title.trim() ? title.trim() : deriveConversationTitle(firstUser);
+    const sourceLabel = { codex: 'Codex', gemini: 'Gemini', claude: 'Claude', generic: '本地' }[source] || '本地';
+    const fallbackId = `${file.name}:${file.size}:${file.lastModified}`;
+    return {
+        id: createId('conversation'),
+        title: `${sourceLabel} · ${cleanTitle}`.slice(0, 52),
+        systemPrompt: '',
+        activeAgent: null,
+        history,
+        createdAt: typeof createdAt === 'string' && !Number.isNaN(Date.parse(createdAt))
+            ? createdAt
+            : new Date(file.lastModified || Date.now()).toISOString(),
+        importedFrom: {
+            source,
+            fileName: file.name,
+            sourceKey: `${source}:${externalId || fallbackId}`
+        }
+    };
+}
+
+function parseCodexSession(records, file) {
+    const isCodex = records.some((record) => (
+        record?.type === 'session_meta' ||
+        (record?.type === 'event_msg' && ['user_message', 'agent_message'].includes(record?.payload?.type))
+    ));
+    if (!isCodex) return null;
+
+    const metadata = records.find((record) => record?.type === 'session_meta')?.payload || {};
+    const eventHistory = [];
+    for (const record of records) {
+        if (record?.type !== 'event_msg') continue;
+        const payload = record.payload || {};
+        if (payload.type === 'user_message') appendImportedMessage(eventHistory, 'user', payload.message);
+        if (payload.type === 'agent_message' && payload.phase === 'final_answer') {
+            appendImportedMessage(eventHistory, 'assistant', payload.message);
+        }
+    }
+
+    const history = eventHistory.some((message) => message.role === 'user') ? eventHistory : [];
+    if (!history.length) {
+        for (const record of records) {
+            const payload = record?.type === 'response_item' ? record.payload : null;
+            if (payload?.type !== 'message' || !['user', 'assistant'].includes(payload.role)) continue;
+            if (payload.role === 'assistant' && payload.phase && payload.phase !== 'final_answer') continue;
+            appendImportedMessage(history, payload.role, payload.content);
+        }
+    }
+    return importedConversation(
+        'codex',
+        metadata.session_id || metadata.id,
+        '',
+        history,
+        metadata.timestamp || records[0]?.timestamp,
+        file
+    );
+}
+
+function applyGeminiRecord(messages, record) {
+    if (!record || typeof record !== 'object') return;
+    if (typeof record.$rewindTo === 'string') {
+        const index = messages.findIndex((message) => message?.id === record.$rewindTo);
+        if (index >= 0) messages.splice(index);
+        else messages.length = 0;
+        return;
+    }
+    if (Array.isArray(record?.$set?.messages)) {
+        messages.splice(0, messages.length, ...record.$set.messages);
+        return;
+    }
+    if (typeof record.id === 'string' && ['user', 'gemini'].includes(record.type)) {
+        const index = messages.findIndex((message) => message?.id === record.id);
+        if (index >= 0) messages[index] = record;
+        else messages.push(record);
+    }
+}
+
+function parseGeminiSession(records, root, file) {
+    const initial = root && !Array.isArray(root) ? root : records.find((record) => (
+        typeof record?.sessionId === 'string' && typeof record?.projectHash === 'string'
+    ));
+    const isGemini = Boolean(initial) || records.some((record) => ['gemini'].includes(record?.type));
+    if (!isGemini) return null;
+
+    const metadata = { ...(initial || {}) };
+    const messages = [];
+    if (Array.isArray(initial?.messages)) messages.push(...initial.messages);
+    for (const record of records) {
+        if (record?.$set && typeof record.$set === 'object') Object.assign(metadata, record.$set);
+        applyGeminiRecord(messages, record);
+    }
+    const history = [];
+    for (const message of messages) {
+        if (message?.type === 'user') appendImportedMessage(history, 'user', message.displayContent || message.content);
+        if (message?.type === 'gemini') appendImportedMessage(history, 'assistant', message.displayContent || message.content);
+    }
+    return importedConversation(
+        'gemini',
+        metadata.sessionId,
+        metadata.summary,
+        history,
+        metadata.startTime || metadata.lastUpdated,
+        file
+    );
+}
+
+function parseClaudeSession(records, file) {
+    const isClaude = records.some((record) => (
+        ['user', 'assistant'].includes(record?.type) && record?.message && typeof record.message === 'object'
+    ));
+    if (!isClaude) return null;
+    const history = [];
+    for (const record of records) {
+        if (!['user', 'assistant'].includes(record?.type)) continue;
+        appendImportedMessage(history, record.type, record.message?.content);
+    }
+    const metadata = records.find((record) => record?.sessionId) || {};
+    return importedConversation('claude', metadata.sessionId, '', history, metadata.timestamp, file);
+}
+
+function parseGenericSession(root, records, file) {
+    let messages = [];
+    let metadata = {};
+    if (Array.isArray(root)) messages = root;
+    else if (Array.isArray(root?.messages)) {
+        messages = root.messages;
+        metadata = root;
+    } else if (Array.isArray(root?.history)) {
+        messages = root.history;
+        metadata = root;
+    } else if (records.some((record) => ['user', 'assistant'].includes(record?.role))) {
+        messages = records;
+    }
+    if (!messages.length) return null;
+    const history = [];
+    for (const message of messages) {
+        const role = message?.role === 'model' ? 'assistant' : message?.role;
+        if (!['user', 'assistant'].includes(role)) continue;
+        appendImportedMessage(history, role, message.content ?? message.parts ?? message.text);
+    }
+    return importedConversation(
+        'generic',
+        metadata.id || metadata.sessionId || metadata.conversationId,
+        metadata.title || metadata.name || metadata.summary,
+        history,
+        metadata.createdAt || metadata.startTime || metadata.timestamp,
+        file
+    );
+}
+
+function parseLocalSessionFile(text, file) {
+    let root = null;
+    try { root = JSON.parse(text); } catch (_) { /* JSONL is handled below. */ }
+    const records = Array.isArray(root) ? root : parseJsonLines(text);
+    return parseCodexSession(records, file)
+        || parseGeminiSession(records, root, file)
+        || parseClaudeSession(records, file)
+        || parseGenericSession(root, records, file);
+}
+
+function isSensitiveLocalFile(file) {
+    const baseName = file.name.toLowerCase();
+    return /^(auth|oauth_creds|settings|config|credentials?|secrets?|tokens?)(\.|$)/i.test(baseName);
+}
+
+async function handleLocalSessionImport(event) {
+    const input = event.currentTarget;
+    const selected = Array.from(input.files || []);
+    input.value = '';
+    closeLocalSessionImport();
+    if (!selected.length) return;
+
+    const candidates = selected
+        .filter((file) => /\.jsonl?$/i.test(file.name) && !isSensitiveLocalFile(file))
+        .filter((file) => file.size <= MAX_LOCAL_IMPORT_FILE_BYTES)
+        .sort((left, right) => right.lastModified - left.lastModified)
+        .slice(0, MAX_LOCAL_IMPORT_FILES);
+    const files = [];
+    let totalBytes = 0;
+    for (const file of candidates) {
+        if (totalBytes + file.size > MAX_LOCAL_IMPORT_TOTAL_BYTES) continue;
+        files.push(file);
+        totalBytes += file.size;
+    }
+    if (!files.length) {
+        showToast('没有找到可读取的 JSON / JSONL 会话文件', true);
+        return;
+    }
+
+    elements.localSessionImport.disabled = true;
+    const parsed = [];
+    let unreadable = 0;
+    for (const file of files) {
+        try {
+            const conversation = parseLocalSessionFile(await file.text(), file);
+            if (conversation) parsed.push(conversation);
+            else unreadable += 1;
+        } catch (_) {
+            unreadable += 1;
+        }
+    }
+    elements.localSessionImport.disabled = false;
+
+    const existingKeys = new Set(state.conversations.map((item) => item.importedFrom?.sourceKey).filter(Boolean));
+    const imported = parsed.filter((item) => {
+        const key = item.importedFrom.sourceKey;
+        if (existingKeys.has(key)) return false;
+        existingKeys.add(key);
+        return true;
+    });
+    if (!imported.length) {
+        showToast(parsed.length ? '所选会话已经导入' : '未识别到可导入的对话内容', true);
+        return;
+    }
+
+    const sidebarWasEnabled = conversationSidebarEnabled();
+    const previousConversations = state.conversations;
+    const previousActiveId = state.activeConversationId;
+    imported.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
+    state.conversations = [...state.conversations, ...imported];
+    state.activeConversationId = imported.at(-1).id;
+    if (!persistConversations()) {
+        state.conversations = previousConversations;
+        state.activeConversationId = previousActiveId;
+        return;
+    }
+    renderConversationTabs();
+    renderActiveConversation();
+    const skipped = unreadable + (parsed.length - imported.length);
+    showToast(`已导入 ${imported.length} 个本地对话${skipped ? `，跳过 ${skipped} 个文件` : ''}`);
+    if (!sidebarWasEnabled && conversationSidebarEnabled()) {
+        if (!isMobileWorkspace()) openConversationSidebar();
+        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
+    }
+}
+
 function activeConversation() {
     return state.conversations.find((item) => item.id === state.activeConversationId) || null;
+}
+
+function conversationSidebarPreference() {
+    try { return localStorage.getItem(CONVERSATION_SIDEBAR_STORAGE_KEY) === '1'; } catch (_) { return false; }
+}
+
+function conversationSidebarEnabled() {
+    return conversationSidebarPreference() || state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD;
+}
+
+function syncConversationSidebarMode() {
+    if (state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD && !conversationSidebarPreference()) {
+        try { localStorage.setItem(CONVERSATION_SIDEBAR_STORAGE_KEY, '1'); } catch (_) { /* Storage can be unavailable. */ }
+    }
+    const enabled = conversationSidebarEnabled();
+    document.body.classList.toggle('conversation-sidebar-enabled', enabled);
+    if (!enabled) document.body.classList.remove('sidebar-conversations');
+    else if (document.body.classList.contains('chat-focused') && !isMobileWorkspace()) {
+        document.body.classList.add('sidebar-conversations');
+    }
 }
 
 function restoreConversations() {
@@ -824,10 +2005,26 @@ function restoreConversations() {
         id: typeof item?.id === 'string' ? item.id : createId('conversation'),
         title: typeof item?.title === 'string' && item.title.trim() ? item.title : `新会话 ${index + 1}`,
         systemPrompt: typeof item?.systemPrompt === 'string' ? item.systemPrompt : '',
+        activeAgent: item?.activeAgent && typeof item.activeAgent.id === 'string' && typeof item.activeAgent.name === 'string'
+            ? {
+                id: item.activeAgent.id,
+                name: item.activeAgent.name,
+                emoji: typeof item.activeAgent.emoji === 'string' ? item.activeAgent.emoji : '',
+                departmentName: typeof item.activeAgent.departmentName === 'string' ? item.activeAgent.departmentName : '',
+                custom: item.activeAgent.custom === true
+            }
+            : null,
         history: Array.isArray(item?.history) ? item.history.filter((message) => (
             message && ['user', 'assistant'].includes(message.role) && typeof message.content === 'string'
         )) : [],
-        createdAt: typeof item?.createdAt === 'string' ? item.createdAt : new Date().toISOString()
+        createdAt: typeof item?.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+        importedFrom: item?.importedFrom && typeof item.importedFrom.sourceKey === 'string'
+            ? {
+                source: typeof item.importedFrom.source === 'string' ? item.importedFrom.source : 'generic',
+                fileName: typeof item.importedFrom.fileName === 'string' ? item.importedFrom.fileName : '',
+                sourceKey: item.importedFrom.sourceKey
+            }
+            : null
     }));
     if (!state.conversations.length) {
         createConversation({ silent: true, systemPrompt: elements.systemPrompt.value });
@@ -841,7 +2038,7 @@ function restoreConversations() {
 }
 
 function persistConversations() {
-    writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
+    return writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
         activeConversationId: state.activeConversationId,
         conversations: state.conversations
     });
@@ -852,18 +2049,25 @@ function createConversation(options = {}) {
         showToast('请先停止当前生成', true);
         return;
     }
+    const inheritedAgent = options.activeAgent === undefined ? activeConversation()?.activeAgent : options.activeAgent;
     const conversation = {
         id: createId('conversation'),
         title: `新会话 ${state.conversations.length + 1}`,
         systemPrompt: typeof options.systemPrompt === 'string' ? options.systemPrompt : elements.systemPrompt.value,
+        activeAgent: inheritedAgent ? { ...inheritedAgent } : null,
         history: [],
         createdAt: new Date().toISOString()
     };
+    const sidebarWasEnabled = conversationSidebarEnabled();
     state.conversations.push(conversation);
     state.activeConversationId = conversation.id;
     persistConversations();
     renderConversationTabs();
     renderActiveConversation();
+    if (!sidebarWasEnabled && conversationSidebarEnabled() && !options.silent) {
+        if (!isMobileWorkspace()) openConversationSidebar();
+        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
+    }
     if (!options.silent) showToast('已新建对话窗口');
 }
 
@@ -906,7 +2110,10 @@ function closeConversation(id) {
 }
 
 function renderConversationTabs() {
+    syncConversationSidebarMode();
     elements.conversationTabs.replaceChildren();
+    elements.conversationSidebarList.replaceChildren();
+    elements.conversationSidebarCount.textContent = String(state.conversations.length);
     for (const conversation of state.conversations) {
         const tab = document.createElement('div');
         tab.className = `conversation-tab${conversation.id === state.activeConversationId ? ' active' : ''}`;
@@ -915,7 +2122,9 @@ function renderConversationTabs() {
         selectButton.type = 'button';
         selectButton.role = 'tab';
         selectButton.ariaSelected = String(conversation.id === state.activeConversationId);
-        selectButton.title = conversation.title;
+        selectButton.title = conversation.importedFrom
+            ? `${conversation.title}\n导入自 ${conversation.importedFrom.fileName}`
+            : conversation.title;
         selectButton.textContent = conversation.title;
         selectButton.addEventListener('click', () => switchConversation(conversation.id));
         const closeButton = document.createElement('button');
@@ -929,14 +2138,43 @@ function renderConversationTabs() {
         closeButton.addEventListener('click', () => closeConversation(conversation.id));
         tab.append(selectButton, closeButton);
         elements.conversationTabs.appendChild(tab);
+
+        const sidebarItem = document.createElement('div');
+        sidebarItem.className = `conversation-sidebar-item${conversation.id === state.activeConversationId ? ' active' : ''}`;
+        const sidebarSelect = document.createElement('button');
+        sidebarSelect.type = 'button';
+        sidebarSelect.role = 'tab';
+        sidebarSelect.ariaSelected = String(conversation.id === state.activeConversationId);
+        sidebarSelect.title = selectButton.title;
+        const sidebarTitle = document.createElement('strong');
+        sidebarTitle.textContent = conversation.title;
+        const sidebarMeta = document.createElement('small');
+        sidebarMeta.textContent = conversation.importedFrom ? '本地导入' : `${conversation.history.length} 条消息`;
+        sidebarSelect.append(sidebarTitle, sidebarMeta);
+        sidebarSelect.addEventListener('click', () => {
+            switchConversation(conversation.id);
+            if (isMobileWorkspace()) closeWorkspaceSidebar();
+        });
+        const sidebarClose = document.createElement('button');
+        sidebarClose.type = 'button';
+        sidebarClose.className = 'conversation-sidebar-close';
+        sidebarClose.title = '关闭对话';
+        sidebarClose.setAttribute('aria-label', `关闭${conversation.title}`);
+        sidebarClose.innerHTML = '<i class="bi bi-x"></i>';
+        sidebarClose.addEventListener('click', () => closeConversation(conversation.id));
+        sidebarItem.append(sidebarSelect, sidebarClose);
+        elements.conversationSidebarList.appendChild(sidebarItem);
     }
     elements.conversationTabs.querySelector('.conversation-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    elements.conversationSidebarList.querySelector('.conversation-sidebar-item.active')?.scrollIntoView({ block: 'nearest' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
 
 function renderActiveConversation() {
     const conversation = activeConversation();
     if (!conversation) return;
     elements.systemPrompt.value = conversation.systemPrompt;
+    renderActiveAgent();
     elements.chatWindow.replaceChildren();
     elements.emptyState = null;
     elements.emptyEndpoint = null;
@@ -971,6 +2209,33 @@ function setMessageContent(message, text, render = false) {
     else message.content.textContent = text;
 }
 
+function createStreamingMarkdownRenderer(message) {
+    let latestText = '';
+    let frameId = 0;
+
+    const flush = () => {
+        frameId = 0;
+        setMessageContent(message, latestText, Boolean(latestText));
+        scrollChatToBottom();
+    };
+
+    return {
+        update(text) {
+            latestText = text;
+            if (!frameId) frameId = requestAnimationFrame(flush);
+        },
+        finish(text = latestText) {
+            latestText = text;
+            if (frameId) cancelAnimationFrame(frameId);
+            flush();
+        },
+        cancel() {
+            if (frameId) cancelAnimationFrame(frameId);
+            frameId = 0;
+        }
+    };
+}
+
 function deriveConversationTitle(text) {
     const normalized = text.replace(/\s+/g, ' ').trim();
     return normalized.length > 18 ? `${normalized.slice(0, 18)}…` : normalized || '新会话';
@@ -988,7 +2253,7 @@ function requestMessages(userText) {
 function maskedHeaders(headers) {
     return Object.fromEntries(Object.entries(headers).map(([key, value]) => [
         key,
-        /authorization|api-key|proxy-query-key/i.test(key) ? '***' : value
+        /authorization|api-key|proxy-query-key|bridge-token/i.test(key) ? '***' : value
     ]));
 }
 
@@ -1124,9 +2389,12 @@ async function readEventStream(response, onDelta) {
 }
 
 function normalizeStreamChunk(payload, protocol, eventName) {
+    if (eventName === 'error' || payload?.error) {
+        throw new ApiError(getErrorMessage(payload, '流式请求失败'));
+    }
     if (protocol === 'anthropic') {
         const text = payload.delta?.text || '';
-        if (eventName === 'error' || payload.type === 'error') {
+        if (payload.type === 'error') {
             throw new ApiError(getErrorMessage(payload, 'Anthropic 流式请求失败'));
         }
         return {
@@ -1213,6 +2481,7 @@ async function sendMessage(event) {
     const messages = requestMessages(userText);
     addMessage('user', userText);
     const assistant = addMessage('assistant', '', true);
+    const streamRenderer = createStreamingMarkdownRenderer(assistant);
     elements.messageInput.value = '';
     let assistantText = '';
     setBusy(true);
@@ -1221,12 +2490,11 @@ async function sendMessage(event) {
         const result = await executeRequest(messages, {
             onDelta: (text) => {
                 assistantText = text;
-                setMessageContent(assistant, text);
-                scrollChatToBottom();
+                streamRenderer.update(text);
             }
         });
         assistantText = result.text || '';
-        setMessageContent(assistant, assistantText || '（响应为空）', Boolean(assistantText));
+        streamRenderer.finish(assistantText || '（响应为空）');
         assistant.row.classList.remove('pending');
         conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
         conversation.systemPrompt = elements.systemPrompt.value;
@@ -1238,7 +2506,7 @@ async function sendMessage(event) {
     } catch (error) {
         assistant.row.classList.remove('pending');
         if (error.name === 'AbortError') {
-            setMessageContent(assistant, assistantText || '已停止生成', Boolean(assistantText));
+            streamRenderer.finish(assistantText || '已停止生成');
             if (assistantText) {
                 conversation.history = [...priorHistory, { role: 'user', content: userText }, { role: 'assistant', content: assistantText }];
                 conversation.systemPrompt = elements.systemPrompt.value;
@@ -1248,6 +2516,7 @@ async function sendMessage(event) {
             }
             showToast('已停止生成');
         } else {
+            streamRenderer.cancel();
             const message = describeError(error);
             assistant.row.classList.add('error');
             assistant.content.textContent = message;
@@ -1262,6 +2531,10 @@ async function sendMessage(event) {
 
 async function testConnection() {
     if (state.busy) return;
+    if (currentLocalTool()) {
+        await testLocalCodexConnection();
+        return;
+    }
     const path = elements.modelsPath.value.trim();
     if (!path) {
         showToast('当前服务没有可用的只读检查接口，请直接发送实际消息', true);
@@ -1371,6 +2644,9 @@ function extractModels(payload) {
 function describeError(error) {
     if (error.name === 'AbortError') return '请求已取消';
     if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) {
+        if (currentLocalTool()) {
+            return `无法连接${currentLocalTool().title}。请重新运行下载的启动脚本；显示后台启动成功后终端可以关闭。若浏览器阻止本地网络访问，请允许访问 127.0.0.1。`;
+        }
         return '无法连接服务。请检查 URL、CORS、HTTPS/HTTP 混合内容以及自建服务是否已启动。';
     }
     return error.message || '未知错误';
@@ -1477,15 +2753,26 @@ function syncControls() {
     elements.sendButton.disabled = state.busy || locked;
     elements.testButton.disabled = state.busy;
     elements.loadModelsButton.disabled = state.busy;
+    elements.localSessionImport.disabled = state.busy;
+    elements.localCodexDownload.disabled = state.busy;
+    elements.localCodexCheck.disabled = state.busy;
+    elements.localCodexStop.disabled = state.busy || !state.localCodex.token;
     elements.stopButton.disabled = !state.busy || !state.controller;
     elements.messageInput.disabled = state.busy || locked;
     elements.sendButton.querySelector('span').textContent = locked ? '已达上限' : state.busy ? '请求中' : '发送';
 }
 
 function setConnectionState(status, text, latency) {
+    const previousStatus = elements.connectionState.dataset.state;
     elements.connectionState.dataset.state = status;
     elements.connectionStateText.textContent = text;
     elements.latencyText.textContent = latency;
+    if (status === 'success' && previousStatus !== 'success') {
+        closeSettings();
+    } else if (status === 'error') {
+        elements.settingsInspector.open = true;
+        openSettings();
+    }
 }
 
 function setInspectorTab(tab) {
@@ -1527,18 +2814,109 @@ function showToast(message, error = false) {
     window.setTimeout(() => toast.remove(), 4500);
 }
 
+function showActionToast(message, actionLabel, action) {
+    const toast = document.createElement('div');
+    toast.className = 'toast with-action';
+    const copy = document.createElement('span');
+    copy.textContent = message;
+    const button = document.createElement('button');
+    button.className = 'toast-action';
+    button.type = 'button';
+    button.textContent = actionLabel;
+    button.addEventListener('click', () => {
+        toast.remove();
+        action();
+    });
+    toast.append(copy, button);
+    elements.toastRegion.appendChild(toast);
+}
+
 function scrollChatToBottom() {
     elements.chatWindow.scrollTop = elements.chatWindow.scrollHeight;
 }
 
+function isMobileWorkspace() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 780px)').matches;
+}
+
+function initializeWorkspaceLayout() {
+    syncConversationSidebarMode();
+    if (conversationSidebarEnabled()) {
+        document.body.classList.add('chat-focused', 'sidebar-conversations');
+        document.body.classList.remove('sidebar-settings');
+    } else if (isMobileWorkspace()) {
+        document.body.classList.add('chat-focused');
+        document.body.classList.remove('sidebar-settings', 'sidebar-conversations');
+        elements.workspaceSidebar.classList.remove('is-open');
+    } else {
+        document.body.classList.add('sidebar-settings');
+        document.body.classList.remove('chat-focused', 'sidebar-conversations');
+    }
+    syncWorkspaceMode();
+}
+
+function settingsAreVisible() {
+    return document.body.classList.contains('sidebar-settings')
+        && (!isMobileWorkspace() || elements.workspaceSidebar.classList.contains('is-open'));
+}
+
+function syncWorkspaceMode() {
+    const settingsVisible = settingsAreVisible();
+    elements.settingsToggle.setAttribute('aria-expanded', String(settingsVisible));
+    elements.settingsToggle.setAttribute('aria-label', settingsVisible ? '切换到专注聊天' : '打开设置');
+    elements.settingsToggle.title = settingsVisible ? '切换到专注聊天' : '打开设置';
+    elements.settingsToggleLabel.textContent = settingsVisible ? '聊天' : '设置';
+    elements.settingsToggleIcon.className = settingsVisible ? 'bi bi-chat-left-text' : 'bi bi-sliders';
+    elements.sidebarSettingsButton.classList.toggle('active', settingsVisible);
+    elements.sidebarConversationsButton.classList.toggle('active', !settingsVisible);
+}
+
+function toggleSettings() {
+    if (settingsAreVisible()) closeSettings();
+    else openSettings();
+}
+
 function openSettings() {
-    elements.settingsPanel.classList.add('is-open');
+    document.body.classList.remove('chat-focused');
+    document.body.classList.add('sidebar-settings');
+    document.body.classList.remove('sidebar-conversations');
+    elements.workspaceSidebar.classList.add('is-open');
     elements.drawerOverlay.classList.add('is-open');
+    syncWorkspaceMode();
 }
 
 function closeSettings() {
-    elements.settingsPanel.classList.remove('is-open');
+    document.body.classList.add('chat-focused');
+    document.body.classList.remove('sidebar-settings');
+    if (conversationSidebarEnabled()) document.body.classList.add('sidebar-conversations');
+    else document.body.classList.remove('sidebar-conversations');
+    if (isMobileWorkspace()) elements.workspaceSidebar.classList.remove('is-open');
     elements.drawerOverlay.classList.remove('is-open');
+    syncWorkspaceMode();
+}
+
+function openConversationSidebar() {
+    if (!conversationSidebarEnabled()) {
+        closeSettings();
+        return;
+    }
+    document.body.classList.add('chat-focused', 'sidebar-conversations');
+    document.body.classList.remove('sidebar-settings');
+    if (isMobileWorkspace()) {
+        elements.workspaceSidebar.classList.add('is-open');
+        elements.drawerOverlay.classList.add('is-open');
+    } else {
+        elements.drawerOverlay.classList.remove('is-open');
+    }
+    syncWorkspaceMode();
+}
+
+function closeWorkspaceSidebar() {
+    if (!isMobileWorkspace()) return;
+    elements.workspaceSidebar.classList.remove('is-open');
+    elements.drawerOverlay.classList.remove('is-open');
+    document.body.classList.add('chat-focused');
+    syncWorkspaceMode();
 }
 
 try {
