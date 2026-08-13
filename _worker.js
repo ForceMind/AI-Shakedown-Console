@@ -2,7 +2,7 @@ const PROXY_PATH = '/api/proxy';
 const STATUS_PATH = '/api/status';
 const WORKER_VERSION = 'proxy-6';
 const APP_VERSION = 'v25';
-const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 20 * 1024 * 1024;
 
 const BLOCKED_REQUEST_HEADERS = new Set([
     'connection',
@@ -97,7 +97,7 @@ async function proxyRequest(request, env) {
 
     const contentLength = Number(request.headers.get('Content-Length') || 0);
     if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
-        return jsonResponse({ error: '请求体超过 2 MiB 限制' }, 413);
+        return jsonResponse({ error: '请求体超过 20 MiB 限制' }, 413);
     }
 
     let target;
@@ -108,10 +108,14 @@ async function proxyRequest(request, env) {
     }
 
     try {
+        const requestBody = request.method === 'GET' ? undefined : await request.arrayBuffer();
+        if (requestBody && requestBody.byteLength > MAX_REQUEST_BYTES) {
+            return jsonResponse({ error: '请求体超过 20 MiB 限制' }, 413);
+        }
         const upstreamResponse = await fetch(target, {
             method: request.method,
             headers: upstreamHeaders(request),
-            body: request.method === 'GET' ? undefined : request.body,
+            body: requestBody,
             redirect: 'manual'
         });
 

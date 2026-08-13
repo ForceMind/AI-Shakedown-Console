@@ -1,6 +1,8 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v25`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v25`;
+// Keep the public app version at v25 while allowing a same-version release
+// candidate to replace stale PWA shell files reliably.
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v25-r2`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v25-r2`;
 const APP_SHELL = [
     '/',
     '/index.html',
@@ -17,6 +19,8 @@ const APP_SHELL = [
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff',
     '/vendor/marked.min.js?v=15.0.12',
     '/vendor/purify.min.js?v=3.2.6',
+    '/vendor/pdf.min.mjs?v=5.4.296',
+    '/vendor/pdf.worker.min.mjs?v=5.4.296',
     '/agents/index.json'
 ];
 

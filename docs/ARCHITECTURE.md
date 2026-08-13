@@ -9,7 +9,7 @@ flowchart TB
     subgraph Browser["浏览器 / PWA"]
         UI["界面与状态管理"]
         Protocol["协议适配与流解析"]
-        Storage["localStorage / sessionStorage"]
+        Storage["localStorage / sessionStorage / IndexedDB"]
         SW["Service Worker"]
     end
 
@@ -61,6 +61,8 @@ flowchart TB
 - 服务商预设、协议和请求体适配；
 - OpenAI/Anthropic/Gemini 流式与非流式响应归一化；
 - 配置、智能体、对话和统计状态；
+- 稳定消息 ID、编辑分支、选择、搜索、复制、导出、重试与重新生成；
+- 图片/文本/PDF 附件处理、IndexedDB 持久化和多模态能力探测；
 - 本地记录导入；
 - 本机启动器生成、配对与控制；
 - PWA 安装和更新提示；
@@ -77,7 +79,7 @@ Cloudflare Pages Advanced Mode Worker：
 - `GET|POST /api/proxy`：校验目标上游、过滤请求/响应头并流式转发；
 - 其他路径：交给 `env.ASSETS`，并按资源类型设置缓存头。
 
-代理限制包括 HTTPS-only、Origin 白名单、2 MiB 请求上限、禁止 URL 凭据、禁止自动重定向和受控查询 Key 转发。
+代理限制包括 HTTPS-only、Origin 白名单、20 MiB 完整请求上限、禁止 URL 凭据、禁止自动重定向和受控查询 Key 转发。Worker 会读取请求体复核实际字节数；前端也会在发送前检查序列化 JSON，避免 base64 和历史附件累积超过同一上限。
 
 ### `assets/local-codex-bridge.mjs`
 
@@ -114,6 +116,8 @@ Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
+公开版本仍为 `v25` 时，内部缓存可使用 `v25-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+
 #### macOS App Shim 与输入法边界
 
 Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shim。它负责作为 macOS 应用启动，再连接对应浏览器框架；因此“普通标签页”和“已安装 PWA”拥有不同的原生应用身份、进程与文本输入上下文。
@@ -134,11 +138,26 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 | --- | --- | --- | --- |
 | System | `messages[role=system]` | 顶层 `system` | `systemInstruction` |
 | 消息 | `messages` | 排除 system 的 `messages` | `contents[].parts[]` |
+| 图片 | `image_url` data URL | base64 `image` block | `inlineData` |
 | 最大输出 | `max_tokens` | `max_tokens` | `generationConfig.maxOutputTokens` |
 | Top P/K | `top_p` / `top_k` | `top_p` / `top_k` | `topP` / `topK` |
 | 流式 | SSE chat chunks | Anthropic SSE events | Gemini SSE payloads |
 
 响应在进入 UI 前归一化为文本增量、完整文本和 usage。流式期间按纯文本更新，结束后统一经过 Marked 与 DOMPurify 渲染。
+
+### 多模态能力检查
+
+附件入口不根据模型名称猜测。能力签名由服务商、协议、Base URL、请求路径、模型和代理开关组成；用户点击“检查连接”时，前端发送一张内置 16×16 PNG 和最多 2 个输出 Token 的请求：
+
+- 成功：缓存为 `supported` 并显示附件按钮；
+- 上游以 400/415/422 明确拒绝 image/vision/multimodal 内容：缓存为 `unsupported`，连接仍可用于文本；
+- 认证、网络、限流或其他未知错误：连接检查失败，不把配置误判成纯文本模型。
+
+本机 CLI 桥接尚未开放图片输入，因此始终隐藏附件按钮。每次真正发送消息前会从 IndexedDB 取回附件；图片临时转为 base64，文本/PDF 作为带文件名的文本段加入内容。检查器通过结构化副本隐藏长 base64，不修改实际请求。
+
+### 消息与分支
+
+持久化消息使用 `{id, role, content, attachments, createdAt, status?, error?}`。旧版 `{role, content}` 会在读取时补全稳定 ID 和时间。编辑或重新生成存在后续用户消息的旧轮次时，会复制截断前的历史创建新对话，并记录 `parentConversationId` 与 `branchAtMessageId`；原对话不变。
 
 ## 浏览器数据模型
 
@@ -151,7 +170,9 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 | `ai-shakedown-console.conversation-sidebar.v1` | localStorage | 左侧列表偏好 |
 | `ai-shakedown-console.help-intro.v1` | localStorage | 首次帮助状态 |
 | `ai-shakedown-console.pwa-ime-notice.v1` | localStorage | Edge PWA 输入法长期方案提示版本 |
+| `ai-shakedown-console.multimodal-capabilities.v1` | localStorage | 按配置签名缓存的多模态检查结果 |
 | `ai-shakedown-console.local-codex.v1` | sessionStorage | 本机工具、端口和配对令牌 |
+| `ai-shakedown-console.attachments.v1` | IndexedDB | 图片 Blob、文本内容和 PDF 提取文字 |
 
 当前数据结构没有云同步、加密或账号隔离。改变现有 key/schema 时必须提供向后兼容读取或清晰迁移说明。
 
@@ -165,6 +186,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 
 - Markdown 输出先解析后清洗；
 - 检查器显示时脱敏认证头和查询 Key；
+- 检查器隐藏图片 base64；附件只在用户选择并发送时进入对应模型请求；
 - 本机配对令牌不持久化到 localStorage；
 - 用户可一键清除项目浏览器数据。
 

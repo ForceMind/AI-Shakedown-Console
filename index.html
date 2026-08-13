@@ -403,6 +403,15 @@
                     <span><i class="bi bi-lightning-charge"></i> API PLAYGROUND</span>
                 </div>
                 <div class="toolbar-actions">
+                    <button class="icon-button" id="conversation-search-toggle" type="button" title="搜索当前对话" aria-label="搜索当前对话">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <button class="icon-button" id="conversation-rename" type="button" title="重命名当前对话" aria-label="重命名当前对话">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="icon-button" id="conversation-export" type="button" title="导出当前对话" aria-label="导出当前对话">
+                        <i class="bi bi-download"></i>
+                    </button>
                     <button class="icon-button" id="stop-request" type="button" title="停止生成" aria-label="停止生成" disabled>
                         <i class="bi bi-stop-fill"></i>
                     </button>
@@ -423,6 +432,24 @@
                 <button class="secondary-button compact conversation-new" id="new-conversation" type="button" title="新建对话">
                     <i class="bi bi-plus-lg"></i><span>新对话</span>
                 </button>
+            </div>
+
+            <div class="conversation-search" id="conversation-search" hidden>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="conversation-search-input" type="search" autocomplete="off" placeholder="搜索当前对话" aria-label="搜索当前对话">
+                <span id="conversation-search-count">0 个结果</span>
+                <button class="icon-button small" id="conversation-search-previous" type="button" title="上一个结果" aria-label="上一个搜索结果"><i class="bi bi-chevron-up"></i></button>
+                <button class="icon-button small" id="conversation-search-next" type="button" title="下一个结果" aria-label="下一个搜索结果"><i class="bi bi-chevron-down"></i></button>
+                <button class="icon-button small" id="conversation-search-close" type="button" title="关闭搜索" aria-label="关闭搜索"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="message-selection-bar" id="message-selection-bar" hidden>
+                <strong><span id="message-selection-count">0</span> 条已选</strong>
+                <button class="secondary-button compact" id="message-select-all" type="button"><i class="bi bi-check2-square"></i><span>全选</span></button>
+                <button class="secondary-button compact" id="message-copy-selected" type="button"><i class="bi bi-copy"></i><span>复制</span></button>
+                <button class="secondary-button compact" id="message-export-selected" type="button"><i class="bi bi-download"></i><span>导出</span></button>
+                <button class="secondary-button compact" id="message-delete-selected" type="button"><i class="bi bi-trash3"></i><span>删除</span></button>
+                <button class="text-button" id="message-selection-cancel" type="button">取消</button>
             </div>
 
             <div class="chat-window" id="chat-window" aria-live="polite">
@@ -447,7 +474,12 @@
                     <button class="active-agent" id="active-agent" type="button" hidden></button>
                 </div>
                 <textarea id="system-prompt" rows="2" placeholder="设置模型身份、目标和边界，例如：You are a helpful assistant."></textarea>
+                <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
                 <div class="message-compose-row">
+                    <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
+                        <i class="bi bi-paperclip"></i>
+                    </button>
+                    <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.jsonl,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sql,.sh,.ps1,.toml,.ini,.log,.pdf" multiple hidden>
                     <div class="message-input-wrap">
                         <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off" inputmode="text" lang="zh-CN" spellcheck="true" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
                         <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
@@ -688,7 +720,14 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，自定义 System 支持 Markdown 实时预览。</p>
+                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，自定义 System 支持 Markdown 实时预览。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
+                        <i class="bi bi-paperclip" aria-hidden="true"></i>
+                        <div>
+                            <h3>附件与多模态</h3>
+                            <p>“检查连接”会用极小图片验证当前模型的真实多模态能力。只有验证通过才显示附件按钮；可添加图片、文本、代码和含文字层的 PDF，每条最多 6 个、合计 12 MB，发送前可以预览或移除。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -709,7 +748,7 @@
                         <i class="bi bi-shield-check" aria-hidden="true"></i>
                         <div>
                             <h3>数据与隐私</h3>
-                            <p>配置、API Key、自定义智能体和对话保存在当前浏览器。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
+                            <p>配置、API Key、自定义智能体和对话保存在当前浏览器，附件内容保存在本站的 IndexedDB。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
                         </div>
                     </section>
                     <section class="help-topic">

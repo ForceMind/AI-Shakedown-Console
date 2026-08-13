@@ -31,6 +31,8 @@
 | 本机 CLI 适配 | `assets/local-codex-bridge.mjs` |
 | 启动器 | `assets/launch-codex-*` |
 | PWA | `assets/manifest.webmanifest`、`assets/service-worker.js` |
+| 附件与 PDF | `script.js`、`vendor/pdf*.mjs`、`vendor/pdfjs.LICENSE` |
+| 浏览器回归模拟服务 | `tests/mock-server.mjs`、`tests/fixtures/` |
 | 智能体目录 | `agents/`、`scripts/import-agency-agents.mjs` |
 | 用户与维护文档 | `README.md`、`docs/`、`CHANGELOG.md` |
 
@@ -61,6 +63,9 @@ git diff --check
 - Cloudflare 同域代理与白名单拒绝；
 - 中文输入法、发送快捷键和普通换行；
 - 对话、配置、自定义智能体刷新恢复；
+- 消息编辑分支、复制、选择、搜索、删除撤销、重试、继续和重新生成；
+- OpenAI/Anthropic/Gemini 图片请求映射，支持/不支持模型的附件按钮显隐；
+- 图片、文本和 PDF 附件选择、刷新恢复、发送与 IndexedDB 清理；
 - 第 5 个对话触发左侧列表；
 - PWA 安装、更新提示和离线外壳；
 - 三系统启动器的解析、错误提示和固定文件名；
@@ -77,7 +82,7 @@ git diff --check
 
 ## 版本与发布
 
-用户可见修改需要新版本和 Cloudflare Pages ZIP。版本必须同步：
+用户可见修改通常需要新版本和 Cloudflare Pages ZIP；若维护者明确要求保持版本号，同一候选版必须更新内部 PWA 缓存修订并重新生成 ZIP。版本必须同步：
 
 - README、CHANGELOG 和相关文档；
 - `index.html` 版本文字与资源查询参数；
