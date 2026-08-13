@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v16` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v17` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -88,10 +88,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v16` 部署包：
+在项目根目录生成 `v17` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v16.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v17.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -118,7 +118,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v16",
+  "appVersion": "v17",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -127,14 +127,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v16`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v16`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=16`](https://ai-shakedown-console.pages.dev/?v=16) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v17`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v17`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=17`](https://ai-shakedown-console.pages.dev/?v=17) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v16` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v16` 查询参数，避免新旧界面资源混用。
+- `v17` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v17` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -167,12 +167,12 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 - `ALLOWED_UPSTREAMS` 必须保持最小范围。不要移除白名单校验并将 Worker 发布为任意目标代理。
 - AWS Bedrock、Google Vertex AI 等需要 SigV4/OAuth 交互式签名的平台不适合直接在浏览器中保管长期凭据，应通过自建的 OpenAI-compatible 网关接入。
 - 本地启动脚本不会读取、上传或显示各 CLI 的认证文件；登录状态和令牌刷新仍由本机 CLI 负责。桥接只监听 `127.0.0.1`，校验下载时生成的随机 Bearer 令牌和网页 Origin。页面配对令牌不写入持久化配置。
-- Codex 以 `readOnly` 沙盒和 `never` 审批策略启动；Gemini 使用 `plan` 审批模式；Claude Code 禁用内置与 MCP 工具并启用安全/计划模式；OpenCode 注入 `permission: deny` 的运行时配置。Antigravity 目前没有已文档化的等价禁用工具参数，因此桥接在独立临时工作目录中运行 `agy -p`，同时加入纯对话安全指令；它仍应视为 Beta，不要用来处理不可信提示词或敏感本地环境。
+- Codex 以 `read-only` 沙盒和 `never` 审批策略启动；Gemini 使用 `plan` 审批模式；Claude Code 禁用内置与 MCP 工具并启用安全/计划模式；OpenCode 注入 `permission: deny` 的运行时配置。Antigravity 目前没有已文档化的等价禁用工具参数，因此桥接在独立临时工作目录中运行 `agy -p`，同时加入纯对话安全指令；它仍应视为 Beta，不要用来处理不可信提示词或敏感本地环境。
 - 本地桥接依赖 Node.js 18+ 和所选 CLI。关闭脚本所在终端后立即停止；升级 CLI 后如有兼容变化，应重新下载最新版脚本。实现依据见 [Codex App Server](https://developers.openai.com/codex/app-server/)、[Antigravity CLI](https://codelabs.developers.google.com/antigravity-cli-hands-on)、[Gemini CLI 无头模式](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/headless.md)、[Claude Code CLI](https://code.claude.com/docs/en/cli-usage) 和 [OpenCode CLI](https://opencode.ai/docs/cli/) 官方文档。
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v16` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v17` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。
