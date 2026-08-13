@@ -2,10 +2,11 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 
-const BRIDGE_VERSION = 'v24';
+const BRIDGE_VERSION = 'v25';
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.AI_SHAKEDOWN_BRIDGE_PORT || 4510);
 const TOKEN = process.env.AI_SHAKEDOWN_BRIDGE_TOKEN || '';
@@ -28,6 +29,8 @@ const MAX_PROMPT_CHARS = 120_000;
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const RPC_TIMEOUT_MS = 30_000;
 const CLI_TIMEOUT_MS = 10 * 60 * 1000;
+const RETURN_OPEN_DELAY_MS = 8_000;
+let clientConnected = false;
 
 if (!LOCAL_TOOL) throw new Error(`不支持的本地 AI 工具：${LOCAL_PROVIDER}`);
 if (!TOKEN || TOKEN.length < 32) throw new Error('缺少安全的本地桥接令牌');
@@ -553,9 +556,18 @@ const server = http.createServer(async (request, response) => {
             response.end();
             return;
         }
-        if (!authorized(request)) return sendJson(response, 401, { error: '本地桥接令牌无效，请重新下载启动脚本' });
         const url = new URL(request.url, `http://${HOST}:${PORT}`);
+        if (request.method === 'GET' && url.pathname === '/discover') {
+            const challenge = url.searchParams.get('challenge') || '';
+            if (!/^[A-Za-z0-9_-]{20,100}$/.test(challenge)) {
+                return sendJson(response, 400, { error: '发现挑战无效' });
+            }
+            const proof = createHmac('sha256', TOKEN).update(`${challenge}.${PORT}`).digest('base64url');
+            return sendJson(response, 200, { provider: LOCAL_PROVIDER, proof });
+        }
+        if (!authorized(request)) return sendJson(response, 401, { error: '本地桥接令牌无效，请重新下载启动脚本' });
         if (request.method === 'GET' && url.pathname === '/status') {
+            clientConnected = true;
             return sendJson(response, 200, await localStatus());
         }
         if (request.method === 'GET' && url.pathname === '/v1/models') {
@@ -584,11 +596,39 @@ const server = http.createServer(async (request, response) => {
     }
 });
 
-function openBrowser(url) {
+function openWith(command, args) {
+    spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+}
+
+async function findMacPwaApp() {
+    const appName = 'AI Shakedown Console.app';
+    const candidates = [
+        path.join(os.homedir(), 'Applications', 'Edge Apps.localized', appName),
+        path.join(os.homedir(), 'Applications', 'Chrome Apps.localized', appName),
+        path.join(os.homedir(), 'Applications', appName),
+        path.join('/Applications', appName)
+    ];
+    for (const candidate of candidates) {
+        try {
+            await access(candidate);
+            return candidate;
+        } catch (_) { /* Try the next standard PWA location. */ }
+    }
+    return '';
+}
+
+async function openReturnTarget(url) {
     if (!url) return;
+    if (process.platform === 'darwin') {
+        const pwaApp = await findMacPwaApp();
+        if (pwaApp) {
+            openWith('open', ['-a', pwaApp, url]);
+            return;
+        }
+    }
     const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd.exe' : 'xdg-open';
     const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
-    spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    openWith(command, args);
 }
 
 async function main() {
@@ -606,7 +646,15 @@ async function main() {
     });
     console.log(`AI Shakedown Console 本地 ${LOCAL_TOOL.label} 桥接已启动：http://${HOST}:${PORT}`);
     console.log('桥接将在后台持续运行，启动终端可以关闭；可从网页设置中停止。');
-    if (RETURN_URL) openBrowser(`${RETURN_URL}#local_bridge=${LOCAL_PROVIDER}.${PORT}.${TOKEN}`);
+    if (RETURN_URL) {
+        await new Promise((resolve) => setTimeout(resolve, RETURN_OPEN_DELAY_MS));
+        if (!clientConnected) {
+            console.log('没有检测到已打开的控制台，正在唤起已安装的桌面应用。');
+            await openReturnTarget(`${RETURN_URL}#local_bridge=${LOCAL_PROVIDER}.${PORT}.${TOKEN}`);
+        } else {
+            console.log('已打开的控制台完成自动连接，不再创建重复窗口。');
+        }
+    }
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

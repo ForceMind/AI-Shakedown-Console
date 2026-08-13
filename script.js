@@ -7,12 +7,15 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v25';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
+const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
 const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
 const CONVERSATION_SIDEBAR_THRESHOLD = 4;
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
+const LOCAL_BRIDGE_PORT_SCAN_LIMIT = 100;
+const LOCAL_BRIDGE_DISCOVERY_MS = 10 * 60 * 1000;
 
 const LOCAL_TOOL_PROVIDERS = {
     'codex-local': {
@@ -200,6 +203,7 @@ const elements = {
     sidebarNewConversation: $('sidebar-new-conversation'), sidebarImportConversations: $('sidebar-import-conversations'),
     clearSavedSettings: $('clear-saved-settings'),
     pwaInstallCard: $('pwa-install-card'), pwaInstallButton: $('pwa-install-button'),
+    pwaImeCard: $('pwa-ime-card'), pwaImeCopyUrl: $('pwa-ime-copy-url'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
     conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
@@ -224,7 +228,8 @@ const elements = {
     agentBuiltInTab: $('agent-built-in-tab'), agentCustomTab: $('agent-custom-tab'),
     customAgentCount: $('custom-agent-count'), customAgentNew: $('custom-agent-new'),
     customAgentEditor: $('custom-agent-editor'), customAgentName: $('custom-agent-name'),
-    customAgentPrompt: $('custom-agent-prompt'), customAgentSave: $('custom-agent-save'),
+    customAgentPrompt: $('custom-agent-prompt'), customAgentPreview: $('custom-agent-preview'),
+    customAgentSave: $('custom-agent-save'),
     customAgentDelete: $('custom-agent-delete'),
     contextProvider: $('context-provider'), contextProtocol: $('context-protocol'), contextModel: $('context-model'),
     contextAgent: $('context-agent'), contextAgentItem: $('context-agent-item')
@@ -248,6 +253,11 @@ const state = {
     helpReturnFocus: null,
     macosLaunchHelpReturnFocus: null,
     localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
+    localBridgeDiscoveryTimer: 0,
+    localBridgeDiscoveryUntil: 0,
+    localBridgeDiscoveryCycle: 0,
+    localBridgeDiscoveryRunning: false,
+    localBridgeConnected: false,
     controller: null,
     busy: false,
     messageComposing: false,
@@ -286,6 +296,7 @@ function initialize() {
     maybeShowHelpIntro();
     initializeWorkspaceLayout();
     initializePwa();
+    resumeLocalBridgeDiscovery();
 }
 
 function bindEvents() {
@@ -341,6 +352,7 @@ function bindEvents() {
     elements.customAgentPrompt.addEventListener('input', () => {
         state.selectedAgentContent = elements.customAgentPrompt.value.trim();
         elements.agentApply.disabled = !state.selectedAgentContent;
+        renderCustomAgentPreview();
     });
     elements.activeAgent.addEventListener('click', openActiveAgent);
     elements.agentLibraryModal.addEventListener('click', (event) => {
@@ -422,6 +434,10 @@ function bindEvents() {
     elements.conversationSidebarToggle.addEventListener('click', openConversationSidebar);
     elements.drawerOverlay.addEventListener('click', closeWorkspaceSidebar);
     window.addEventListener('resize', syncWorkspaceMode);
+    window.addEventListener('focus', resumeLocalBridgeDiscovery);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') resumeLocalBridgeDiscovery();
+    });
     const persistentElements = [
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
@@ -458,6 +474,41 @@ function isStandalonePwa() {
 
 function syncPwaInstallCard() {
     elements.pwaInstallCard.hidden = !state.pwaInstallPrompt || isStandalonePwa();
+}
+
+function isMacosEdgePwa() {
+    return detectLocalPlatform() === 'macos'
+        && isStandalonePwa()
+        && /\bEdg\//.test(navigator.userAgent || '');
+}
+
+function syncPwaImeCard() {
+    const visible = isMacosEdgePwa();
+    elements.pwaImeCard.hidden = !visible;
+    if (!visible) return;
+    let shownForVersion = '';
+    try { shownForVersion = localStorage.getItem(PWA_IME_NOTICE_STORAGE_KEY) || ''; } catch (_) { /* Ignore. */ }
+    if (shownForVersion === APP_VERSION) return;
+    try { localStorage.setItem(PWA_IME_NOTICE_STORAGE_KEY, APP_VERSION); } catch (_) { /* Ignore. */ }
+    window.setTimeout(() => {
+        showActionToast('Edge 更新后第三方输入法候选窗可能再次失效', '一劳永逸方案', () => {
+            openSettings();
+            elements.pwaImeCard.querySelector('details').open = true;
+            elements.pwaImeCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+    }, 600);
+}
+
+async function copyPwaMigrationUrl() {
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    try {
+        await navigator.clipboard.writeText(url.href);
+        showToast('地址已复制：请在 Safari 打开，再选择“文件 → 添加到程序坞”');
+    } catch (_) {
+        showToast(`请在 Safari 打开：${url.href}`, true);
+    }
 }
 
 async function installPwa() {
@@ -497,6 +548,8 @@ async function initializePwa() {
         syncPwaInstallCard();
     });
     elements.pwaInstallButton.addEventListener('click', installPwa);
+    elements.pwaImeCopyUrl.addEventListener('click', copyPwaMigrationUrl);
+    syncPwaImeCard();
 
     if (!('serviceWorker' in navigator) || !globalThis.isSecureContext) return;
     try {
@@ -675,6 +728,151 @@ function saveLocalCodexPairing() {
     } catch (_) { /* Session storage can be unavailable. */ }
 }
 
+function stopLocalBridgeDiscovery() {
+    if (state.localBridgeDiscoveryTimer) window.clearTimeout(state.localBridgeDiscoveryTimer);
+    state.localBridgeDiscoveryTimer = 0;
+    state.localBridgeDiscoveryUntil = 0;
+    state.localBridgeDiscoveryCycle = 0;
+}
+
+function base64Url(bytes) {
+    return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
+function localBridgeChallenge() {
+    return base64Url(crypto.getRandomValues(new Uint8Array(24)));
+}
+
+async function expectedLocalBridgeProof(challenge, port) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(state.localCodex.token),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        new TextEncoder().encode(`${challenge}.${port}`)
+    );
+    return base64Url(new Uint8Array(signature));
+}
+
+async function probeLocalBridgePort(port, challenge) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 650);
+    try {
+        const discoveryResponse = await fetch(`http://127.0.0.1:${port}/discover?challenge=${encodeURIComponent(challenge)}`, {
+            cache: 'no-store',
+            signal: controller.signal
+        });
+        if (!discoveryResponse.ok) return null;
+        const discovery = await discoveryResponse.json().catch(() => null);
+        if (!discovery || discovery.provider !== state.localCodex.tool) return null;
+        const expectedProof = await expectedLocalBridgeProof(challenge, port);
+        if (discovery.proof !== expectedProof) return null;
+        const response = await fetch(`http://127.0.0.1:${port}/status`, {
+            headers: { Authorization: `Bearer ${state.localCodex.token}` },
+            cache: 'no-store',
+            signal: controller.signal
+        });
+        if (!response.ok) return null;
+        const payload = await response.json().catch(() => null);
+        if (!payload || payload.provider !== state.localCodex.tool) return null;
+        return { port, payload };
+    } catch (_) {
+        return null;
+    } finally {
+        window.clearTimeout(timeout);
+    }
+}
+
+function localBridgeCandidatePort(offset) {
+    const port = state.localCodex.port + offset;
+    return port <= 65535 ? port : LOCAL_CODEX_DEFAULT_PORT + (port - 65536);
+}
+
+async function scanLocalBridgePorts(fullScan) {
+    const challenge = localBridgeChallenge();
+    const offsets = fullScan
+        ? Array.from({ length: LOCAL_BRIDGE_PORT_SCAN_LIMIT }, (_, index) => index)
+        : [0];
+    const batchSize = 25;
+    for (let index = 0; index < offsets.length; index += batchSize) {
+        const results = await Promise.all(offsets.slice(index, index + batchSize)
+            .map((offset) => probeLocalBridgePort(localBridgeCandidatePort(offset), challenge)));
+        const match = results.find(Boolean);
+        if (match) return match;
+    }
+    return null;
+}
+
+function acceptLocalBridgeDiscovery(match) {
+    state.localCodex.port = match.port;
+    elements.baseUrl.value = `http://127.0.0.1:${match.port}`;
+    saveLocalCodexPairing();
+    updateEndpointPreview();
+    const account = match.payload.account || {};
+    const accountLabel = account.planType || match.payload.version || account.type || '已连接';
+    const tool = currentLocalTool();
+    setLocalCodexStatus('success', accountLabel);
+    setConnectionState('success', `${tool?.title || match.payload.label || '本机 AI'}已连接`, '自动');
+    elements.localCodexStop.disabled = false;
+    state.localBridgeConnected = true;
+    stopLocalBridgeDiscovery();
+    showToast(`${tool?.title || match.payload.label || '本机 AI'}已自动连接；没有打开重复网页窗口`);
+}
+
+async function runLocalBridgeDiscovery() {
+    state.localBridgeDiscoveryTimer = 0;
+    if (state.localBridgeDiscoveryRunning) {
+        state.localBridgeDiscoveryTimer = window.setTimeout(runLocalBridgeDiscovery, 250);
+        return;
+    }
+    if (!state.localCodex.token || Date.now() >= state.localBridgeDiscoveryUntil) {
+        if (Date.now() >= state.localBridgeDiscoveryUntil) stopLocalBridgeDiscovery();
+        return;
+    }
+    const tool = currentLocalTool();
+    if (!tool || tool.tool !== state.localCodex.tool) return;
+    state.localBridgeDiscoveryRunning = true;
+    try {
+        const fullScan = state.localBridgeDiscoveryCycle % 5 === 0;
+        state.localBridgeDiscoveryCycle += 1;
+        const match = await scanLocalBridgePorts(fullScan);
+        if (match && state.localCodex.token && state.localBridgeDiscoveryUntil > Date.now()) {
+            acceptLocalBridgeDiscovery(match);
+            return;
+        }
+    } finally {
+        state.localBridgeDiscoveryRunning = false;
+    }
+    if (state.localBridgeDiscoveryUntil) {
+        state.localBridgeDiscoveryTimer = window.setTimeout(runLocalBridgeDiscovery, 1200);
+    }
+}
+
+function startLocalBridgeDiscovery(duration = LOCAL_BRIDGE_DISCOVERY_MS) {
+    if (!state.localCodex.token) return;
+    if (state.localBridgeDiscoveryTimer) window.clearTimeout(state.localBridgeDiscoveryTimer);
+    state.localBridgeDiscoveryUntil = Date.now() + duration;
+    state.localBridgeDiscoveryCycle = 0;
+    state.localBridgeDiscoveryTimer = window.setTimeout(runLocalBridgeDiscovery, 0);
+}
+
+function resumeLocalBridgeDiscovery() {
+    const tool = currentLocalTool();
+    if (state.localBridgeConnected || !state.localCodex.token || !tool || tool.tool !== state.localCodex.tool) return;
+    if (state.localBridgeDiscoveryUntil > Date.now()) {
+        if (!state.localBridgeDiscoveryTimer && !state.localBridgeDiscoveryRunning) {
+            state.localBridgeDiscoveryTimer = window.setTimeout(runLocalBridgeDiscovery, 0);
+        }
+        return;
+    }
+    startLocalBridgeDiscovery(30_000);
+}
+
 function setLocalCodexStatus(status, text) {
     elements.localCodexStatus.dataset.state = status;
     elements.localCodexStatus.textContent = text;
@@ -725,10 +923,11 @@ function syncLocalCodexMode(enabled) {
         elements.extraBody.value = '';
         elements.localToolTitle.textContent = tool.title;
         elements.localToolDescription.innerHTML = `${tool.description} 启动脚本只监听 <code>127.0.0.1</code>，不会把凭据交给网页。`;
-        elements.localToolNote.textContent = `脚本会检查 Node.js、${tool.cli} 和登录状态；新版启动器会停止同工具的旧桥接，端口冲突时自动换用空闲端口。`;
+        elements.localToolNote.textContent = `脚本会检查 Node.js、${tool.cli} 和登录状态；新版启动器会停止同工具的旧桥接，自动避让端口，并由当前应用直接完成连接。`;
         const paired = state.localCodex.token && state.localCodex.tool === tool.tool;
         setLocalCodexStatus(paired ? 'idle' : 'error', paired ? '等待检测' : '需要运行脚本');
         updateLocalCodexCommand();
+        resumeLocalBridgeDiscovery();
     }
 }
 
@@ -762,6 +961,7 @@ async function downloadLocalCodexLauncher() {
         const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${assetVersion}`, window.location.href);
         const returnUrl = new URL(window.location.href);
         returnUrl.search = '';
+        returnUrl.searchParams.set('source', isStandalonePwa() ? 'pwa' : 'launcher');
         returnUrl.hash = '';
         const response = await fetch(templateUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`启动脚本下载失败（HTTP ${response.status}）`);
@@ -786,11 +986,13 @@ async function downloadLocalCodexLauncher() {
         state.localCodex.token = token;
         state.localCodex.port = port;
         state.localCodex.tool = tool.tool;
+        state.localBridgeConnected = false;
         elements.baseUrl.value = `http://127.0.0.1:${port}`;
         saveLocalCodexPairing();
+        startLocalBridgeDiscovery();
         setLocalCodexStatus('idle', '脚本已下载');
         updateEndpointPreview();
-        showToast('自检启动脚本已下载，运行后页面会自动重新打开并连接');
+        showToast('自检启动脚本已下载；运行后当前页面会自动连接，不会重复开窗');
         if (state.localCodex.platform === 'macos') openMacosLauncherHelp(spec.fileName);
     } catch (error) {
         setLocalCodexStatus('error', '下载失败');
@@ -831,8 +1033,11 @@ async function testLocalCodexConnection() {
         setLocalCodexStatus('success', accountLabel);
         setConnectionState('success', `${tool.title}已连接`, `${duration} ms`);
         elements.localCodexStop.disabled = false;
+        state.localBridgeConnected = true;
+        stopLocalBridgeDiscovery();
         showToast(`${tool.title}已连接 · ${accountLabel}；桥接在后台运行，终端可以关闭`);
     } catch (error) {
+        state.localBridgeConnected = false;
         setLocalCodexStatus('error', '连接失败');
         setConnectionState('error', '连接失败', '');
         const message = error instanceof TypeError
@@ -856,6 +1061,8 @@ async function stopLocalCodexConnection() {
         try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore. */ }
         state.localCodex.token = '';
         state.localCodex.tool = '';
+        state.localBridgeConnected = false;
+        stopLocalBridgeDiscovery();
         setLocalCodexStatus('idle', '已停止');
         setConnectionState('idle', '后台连接已停止', '');
         showToast(`${tool?.title || '本地连接'}已停止`);
@@ -1058,13 +1265,17 @@ function applySettings(settings) {
 
 function clearSavedSettings() {
     try {
-        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY, HELP_INTRO_STORAGE_KEY, CONVERSATION_SIDEBAR_STORAGE_KEY]
+        [
+            SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY,
+            HELP_INTRO_STORAGE_KEY, PWA_IME_NOTICE_STORAGE_KEY, CONVERSATION_SIDEBAR_STORAGE_KEY
+        ]
             .forEach((key) => localStorage.removeItem(key));
     } catch (_) { /* Ignore storage restrictions. */ }
     try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore storage restrictions. */ }
     state.localCodex.token = '';
     state.localCodex.port = LOCAL_CODEX_DEFAULT_PORT;
     state.localCodex.tool = '';
+    state.localBridgeConnected = false;
     state.profiles = [];
     state.prompts = [];
     state.conversations = [];
@@ -1208,6 +1419,7 @@ function startNewCustomAgent() {
     elements.customAgentEditor.hidden = false;
     elements.customAgentName.value = '';
     elements.customAgentPrompt.value = elements.systemPrompt.value;
+    renderCustomAgentPreview();
     elements.customAgentDelete.disabled = true;
     elements.agentApply.disabled = !elements.customAgentPrompt.value.trim();
     renderAgentList();
@@ -1237,6 +1449,7 @@ function saveCustomAgent() {
     elements.agentApply.disabled = false;
     updateAgentCount();
     renderAgentList();
+    renderCustomAgentPreview();
     showToast(`已保存自定义智能体“${name}”`);
 }
 
@@ -1435,9 +1648,20 @@ function selectCustomAgent(agentId) {
     elements.customAgentEditor.hidden = false;
     elements.customAgentName.value = agent.name;
     elements.customAgentPrompt.value = agent.content;
+    renderCustomAgentPreview();
     elements.customAgentDelete.disabled = false;
     elements.agentApply.disabled = false;
     renderAgentList();
+}
+
+function renderCustomAgentPreview() {
+    const content = elements.customAgentPrompt.value.trim();
+    elements.customAgentPreview.classList.toggle('is-empty', !content);
+    if (!content) {
+        elements.customAgentPreview.textContent = '输入内容后会在这里自动预览。';
+        return;
+    }
+    renderMarkdown(elements.customAgentPreview, content);
 }
 
 function applySelectedAgent() {

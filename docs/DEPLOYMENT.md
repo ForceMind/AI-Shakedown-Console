@@ -67,10 +67,10 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 2 MiB 的请求体�
 
 ## 手动创建发布包
 
-正式 `v24` 包：
+正式 `v25` 包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v24.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v25.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -131,9 +131,9 @@ Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
 ### 4. 发布包
 
 ```bash
-unzip -t AI-Shakedown-Console-cf-pages-worker-v24.zip
-zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v24.zip
-shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v24.zip
+unzip -t AI-Shakedown-Console-cf-pages-worker-v25.zip
+zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v25.zip
+shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
 ```
 
 - [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`。
@@ -153,7 +153,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v24.zip
 
 ## 部署后检查
 
-1. 打开线上页面，确认左上角显示 `v24`。
+1. 打开线上页面，确认左上角显示 `v25`。
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
@@ -161,7 +161,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v24.zip
 
    ```json
    {
-     "appVersion": "v24",
+     "appVersion": "v25",
      "workerVersion": "proxy-6",
      "allowedUpstreamsConfigured": true,
      "assetsBindingConfigured": true
@@ -179,7 +179,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v24.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-浏览器存储键在 `v24` 保持不变，升级不会主动清空连接、API Key、自定义智能体或对话。
+浏览器存储键在 `v25` 保持不变，升级不会主动清空连接、API Key、自定义智能体或对话。
 
 ## 更新智能体库
 

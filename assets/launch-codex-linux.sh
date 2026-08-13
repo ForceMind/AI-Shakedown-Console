@@ -181,5 +181,6 @@ chmod 600 "$PID_FILE" 2>/dev/null || true
 trap - EXIT INT TERM
 echo ""
 echo "本地 ${CLI_LABEL} 桥接已在后台启动（PID ${BRIDGE_PID}，端口 ${BRIDGE_PORT}）。"
-echo "现在可以关闭终端。停止连接请回到网页设置，点击“停止后台连接”。"
+echo "已打开的应用会自动连接且不会重复开窗；如果应用已关闭，桥接会尝试重新打开它。"
+echo "现在可以关闭终端。停止连接请回到应用设置，点击“停止后台连接”。"
 echo "日志位置：${LOG_FILE}"

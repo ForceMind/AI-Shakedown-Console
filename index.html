@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=24">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=24">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=24">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=25">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=25">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=25">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=24">
+    <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
     <header class="app-header">
@@ -24,7 +24,7 @@
             <div>
                 <h1>AI Shakedown Console</h1>
                 <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v24</small>
+                <small class="build-version" title="当前部署版本">v25</small>
             </div>
         </div>
         <div class="runtime-context" aria-label="当前运行上下文">
@@ -154,7 +154,7 @@
                         </div>
                         <code id="local-codex-command"></code>
                     </div>
-                    <small class="local-codex-note" id="local-tool-note">脚本会检查 Node.js、对应 CLI 和登录状态；新版启动器会停止同工具的旧桥接，端口冲突时自动换用空闲端口。</small>
+                    <small class="local-codex-note" id="local-tool-note">脚本会检查 Node.js、对应 CLI 和登录状态；新版启动器会停止同工具的旧桥接，端口冲突时自动换用空闲端口，并由当前应用自动连接。</small>
                     <details class="local-codex-guide" id="local-codex-guide">
                         <summary>macOS 安装、运行与更新教程</summary>
                         <ol>
@@ -163,7 +163,7 @@
                             <li><strong>在终端运行：</strong>复制上面的完整命令，打开“终端”，按 <code>⌘ + V</code> 粘贴，再按 <code>Enter</code>。请不要双击 <code>.command</code>；通过 <code>bash</code> 运行不需要修改文件执行权限。</li>
                             <li><strong>找不到下载文件：</strong>在终端输入 <code>bash</code> 和一个空格，把刚下载的文件从“访达 → 下载”拖进终端，再按 <code>Enter</code>。此方法也适用于文件名带 <code>(1)</code> 或空格的情况。</li>
                             <li><strong>允许访问下载目录：</strong>若 macOS 询问权限，只需允许“终端”访问“下载”文件夹；不需要开启完整磁盘访问。</li>
-                            <li><strong>连接与端口：</strong>脚本自检通过后会把桥接转入后台并自动打开网页，终端可以直接关闭。如果预选端口被其他服务占用，会寻找下一个空闲端口并把实际端口传回网页。</li>
+                            <li><strong>连接与端口：</strong>脚本自检通过后会把桥接转入后台，当前 PWA 自动发现实际端口并连接，不会再弹出重复网页窗口。只有应用已关闭时，脚本才会尝试唤起已安装的 PWA；找不到 PWA 时才回退到默认浏览器。</li>
                             <li><strong>停止或升级：</strong>网页点击“停止后台连接”即可停止；升级时直接运行新下载的脚本，旧桥接会自动退出并被新版替换。</li>
                         </ol>
                         <p>启动器只做检查和连接，不会静默安装软件。缺少环境时会显示具体缺少项和安装入口。</p>
@@ -275,6 +275,26 @@
                     </div>
                     <button class="secondary-button compact" id="pwa-install-button" type="button">
                         <i class="bi bi-download"></i><span>安装</span>
+                    </button>
+                </section>
+
+                <section class="pwa-ime-card" id="pwa-ime-card" aria-label="macOS 中文输入法稳定方案" hidden>
+                    <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-keyboard"></i></span>
+                    <div>
+                        <strong>macOS 中文输入法稳定方案</strong>
+                        <small>Edge 更新会重建 Chromium App Shim，第三方输入法候选窗可能再次失效。长期使用请改由 Safari 打开本站，并选择“文件 → 添加到程序坞”。</small>
+                        <details>
+                            <summary>查看一次性迁移步骤</summary>
+                            <ol>
+                                <li>点击右侧“复制地址”。</li>
+                                <li>打开 Safari，粘贴地址并访问。</li>
+                                <li>选择“文件 → 添加到程序坞”。以后从新图标启动。</li>
+                            </ol>
+                            <p>这是独立的 Safari Web App，不依赖 Edge App Shim；Edge 更新不会再破坏它的输入上下文。</p>
+                        </details>
+                    </div>
+                    <button class="secondary-button compact" id="pwa-ime-copy-url" type="button">
+                        <i class="bi bi-copy"></i><span>复制地址</span>
                     </button>
                 </section>
 
@@ -490,8 +510,14 @@
                     </div>
                     <div class="custom-agent-editor" id="custom-agent-editor" hidden>
                         <label class="field"><span>智能体名称</span><input id="custom-agent-name" type="text" maxlength="40" placeholder="例如：我的写作助手"></label>
-                        <label class="field"><span>System 定义</span><textarea id="custom-agent-prompt" rows="14" placeholder="填写这个智能体的身份、目标、工作方式和边界"></textarea></label>
-                        <p>原“自定义提示词库”的内容已自动迁移到这里。自定义智能体只保存在当前浏览器。</p>
+                        <div class="custom-agent-compose">
+                            <label class="field"><span>System 定义（Markdown）</span><textarea id="custom-agent-prompt" rows="14" placeholder="# 身份&#10;&#10;填写这个智能体的身份、目标、工作方式和边界"></textarea></label>
+                            <section class="custom-agent-preview-shell" aria-label="Markdown 实时预览">
+                                <div class="custom-agent-preview-heading"><span>Markdown 实时预览</span><small>已安全清洗</small></div>
+                                <div class="custom-agent-preview markdown-content" id="custom-agent-preview"><p>输入内容后会在这里自动预览。</p></div>
+                            </section>
+                        </div>
+                        <p>原“自定义提示词库”的内容已自动迁移到这里。Markdown 会自动识别、预览，并以原文作为 System 定义保存；自定义智能体只保存在当前浏览器。</p>
                     </div>
                 </article>
             </div>
@@ -581,7 +607,7 @@
                             <li>点击上面的“复制运行命令”。</li>
                             <li>切换到刚打开的“终端”，按 <kbd>⌘ + V</kbd> 粘贴。</li>
                             <li>确认终端里显示的是上面这条完整命令，然后按 <kbd>Enter</kbd> 执行。</li>
-                            <li>等待终端显示“本地桥接已启动”；脚本随后会自动打开已连接的网页。</li>
+                            <li>等待终端显示“本地桥接已启动”；当前应用会自动连接，不会再弹出重复网页。</li>
                         </ol>
                     </div>
                 </section>
@@ -589,7 +615,7 @@
                     <span class="macos-launch-step-number">3</span>
                     <div>
                         <h3>终端可以关闭</h3>
-                        <p>脚本完成环境自检后会把桥接转入后台并重新打开网页。看到连接成功后可以关闭终端；需要停止时回到网页设置，点击“停止后台连接”。</p>
+                        <p>脚本完成环境自检后会把桥接转入后台。当前应用会自动连接；只有应用已关闭时才会重新唤起它。看到连接成功后可以关闭终端，需要停止时回到应用设置点击“停止后台连接”。</p>
                     </div>
                 </section>
 
@@ -662,7 +688,7 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，均可应用到当前对话。</p>
+                            <p>“新对话”可并行保留多个会话；超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，自定义 System 支持 Markdown 实时预览。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -690,7 +716,7 @@
                         <i class="bi bi-window-plus" aria-hidden="true"></i>
                         <div>
                             <h3>安装与离线</h3>
-                            <p>支持的浏览器会在设置中显示“安装”按钮。安装后可用独立窗口打开，离线时仍能查看页面和本地数据；远程模型调用仍需联网。</p>
+                            <p>支持的浏览器会在设置中显示“安装”按钮。macOS 使用第三方中文输入法时，推荐从 Safari 选择“文件 → 添加到程序坞”，避免 Edge 更新后候选窗失效。</p>
                         </div>
                     </section>
                 </div>
@@ -706,6 +732,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=24"></script>
+    <script type="module" src="script.js?v=25"></script>
 </body>
 </html>

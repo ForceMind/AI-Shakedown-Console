@@ -4,7 +4,7 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v24" src="https://img.shields.io/badge/version-v24-11795a?style=flat-square">
+    <img alt="Version v25" src="https://img.shields.io/badge/version-v25-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
     <img alt="No build step" src="https://img.shields.io/badge/build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
@@ -22,7 +22,7 @@
 
 AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode。
 
-`v24` 是正式收尾版本：功能、PWA、发布流程和文档体系已经稳定，后续以维护、安全更新和兼容性修复为主。
+`v25` 是当前稳定版本：本机桥接不再重复开窗，自定义智能体支持 Markdown 实时预览，并为 macOS 第三方输入法提供不依赖 Edge App Shim 的长期安装方案。
 
 ## 为什么使用它
 
@@ -51,9 +51,9 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 
 - **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数。
 - **专注聊天**：连接成功后隐藏配置和检查器；对话超过 4 个后自动切换为持久化左侧列表。
-- **智能体库**：内置与自定义智能体统一管理，每个对话独立保存 System Prompt 和当前角色。
+- **智能体库**：内置与自定义智能体统一管理；自定义 System 支持安全 Markdown 实时预览，每个对话独立保存当前角色。
 - **本地记录导入**：支持 Codex、Gemini CLI、Claude Code 及通用 JSON/JSONL 文件，可继续使用当前模型对话。
-- **本机 CLI 桥接**：启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台。
+- **本机 CLI 桥接**：启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；当前 PWA 自动连接，不重复打开网页。
 - **安全 Markdown**：使用 Marked 解析 GitHub Flavored Markdown，再由 DOMPurify 清洗后显示。
 - **PWA 与离线外壳**：可安装到桌面或主屏幕；离线时仍能打开页面和查看浏览器本地数据。
 - **Cloudflare Pages Worker**：同域代理只允许访问 `ALLOWED_UPSTREAMS` 白名单，避免成为开放代理。
@@ -145,7 +145,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v24` 已完成计划中的网页版本：多协议连接、本机登录工具、多对话、智能体、导入、完整帮助、PWA、后台桥接、中文输入兼容和可重复发布流程均已落地。
+`v25` 已完成计划中的网页版本：多协议连接、本机登录工具、多对话、智能体、导入、完整帮助、PWA、后台桥接、中文输入兼容和可重复发布流程均已落地。
 
 暂不纳入本版本的方向包括：加密的整站导出/导入、跨设备同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 
