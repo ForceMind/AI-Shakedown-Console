@@ -7,7 +7,7 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
@@ -179,6 +179,9 @@ const elements = {
     helpEnvironmentLabel: $('help-environment-label'), helpSendShortcut: $('help-send-shortcut'),
     helpNewlineShortcut: $('help-newline-shortcut'), helpNewlineNote: $('help-newline-note'),
     helpPlatformNote: $('help-platform-note'),
+    macosLaunchHelpModal: $('macos-launch-help-modal'), macosLaunchHelpClose: $('macos-launch-help-close'),
+    macosLaunchHelpConfirm: $('macos-launch-help-confirm'), macosLaunchHelpFile: $('macos-launch-help-file'),
+    macosLaunchHelpCommand: $('macos-launch-help-command'), macosLaunchHelpCopy: $('macos-launch-help-copy'),
     testButton: $('test-connection'), loadModelsButton: $('load-models'), stopButton: $('stop-request'),
     chatWindow: $('chat-window'), emptyState: $('empty-state'), emptyEndpoint: $('empty-endpoint'),
     activeModelTitle: $('active-model-title'), connectionState: $('connection-state'),
@@ -187,6 +190,8 @@ const elements = {
     inputTokens: $('total-input-tokens'), outputTokens: $('total-output-tokens'), totalRequests: $('total-requests'),
     totalCost: $('total-cost'), inputPrice: $('input-price'), outputPrice: $('output-price'), costLimit: $('cost-limit'),
     settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
+    settingsToggle: $('settings-toggle'), settingsToggleIcon: $('settings-toggle-icon'),
+    settingsToggleLabel: $('settings-toggle-label'), settingsInspector: $('settings-inspector'),
     clearSavedSettings: $('clear-saved-settings'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
@@ -227,6 +232,7 @@ const state = {
     agentReturnFocus: null,
     localSessionReturnFocus: null,
     helpReturnFocus: null,
+    macosLaunchHelpReturnFocus: null,
     localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     controller: null,
     busy: false,
@@ -261,6 +267,7 @@ function initialize() {
     updateUsageDisplay();
     renderHelpEnvironment();
     maybeShowHelpIntro();
+    syncWorkspaceMode();
 }
 
 function bindEvents() {
@@ -331,6 +338,12 @@ function bindEvents() {
     elements.helpModal.addEventListener('click', (event) => {
         if (event.target === elements.helpModal) closeHelp();
     });
+    elements.macosLaunchHelpClose.addEventListener('click', closeMacosLauncherHelp);
+    elements.macosLaunchHelpConfirm.addEventListener('click', closeMacosLauncherHelp);
+    elements.macosLaunchHelpCopy.addEventListener('click', copyMacosLauncherCommand);
+    elements.macosLaunchHelpModal.addEventListener('click', (event) => {
+        if (event.target === elements.macosLaunchHelpModal) closeMacosLauncherHelp();
+    });
     elements.localCodexPlatform.addEventListener('change', () => {
         state.localCodex.platform = elements.localCodexPlatform.value;
         updateLocalCodexCommand();
@@ -366,9 +379,10 @@ function bindEvents() {
         }
     });
 
-    $('settings-toggle').addEventListener('click', openSettings);
+    elements.settingsToggle.addEventListener('click', toggleSettings);
     $('settings-close').addEventListener('click', closeSettings);
     elements.drawerOverlay.addEventListener('click', closeSettings);
+    window.addEventListener('resize', syncWorkspaceMode);
     const persistentElements = [
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
@@ -391,7 +405,8 @@ function bindEvents() {
     });
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
-        if (!elements.helpModal.hidden) closeHelp();
+        if (!elements.macosLaunchHelpModal.hidden) closeMacosLauncherHelp();
+        else if (!elements.helpModal.hidden) closeHelp();
         else if (!elements.localSessionModal.hidden) closeLocalSessionImport();
         else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
         else closeSettings();
@@ -477,6 +492,32 @@ function closeHelp() {
     if (state.helpReturnFocus?.focus) state.helpReturnFocus.focus();
     else elements.messageInput.focus();
     state.helpReturnFocus = null;
+}
+
+function openMacosLauncherHelp(fileName) {
+    elements.macosLaunchHelpFile.textContent = fileName;
+    elements.macosLaunchHelpCommand.textContent = elements.localCodexCommand.textContent;
+    state.macosLaunchHelpReturnFocus = document.activeElement;
+    elements.macosLaunchHelpModal.hidden = false;
+    document.body.classList.add('modal-open');
+    window.requestAnimationFrame(() => elements.macosLaunchHelpCopy.focus({ preventScroll: true }));
+}
+
+function closeMacosLauncherHelp() {
+    if (elements.macosLaunchHelpModal.hidden) return;
+    elements.macosLaunchHelpModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.macosLaunchHelpReturnFocus?.focus) state.macosLaunchHelpReturnFocus.focus();
+    state.macosLaunchHelpReturnFocus = null;
+}
+
+async function copyMacosLauncherCommand() {
+    try {
+        await navigator.clipboard.writeText(elements.macosLaunchHelpCommand.textContent);
+        showToast('macOS 运行命令已复制，请粘贴到终端并按回车');
+    } catch (_) {
+        showToast('无法自动复制，请手动选择命令', true);
+    }
 }
 
 function detectLocalPlatform() {
@@ -644,6 +685,7 @@ async function downloadLocalCodexLauncher() {
         setLocalCodexStatus('idle', '脚本已下载');
         updateEndpointPreview();
         showToast(`${APP_VERSION} 自检启动脚本已下载，运行后页面会自动重新打开并连接`);
+        if (state.localCodex.platform === 'macos') openMacosLauncherHelp(spec.fileName);
     } catch (error) {
         setLocalCodexStatus('error', '下载失败');
         showToast(error.message, true);
@@ -2456,9 +2498,16 @@ function syncControls() {
 }
 
 function setConnectionState(status, text, latency) {
+    const previousStatus = elements.connectionState.dataset.state;
     elements.connectionState.dataset.state = status;
     elements.connectionStateText.textContent = text;
     elements.latencyText.textContent = latency;
+    if (status === 'success' && previousStatus !== 'success') {
+        closeSettings();
+    } else if (status === 'error') {
+        elements.settingsInspector.open = true;
+        openSettings();
+    }
 }
 
 function setInspectorTab(tab) {
@@ -2504,14 +2553,42 @@ function scrollChatToBottom() {
     elements.chatWindow.scrollTop = elements.chatWindow.scrollHeight;
 }
 
+function isMobileWorkspace() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 780px)').matches;
+}
+
+function settingsAreVisible() {
+    return isMobileWorkspace()
+        ? elements.settingsPanel.classList.contains('is-open')
+        : !document.body.classList.contains('chat-focused');
+}
+
+function syncWorkspaceMode() {
+    const settingsVisible = settingsAreVisible();
+    elements.settingsToggle.setAttribute('aria-expanded', String(settingsVisible));
+    elements.settingsToggle.setAttribute('aria-label', settingsVisible ? '切换到专注聊天' : '打开设置');
+    elements.settingsToggle.title = settingsVisible ? '切换到专注聊天' : '打开设置';
+    elements.settingsToggleLabel.textContent = settingsVisible ? '聊天' : '设置';
+    elements.settingsToggleIcon.className = settingsVisible ? 'bi bi-chat-left-text' : 'bi bi-sliders';
+}
+
+function toggleSettings() {
+    if (settingsAreVisible()) closeSettings();
+    else openSettings();
+}
+
 function openSettings() {
+    document.body.classList.remove('chat-focused');
     elements.settingsPanel.classList.add('is-open');
     elements.drawerOverlay.classList.add('is-open');
+    syncWorkspaceMode();
 }
 
 function closeSettings() {
+    document.body.classList.add('chat-focused');
     elements.settingsPanel.classList.remove('is-open');
     elements.drawerOverlay.classList.remove('is-open');
+    syncWorkspaceMode();
 }
 
 try {

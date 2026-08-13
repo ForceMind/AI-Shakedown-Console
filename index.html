@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=19">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=20">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=19">
+    <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
     <header class="app-header">
@@ -43,8 +43,9 @@
                 <span id="connection-state-text">尚未检查</span>
                 <span id="latency-text"></span>
             </div>
-            <button class="icon-button mobile-only" id="settings-toggle" type="button" title="连接设置" aria-label="打开连接设置">
-                <i class="bi bi-sliders"></i>
+            <button class="workspace-toggle-button" id="settings-toggle" type="button" title="切换工作区" aria-label="切换到专注聊天" aria-expanded="true">
+                <i class="bi bi-chat-left-text" id="settings-toggle-icon"></i>
+                <span id="settings-toggle-label">聊天</span>
             </button>
         </div>
     </header>
@@ -56,7 +57,7 @@
                     <span class="eyebrow">CONNECTION</span>
                     <h2>连接配置</h2>
                 </div>
-                <button class="icon-button mobile-only" id="settings-close" type="button" title="关闭设置" aria-label="关闭连接设置">
+                <button class="icon-button" id="settings-close" type="button" title="返回专注聊天" aria-label="关闭设置并返回专注聊天">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -128,7 +129,8 @@
                         <ol>
                             <li><strong>准备环境：</strong>先安装并登录所选 CLI。Codex 可按 <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noopener noreferrer">OpenAI 官方 Codex CLI 教程</a>安装，运行 <code>codex</code> 完成登录。启动器会优先使用系统 Node.js 18+，也会自动查找 Codex 桌面版自带的 Node。</li>
                             <li><strong>下载脚本：</strong>点击“下载自检启动脚本”。每个版本使用独立文件名，更新时直接下载新版即可。</li>
-                            <li><strong>在终端运行：</strong>复制上面的命令并粘贴到“终端”。请不要双击 <code>.command</code>；通过 <code>bash</code> 运行不需要修改文件执行权限。</li>
+                            <li><strong>在终端运行：</strong>复制上面的完整命令，打开“终端”，按 <code>⌘ + V</code> 粘贴，再按 <code>Enter</code>。请不要双击 <code>.command</code>；通过 <code>bash</code> 运行不需要修改文件执行权限。</li>
+                            <li><strong>找不到下载文件：</strong>在终端输入 <code>bash</code> 和一个空格，把刚下载的文件从“访达 → 下载”拖进终端，再按 <code>Enter</code>。此方法也适用于文件名带 <code>(1)</code> 或空格的情况。</li>
                             <li><strong>允许访问下载目录：</strong>若 macOS 询问权限，只需允许“终端”访问“下载”文件夹；不需要开启完整磁盘访问。</li>
                             <li><strong>连接与端口：</strong>脚本自检通过后会自动打开网页。它会停止同一工具的旧桥接；如果预选端口被其他服务占用，会寻找下一个空闲端口并把实际端口传回网页。</li>
                             <li><strong>停止或升级：</strong>在桥接终端按 <code>Control + C</code> 即可停止。升级时直接运行新下载的脚本，旧桥接会自动退出。</li>
@@ -297,6 +299,35 @@
                 <label class="field"><span>输出价 / 百万 Token</span><input id="output-price" type="number" min="0" step="0.01" value="0"></label>
                 <label class="field span-two"><span>费用上限</span><input id="cost-limit" type="number" min="0" step="0.01" placeholder="0 表示不限"></label>
             </div>
+
+            <details class="settings-inspector" id="settings-inspector">
+                <summary>
+                    <span><i class="bi bi-braces"></i>请求检查器</span>
+                    <small>请求、响应与事件</small>
+                </summary>
+                <div class="settings-inspector-body">
+                    <div class="inspector-heading">
+                        <div>
+                            <span class="eyebrow">INSPECTOR</span>
+                            <h2>请求详情</h2>
+                        </div>
+                        <button class="icon-button small" id="copy-inspector" type="button" title="复制当前内容" aria-label="复制当前检查器内容">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                    </div>
+                    <div class="segmented-control" role="tablist" aria-label="检查器内容">
+                        <button type="button" class="active" data-inspector-tab="request" role="tab" aria-selected="true">请求</button>
+                        <button type="button" data-inspector-tab="response" role="tab" aria-selected="false">响应</button>
+                        <button type="button" data-inspector-tab="events" role="tab" aria-selected="false">事件</button>
+                    </div>
+                    <pre class="inspector-content" id="inspector-content">尚无请求</pre>
+                    <div class="inspector-meta">
+                        <div><span>HTTP</span><strong id="http-status">-</strong></div>
+                        <div><span>耗时</span><strong id="request-duration">-</strong></div>
+                        <div><span>协议</span><strong id="request-protocol">-</strong></div>
+                    </div>
+                </div>
+            </details>
         </aside>
 
         <section class="chat-panel" aria-label="模型对话">
@@ -378,28 +409,6 @@
             </form>
         </section>
 
-        <aside class="inspector-panel" aria-label="请求检查器">
-            <div class="inspector-heading">
-                <div>
-                    <span class="eyebrow">INSPECTOR</span>
-                    <h2>请求检查器</h2>
-                </div>
-                <button class="icon-button small" id="copy-inspector" type="button" title="复制当前内容" aria-label="复制当前检查器内容">
-                    <i class="bi bi-copy"></i>
-                </button>
-            </div>
-            <div class="segmented-control" role="tablist" aria-label="检查器内容">
-                <button type="button" class="active" data-inspector-tab="request" role="tab" aria-selected="true">请求</button>
-                <button type="button" data-inspector-tab="response" role="tab" aria-selected="false">响应</button>
-                <button type="button" data-inspector-tab="events" role="tab" aria-selected="false">事件</button>
-            </div>
-            <pre class="inspector-content" id="inspector-content">尚无请求</pre>
-            <div class="inspector-meta">
-                <div><span>HTTP</span><strong id="http-status">-</strong></div>
-                <div><span>耗时</span><strong id="request-duration">-</strong></div>
-                <div><span>协议</span><strong id="request-protocol">-</strong></div>
-            </div>
-        </aside>
     </main>
 
     <div class="modal-backdrop" id="agent-library-modal" hidden>
@@ -487,6 +496,77 @@
         </section>
     </div>
 
+    <div class="modal-backdrop" id="macos-launch-help-modal" hidden>
+        <section class="macos-launch-help-modal" role="dialog" aria-modal="true" aria-labelledby="macos-launch-help-title" aria-describedby="macos-launch-help-intro">
+            <header class="help-header">
+                <div>
+                    <span class="eyebrow">MACOS · DOWNLOAD COMPLETE</span>
+                    <h2 id="macos-launch-help-title">脚本已下载，接下来这样运行</h2>
+                </div>
+                <button class="icon-button" id="macos-launch-help-close" type="button" title="关闭教程" aria-label="关闭 macOS 运行教程">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="macos-launch-help-body">
+                <div class="macos-download-success" id="macos-launch-help-intro">
+                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                    <div>
+                        <strong>下载已经开始</strong>
+                        <code id="macos-launch-help-file"></code>
+                    </div>
+                </div>
+
+                <section class="macos-launch-step">
+                    <span class="macos-launch-step-number">1</span>
+                    <div>
+                        <h3>打开“终端”</h3>
+                        <p>按 <kbd>⌘ + 空格</kbd>，搜索“终端”并打开。</p>
+                    </div>
+                </section>
+                <section class="macos-launch-step macos-launch-step-primary">
+                    <span class="macos-launch-step-number">2</span>
+                    <div>
+                        <h3>复制并运行下面的命令</h3>
+                        <p><strong>不要直接双击 .command 文件。</strong>使用 <code>bash</code> 运行不需要可执行权限，可以避开“没有正确的访问权限”提示。</p>
+                        <div class="macos-launch-command">
+                            <code id="macos-launch-help-command"></code>
+                            <button class="secondary-button" id="macos-launch-help-copy" type="button">
+                                <i class="bi bi-copy"></i><span>复制运行命令</span>
+                            </button>
+                        </div>
+                        <ol class="macos-launch-actions-list">
+                            <li>点击上面的“复制运行命令”。</li>
+                            <li>切换到刚打开的“终端”，按 <kbd>⌘ + V</kbd> 粘贴。</li>
+                            <li>确认终端里显示的是上面这条完整命令，然后按 <kbd>Enter</kbd> 执行。</li>
+                            <li>等待终端显示“本地桥接已启动”；脚本随后会自动打开已连接的网页。</li>
+                        </ol>
+                    </div>
+                </section>
+                <section class="macos-launch-step">
+                    <span class="macos-launch-step-number">3</span>
+                    <div>
+                        <h3>保持终端开启</h3>
+                        <p>脚本完成环境自检后会重新打开网页。终端保持开启时，本地桥接才会继续运行；需要停止时按 <kbd>Control + C</kbd>。</p>
+                    </div>
+                </section>
+
+                <details class="macos-launch-troubleshooting">
+                    <summary>仍然打不开？查看权限与文件名处理</summary>
+                    <div>
+                        <p><strong>提示“没有那个文件或目录”，或文件名带有“(1)”、空格：</strong>在终端先输入 <code>bash</code> 和一个空格，再把刚下载的文件从“访达 → 下载”直接拖进终端，最后按 <kbd>Enter</kbd>。</p>
+                        <p><strong>确实想双击运行：</strong>在终端输入 <code>chmod +x</code> 和一个空格，把文件拖进终端并按回车；然后在“访达”中右键文件，选择“打开”。</p>
+                        <p><strong>提示无法验证开发者：</strong>打开“系统设置 → 隐私与安全性”，找到被拦截的脚本并点击“仍要打开”。</p>
+                        <p><strong>终端无法读取下载目录：</strong>到“系统设置 → 隐私与安全性 → 文件与文件夹 → 终端”，允许访问“下载”文件夹，不需要开启完整磁盘访问。</p>
+                    </div>
+                </details>
+            </div>
+            <footer class="help-footer">
+                <span>此教程会在 macOS 每次下载脚本后自动显示</span>
+                <button class="primary-button" id="macos-launch-help-confirm" type="button">我知道了</button>
+            </footer>
+        </section>
+    </div>
+
     <div class="modal-backdrop" id="help-modal" hidden>
         <section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-describedby="help-intro">
             <header class="help-header">
@@ -532,7 +612,7 @@
                         <i class="bi bi-chat-square-text" aria-hidden="true"></i>
                         <div>
                             <h3>开始对话</h3>
-                            <p>先选择服务商和模型。API 服务填写地址与密钥；本机登录工具下载并运行自检脚本，再点击“检测连接”和“读取”模型。</p>
+                            <p>先选择服务商和模型。API 服务填写地址与密钥；本机登录工具下载并运行自检脚本，再点击“检测连接”和“读取”模型。连接成功后页面会自动收起设置，进入专注聊天。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -543,10 +623,17 @@
                         </div>
                     </section>
                     <section class="help-topic">
+                        <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+                        <div>
+                            <h3>专注聊天</h3>
+                            <p>连接成功后设置会自动收起。点击页头“设置”可让聊天区收窄并重新显示连接、参数、用量和请求检查器；点击“聊天”返回全宽对话。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
                         <i class="bi bi-wrench-adjustable-circle" aria-hidden="true"></i>
                         <div>
                             <h3>连接排查</h3>
-                            <p>先用“检查连接”或本机工具的“检测连接”。失败时查看右侧请求检查器；本机桥接还应确认启动终端仍保持开启。</p>
+                            <p>先用“检查连接”或本机工具的“检测连接”。失败时页面会自动打开设置并展开“请求检查器”；本机桥接还应确认启动终端仍保持开启。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -567,9 +654,9 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v19</div>
+    <div class="build-version" title="当前部署版本">v20</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=19"></script>
+    <script type="module" src="script.js?v=20"></script>
 </body>
 </html>

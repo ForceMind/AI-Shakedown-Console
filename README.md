@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v19` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v20` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -11,7 +11,8 @@
 - 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
 - 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
 - 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应自检启动脚本后即可检测工具、读取模型并直接对话。启动器会检查 Node.js、CLI 和登录状态，停止同工具旧桥接；端口冲突时自动寻找空闲端口，并优先复用系统或 Codex 桌面版自带的 Node 运行时。
-- 内置完整网页帮助：首次访问识别桌面或触摸环境并显示一次发送/换行说明；关闭后可通过消息输入框右上角的 `?` 随时重新打开。
+- 内置完整网页帮助：首次访问识别桌面或触摸环境并显示一次发送/换行说明；关闭后可通过消息输入框右上角的 `?` 随时重新打开。macOS 下载启动脚本后还会立即弹出运行教程，主动说明权限、文件名和隐私安全放行方法。
+- 连接成功后自动进入专注聊天：隐藏连接配置与请求检查器，只保留对话列表、聊天、智能体、提示词和 System 设置；点击页头“设置”后聊天区自动收窄，连接、参数、用量与请求检查器在同一面板中恢复。连接或请求失败时会自动返回设置并展开检查器。
 - 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
@@ -21,7 +22,7 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 
 ## 网页帮助与快捷键
 
-首次在当前站点打开 `v19` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与角色、连接排查以及数据隐私说明。
+首次在当前站点打开 `v20` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与角色、连接排查以及数据隐私说明。
 
 桌面键盘快捷键：
 
@@ -31,6 +32,19 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 - 输入法正在组词时不会触发快捷发送，避免误提交未完成的中文输入。
 
 触摸设备会显示“点击发送按钮”和系统键盘的 `Return / Enter` 换行提示；连接外接键盘后仍可使用对应系统的组合键发送。首次帮助状态保存在 `ai-shakedown-console.help-intro.v1`，点击“清除全部本地数据”或清除站点数据后会再次显示。
+
+## 专注聊天工作流
+
+页面把连接准备和日常聊天分成两个自动切换的状态：
+
+1. 首次进入或更换服务商时，左侧设置面板保持显示，用于配置连接、模型、生成参数和费用。
+2. 点击“检查连接”或本机工具的“检测连接”。连接成功后，设置面板会自动收起，聊天区扩展到整个工作区。
+3. 专注聊天状态只保留当前服务与模型、对话列表、导入记录、新对话、智能体角色、提示词、System 内容、消息输入和发送操作。
+4. 需要调整连接或查看底层请求时，点击页头“设置”。桌面端聊天区会自动收窄并恢复设置面板；移动端会从左侧打开设置抽屉。
+5. 请求检查器已经合并到设置底部，可按需展开查看请求、响应、流式事件、HTTP 状态和耗时。
+6. 连接或实际请求失败时，页面会自动返回设置并展开请求检查器；修复后重新检测或发送成功，即可再次进入专注聊天。
+
+设置面板顶部的关闭按钮和页头“聊天”按钮都可以手动返回专注聊天，即使尚未检测连接也可以先收起设置。
 
 ## 协议和预设
 
@@ -70,14 +84,14 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 macOS 从下载到连接：
 
 1. 在“服务商预设”选择所需的“本机登录”工具，系统选择 `macOS`。
-2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v19 为 `ai-shakedown-codex-macos-v19.command`，因此新版不会覆盖旧版文件。
-3. 打开“终端”，复制网页给出的命令运行：
+2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v20 为 `ai-shakedown-codex-macos-v20.command`，因此新版不会覆盖旧版文件。下载开始后，页面会自动弹出专用的 macOS 运行教程。
+3. 在弹窗中点击“复制运行命令”，打开“终端”，按 `⌘ + V` 粘贴，再按 `Enter` 执行：
 
    ```bash
-   bash "$HOME/Downloads/ai-shakedown-codex-macos-v19.command"
+   bash "$HOME/Downloads/ai-shakedown-codex-macos-v20.command"
    ```
 
-   不要双击 `.command` 文件。通过 `bash` 读取脚本不依赖可执行权限，因此不需要 `chmod +x`。
+   不要直接双击 `.command` 文件。通过 `bash` 读取脚本不依赖可执行权限，因此不会触发“没有正确的访问权限”，也不需要 `chmod +x`。如果浏览器为重复下载的文件增加了 `(1)`、空格或其他后缀，可在终端输入 `bash `，把刚下载的文件拖进终端，再按回车。
 4. 如果 macOS 弹出“终端想要访问下载文件夹”，选择允许。若此前拒绝，可到“系统设置 → 隐私与安全性 → 文件与文件夹 → 终端”开启“下载”访问；不需要开启完整磁盘访问。
 5. 自检通过后脚本会启动仅监听 `127.0.0.1` 的桥接，并用实际端口重新打开网页。回到页面点击“检测连接”或“读取”模型即可。
 
@@ -132,10 +146,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v19` 部署包：
+在项目根目录生成 `v20` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v19.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v20.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -162,7 +176,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v19",
+  "appVersion": "v20",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -171,14 +185,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v19`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v19`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=19`](https://ai-shakedown-console.pages.dev/?v=19) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v20`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v20`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=20`](https://ai-shakedown-console.pages.dev/?v=20) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v19` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v19` 查询参数，避免新旧界面资源混用。
+- `v20` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v20` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -216,7 +230,7 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v19` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v20` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。
