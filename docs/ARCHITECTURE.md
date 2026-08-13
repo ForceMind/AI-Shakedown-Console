@@ -114,6 +114,18 @@ Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
+#### macOS App Shim 与输入法边界
+
+Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shim。它负责作为 macOS 应用启动，再连接对应浏览器框架；因此“普通标签页”和“已安装 PWA”拥有不同的原生应用身份、进程与文本输入上下文。
+
+输入法候选窗属于 macOS 原生 UI，不由 DOM 或 Service Worker 绘制。页面只能在输入法开始组合后接收 `compositionstart`、`compositionupdate`、`compositionend` 等事件：
+
+- 候选窗已经出现，但 `Enter` 被误当成发送，属于前端组合事件处理范围；
+- 拼音按键已输入，但候选窗完全不出现，首先属于 App Shim、macOS 文本服务或输入法的原生边界；
+- 重新安装 PWA 会重建 App Shim、应用登记和文本输入上下文，但不等同于发布新的网页资源。
+
+这个边界用于避免把原生候选窗故障误判为缓存问题并反复提高网页版本。详细恢复流程见 [故障排查](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
+
 ## 协议适配
 
 前端把统一的内部消息结构映射到三类请求：

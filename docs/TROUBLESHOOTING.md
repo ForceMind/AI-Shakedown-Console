@@ -2,19 +2,45 @@
 
 先找到页面或终端中最接近的现象，再按顺序操作。不要为了解决单个问题关闭系统安全功能或结束无法确认归属的进程。
 
-## 中文无法输入或候选词被打断
+## 中文输入与候选词
 
-`v23` 起已修复 macOS/Safari 输入法组合事件：页面独立跟踪 `compositionstart` / `compositionend`，并兼容 `keyCode 229`。
+先根据现象选择对应处理方法。这两类故障发生在不同层，不能用同一种方式处理。
 
-排查步骤：
+### 候选词出现，但确认时被打断或发送
+
+这是网页组合事件问题。`v23` 起页面独立跟踪 `compositionstart` / `compositionend`，并兼容 `keyCode 229`：
 
 1. 确认页面左上角显示 `v24` 或更高版本。
 2. 已安装 PWA 时，留意“发现新版本”提示并点击“立即刷新”。
 3. 仍显示旧版本时访问 `/?v=24`，再强制刷新。
-4. 在消息框输入中文并完成候选词选择；普通 `Enter` 应换行，不会发送。
+4. 在消息框完成候选词选择；普通 `Enter` 应换行，不会发送。
 5. 只有 `⌘ + Enter`（macOS）或 `Ctrl + Enter`（Windows/Linux）才发送。
 
-如果直接输入中文仍完全没有内容，请暂时关闭会改写网页输入框的浏览器扩展，并在普通浏览器窗口重试。
+如果普通浏览器窗口中也会复现，暂时关闭会改写输入框的扩展后再试。
+
+### Edge PWA 输入拼音但没有候选窗
+
+如果按键和拼音已经进入输入框，但系统候选窗完全不出现，这通常不是网页、Service Worker 或缓存中的 JavaScript 故障。
+
+macOS 上由 Edge/Chrome 安装的 PWA 会通过单独生成的原生 App Shim 运行。候选窗由 macOS 输入法和当前原生文本输入上下文绘制，网页只能接收组合事件，不能命令系统显示候选窗。第三方输入法、浏览器更新或 PWA 进程生命周期可能使 App Shim 的输入上下文失效；此时普通 Edge 标签页可以正常输入，只有已安装的 PWA 没有候选窗。
+
+按以下顺序恢复：
+
+1. 完全退出 AI Shakedown Console PWA，并完全退出 Edge，再重新打开验证。
+2. 在 macOS 输入法菜单临时切换到系统自带“简体拼音”。如果系统拼音正常而第三方输入法异常，优先更新或重启第三方输入法。
+3. 打开 `edge://apps`，卸载 AI Shakedown Console。**不要选择清除浏览数据/站点数据的选项**。
+4. 完全退出并重新启动 Edge，再从线上站点安装 PWA。
+5. 如果仍未恢复，更新 Edge 和输入法；临时使用普通浏览器标签页，或改用 Chrome/Safari 安装的应用。
+
+不清除浏览数据时，当前站点的配置和对话通常会保留；清除站点数据会删除浏览器内保存的内容。不要手工删除 Edge 用户目录或 `Web Applications` 目录作为第一步。
+
+#### 为什么重新安装会恢复
+
+重新安装不只是刷新网页缓存。它会重新生成 PWA 的原生 App Shim、应用身份和特设签名（ad hoc code signing），重新登记到 macOS，并建立新的浏览器进程与文本输入上下文。已确认的案例中，重新安装后候选窗恢复，而网页资源和 Service Worker 前后完全一致；重建后的 App Shim 仍与 Edge 主程序存在补丁版本差异，因此版本数字不同也不是这次故障的原因。
+
+维护者判断原则：只有问题也能在普通浏览器标签页复现，或页面已经收到 `compositionstart` / `compositionend` 却处理错误时，才应修改前端输入逻辑并发布新版本。
+
+技术背景可参考 [Chromium App Shim 说明](https://chromium.googlesource.com/chromium/src/+/lkgr/chrome/app_shim/README.md)、[Chromium macOS Web App 集成目录](https://chromium.googlesource.com/chromium/src/+/HEAD/chrome/browser/web_applications/os_integration/mac/) 和 [Microsoft Edge 的 macOS PWA 特设签名策略](https://learn.microsoft.com/zh-cn/deployedge/microsoft-edge-policies/adhoccodesigningforpwasenabled)。
 
 ## 本机桥接与启动器
 
