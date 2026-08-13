@@ -40,7 +40,7 @@ assets/
 
 其中：
 
-- `vendor/` 包含自托管前端库、字体和许可证；
+- `vendor/` 包含自托管前端库、字体和许可证，包括 PDF.js 主模块、Worker 和 Apache-2.0 许可文本；
 - `agents/` 包含角色索引、正文和上游许可证；
 - `assets/` 包含 PWA manifest、Service Worker、图标、本机桥接与三系统启动器。
 
@@ -63,7 +63,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 - 修改变量后需要创建新部署才能生效；
 - 保持最小白名单，不要允许不受信任的上游。
 
-Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 2 MiB 的请求体，并拒绝 URL 内嵌用户名、密码或直接携带 `key` 查询参数。
+Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体，并拒绝 URL 内嵌用户名、密码或直接携带 `key` 查询参数。20 MiB 用于容纳单条最多 12 MiB 图片附件经过 base64 后的完整 JSON；Worker 会读取并复核实际字节数。
 
 ## 手动创建发布包
 
@@ -96,6 +96,8 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v25.zip \
 
 只改其中一处会导致页面、PWA 或本机启动器继续使用旧资源。
 
+若发布候选仍显示为同一个 `v25`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v25-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+
 ## 正式发布清单
 
 ### 1. 代码与版本
@@ -127,8 +129,19 @@ Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
 - [ ] Service Worker 缓存名与版本一致。
 - [ ] 预缓存 URL 查询参数与 `index.html` 一致。
 - [ ] 新 Service Worker 能删除旧的 `ai-shakedown-console-*` 缓存。
+- [ ] 已安装 PWA 能发现同版本内部缓存修订并显示“发现内容更新”。
 
-### 4. 发布包
+### 4. 聊天与多模态回归
+
+- [ ] OpenAI Compatible、Anthropic 和 Gemini 的图片能力探测都发送正确协议结构。
+- [ ] 支持图片的模型显示附件按钮，不支持或未知的配置不显示。
+- [ ] 图片、文本和 PDF 可选择、刷新恢复并发送；请求检查器不显示图片 base64。
+- [ ] 消息复制、编辑分支、搜索、选择、重试、继续和重新生成正常。
+- [ ] 手机宽度下消息操作可见，设置抽屉和输入区不互相遮挡。
+
+仓库内 `tests/mock-server.mjs` 提供无真实凭据的三协议回归上游；使用 `?no-sw=1` 打开本地页面可避免旧 Service Worker 干扰当前源文件测试。该参数仅用于本地回归，不改变正式 PWA 行为。
+
+### 5. 发布包
 
 ```bash
 unzip -t AI-Shakedown-Console-cf-pages-worker-v25.zip
@@ -141,7 +154,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
 - [ ] 从 ZIP 内读取 `index.html` 和 Service Worker，确认版本正确。
 - [ ] 不删除历史发布包，除非维护者明确要求。
 
-### 5. GitHub
+### 6. GitHub
 
 - [ ] 在独立分支提交明确范围的修改。
 - [ ] 推送分支并创建 PR。
@@ -169,7 +182,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
    ```
 
 6. 已安装 PWA 时确认出现更新提示，刷新后仍保留配置与对话。
-7. 若入口仍显示旧版本，访问 `/?v=24` 后刷新。
+7. 若入口仍使用旧资源，访问 `/?refresh=25-r2` 后刷新。
 
 ## 缓存策略
 
@@ -179,7 +192,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-浏览器存储键在 `v25` 保持不变，升级不会主动清空连接、API Key、自定义智能体或对话。
+原有浏览器存储键在 `v25` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。新附件数据库和多模态能力缓存会按需创建；清除站点数据会一并删除它们。
 
 ## 更新智能体库
 

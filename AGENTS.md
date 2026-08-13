@@ -28,6 +28,18 @@
 - If no existing client contacts the bridge, prefer launching an installed `AI Shakedown Console.app` on macOS and pass the pairing callback URL to it. Only fall back to the default browser when no installed app is available.
 - Keep the bridge token in `sessionStorage` and scan only the launcher's bounded 100-port range. Discovery must use a random challenge and an HMAC proof bound to the candidate port before the page sends its Bearer token, so unrelated occupied ports never receive pairing secrets. Continue to require the exact Origin for every bridge request, and never stop a process merely because it occupies one of those ports.
 
+## Chat attachments and multimodal capability
+
+- Never show the attachment button based only on a provider or model name. The exact provider/protocol/Base URL/chat path/model/proxy configuration must pass a real minimal image request first; cache supported/unsupported results per configuration signature.
+- Treat explicit 400/415/422 image/vision/multimodal rejection as a working text-only connection. Authentication, rate-limit, network, gateway, or ambiguous failures must keep attachment capability unknown and fail the connection check.
+- Local CLI bridges do not expose webpage attachments until their transport has been explicitly implemented and tested; keep the attachment button hidden for them.
+- Preserve the stable stored-message schema and attachment IndexedDB references when editing chat behavior. Images are sent as protocol-native multimodal blocks; text/code and locally extracted PDF text are sent as named text attachments. Never expose image base64 in the request inspector.
+- Chromium `FileList` objects are live. Copy selected files with `Array.from(input.files)` before clearing a file input, or the async attachment pipeline can receive an empty list.
+
+## Same-version PWA candidates
+
+- If the user explicitly keeps the public version unchanged, do not silently raise it. Advance an internal Service Worker cache revision such as `v25-r2`, retain `updateViaCache: "none"`, regenerate and verify the v25 ZIP, and document that this is a same-version content revision.
+
 ## Release completion
 
 - Treat a user-facing feature or version change as incomplete until its Cloudflare Pages deployment ZIP has been generated and verified.
