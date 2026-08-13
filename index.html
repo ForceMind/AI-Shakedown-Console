@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=20">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=21">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
     <header class="app-header">
@@ -51,7 +51,27 @@
     </header>
 
     <main class="workspace">
-        <aside class="settings-panel" id="settings-panel" aria-label="连接和模型设置">
+        <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="侧边工作区">
+            <nav class="workspace-sidebar-switcher" aria-label="侧边区域切换">
+                <button id="sidebar-conversations-button" type="button"><i class="bi bi-chat-square-text"></i><span>对话</span></button>
+                <button id="sidebar-settings-button" type="button" class="active"><i class="bi bi-sliders"></i><span>设置</span></button>
+            </nav>
+            <section class="conversation-sidebar" id="conversation-sidebar" aria-label="对话列表">
+                <div class="conversation-sidebar-heading">
+                    <div>
+                        <span class="eyebrow">CONVERSATIONS</span>
+                        <h2>全部对话</h2>
+                    </div>
+                    <span class="conversation-sidebar-count" id="conversation-sidebar-count">0</span>
+                </div>
+                <p class="conversation-sidebar-note"><i class="bi bi-pin-angle-fill"></i>对话超过 4 个后固定使用左侧列表，以后打开仍保持此布局。</p>
+                <div class="conversation-sidebar-list" id="conversation-sidebar-list" role="tablist" aria-label="左侧对话列表"></div>
+                <div class="conversation-sidebar-actions">
+                    <button class="secondary-button" id="sidebar-import-conversations" type="button"><i class="bi bi-folder2-open"></i><span>导入记录</span></button>
+                    <button class="primary-button" id="sidebar-new-conversation" type="button"><i class="bi bi-plus-lg"></i><span>新对话</span></button>
+                </div>
+            </section>
+            <section class="settings-panel" id="settings-panel" aria-label="连接和模型设置">
             <div class="panel-heading">
                 <div>
                     <span class="eyebrow">CONNECTION</span>
@@ -115,6 +135,9 @@
                         <button class="secondary-button" id="local-codex-check" type="button">
                             <i class="bi bi-plug"></i><span>检测连接</span>
                         </button>
+                        <button class="secondary-button" id="local-codex-stop" type="button" disabled>
+                            <i class="bi bi-stop-circle"></i><span>停止后台连接</span>
+                        </button>
                     </div>
                     <div class="local-codex-command">
                         <div>
@@ -128,12 +151,12 @@
                         <summary>macOS 安装、运行与更新教程</summary>
                         <ol>
                             <li><strong>准备环境：</strong>先安装并登录所选 CLI。Codex 可按 <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noopener noreferrer">OpenAI 官方 Codex CLI 教程</a>安装，运行 <code>codex</code> 完成登录。启动器会优先使用系统 Node.js 18+，也会自动查找 Codex 桌面版自带的 Node。</li>
-                            <li><strong>下载脚本：</strong>点击“下载自检启动脚本”。每个版本使用独立文件名，更新时直接下载新版即可。</li>
+                            <li><strong>下载脚本：</strong>点击“下载自检启动脚本”。下载文件名保持固定，不再显示网页版本号；重复下载若出现 <code>(1)</code>，可使用拖入终端的方法运行。</li>
                             <li><strong>在终端运行：</strong>复制上面的完整命令，打开“终端”，按 <code>⌘ + V</code> 粘贴，再按 <code>Enter</code>。请不要双击 <code>.command</code>；通过 <code>bash</code> 运行不需要修改文件执行权限。</li>
                             <li><strong>找不到下载文件：</strong>在终端输入 <code>bash</code> 和一个空格，把刚下载的文件从“访达 → 下载”拖进终端，再按 <code>Enter</code>。此方法也适用于文件名带 <code>(1)</code> 或空格的情况。</li>
                             <li><strong>允许访问下载目录：</strong>若 macOS 询问权限，只需允许“终端”访问“下载”文件夹；不需要开启完整磁盘访问。</li>
-                            <li><strong>连接与端口：</strong>脚本自检通过后会自动打开网页。它会停止同一工具的旧桥接；如果预选端口被其他服务占用，会寻找下一个空闲端口并把实际端口传回网页。</li>
-                            <li><strong>停止或升级：</strong>在桥接终端按 <code>Control + C</code> 即可停止。升级时直接运行新下载的脚本，旧桥接会自动退出。</li>
+                            <li><strong>连接与端口：</strong>脚本自检通过后会把桥接转入后台并自动打开网页，终端可以直接关闭。如果预选端口被其他服务占用，会寻找下一个空闲端口并把实际端口传回网页。</li>
+                            <li><strong>停止或升级：</strong>网页点击“停止后台连接”即可停止；升级时直接运行新下载的脚本，旧桥接会自动退出并被新版替换。</li>
                         </ol>
                         <p>启动器只做检查和连接，不会静默安装软件。缺少环境时会显示具体缺少项和安装入口。</p>
                     </details>
@@ -328,6 +351,7 @@
                     </div>
                 </div>
             </details>
+            </section>
         </aside>
 
         <section class="chat-panel" aria-label="模型对话">
@@ -350,6 +374,9 @@
             </div>
 
             <div class="conversation-bar">
+                <button class="secondary-button compact conversation-sidebar-toggle" id="conversation-sidebar-toggle" type="button" title="打开左侧对话列表">
+                    <i class="bi bi-list-ul"></i><span>对话</span>
+                </button>
                 <div class="conversation-tabs" id="conversation-tabs" role="tablist" aria-label="对话窗口"></div>
                 <button class="secondary-button compact conversation-import" id="local-session-import" type="button" title="导入本地 AI 工具的对话记录">
                     <i class="bi bi-folder2-open"></i><span>导入记录</span>
@@ -371,25 +398,10 @@
                 <div class="composer-tools">
                     <button class="agent-library-button" id="agent-library-open" type="button">
                         <span class="agent-library-icon"><i class="bi bi-people"></i></span>
-                        <span class="agent-library-copy"><strong>智能体角色</strong><small>选择专家 System Prompt</small></span>
+                        <span class="agent-library-copy"><strong>智能体库</strong><small>内置角色与自定义智能体</small></span>
                         <span class="agent-count" id="agent-count">268</span>
                         <i class="bi bi-chevron-right"></i>
                     </button>
-                    <div class="prompt-library" aria-label="提示词库">
-                        <select id="prompt-select" aria-label="选择已保存提示词">
-                            <option value="">自定义提示词库</option>
-                        </select>
-                        <input id="prompt-name" type="text" maxlength="40" autocomplete="off" placeholder="提示词名称">
-                        <button class="icon-button small" id="prompt-save" type="button" title="保存提示词" aria-label="保存提示词">
-                            <i class="bi bi-floppy"></i>
-                        </button>
-                        <button class="icon-button small" id="prompt-load" type="button" title="加载提示词" aria-label="加载提示词" disabled>
-                            <i class="bi bi-box-arrow-in-down"></i>
-                        </button>
-                        <button class="icon-button small" id="prompt-delete" type="button" title="删除提示词" aria-label="删除提示词" disabled>
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    </div>
                 </div>
                 <div class="system-heading">
                     <label class="system-field" for="system-prompt">System</label>
@@ -422,6 +434,10 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </header>
+            <div class="agent-library-tabs" role="tablist" aria-label="智能体来源">
+                <button class="active" id="agent-built-in-tab" type="button" role="tab" aria-selected="true"><i class="bi bi-collection"></i>内置智能体</button>
+                <button id="agent-custom-tab" type="button" role="tab" aria-selected="false"><i class="bi bi-person-gear"></i>自定义智能体 <span id="custom-agent-count">0</span></button>
+            </div>
             <div class="agent-library-filters">
                 <div class="agent-search">
                     <i class="bi bi-search" aria-hidden="true"></i>
@@ -430,6 +446,7 @@
                 <select id="agent-department" aria-label="按部门筛选">
                     <option value="">全部部门</option>
                 </select>
+                <button class="secondary-button" id="custom-agent-new" type="button" hidden><i class="bi bi-plus-lg"></i><span>新建自定义</span></button>
                 <span class="agent-results-count" id="agent-results-count"></span>
             </div>
             <div class="agent-library-body">
@@ -452,13 +469,20 @@
                         </div>
                         <div class="agent-prompt-preview markdown-content" id="agent-prompt-preview" tabindex="0"></div>
                     </div>
+                    <div class="custom-agent-editor" id="custom-agent-editor" hidden>
+                        <label class="field"><span>智能体名称</span><input id="custom-agent-name" type="text" maxlength="40" placeholder="例如：我的写作助手"></label>
+                        <label class="field"><span>System 定义</span><textarea id="custom-agent-prompt" rows="14" placeholder="填写这个智能体的身份、目标、工作方式和边界"></textarea></label>
+                        <p>原“自定义提示词库”的内容已自动迁移到这里。自定义智能体只保存在当前浏览器。</p>
+                    </div>
                 </article>
             </div>
             <footer class="agent-library-footer">
                 <span id="agent-library-source">agency-agents-zh · MIT</span>
-                <button class="primary-button" id="agent-apply" type="button" disabled>
-                    <i class="bi bi-check2"></i><span>应用到当前对话</span>
-                </button>
+                <div class="agent-library-footer-actions">
+                    <button class="secondary-button" id="custom-agent-delete" type="button" hidden disabled><i class="bi bi-trash3"></i><span>删除</span></button>
+                    <button class="secondary-button" id="custom-agent-save" type="button" hidden><i class="bi bi-floppy"></i><span>保存自定义</span></button>
+                    <button class="primary-button" id="agent-apply" type="button" disabled><i class="bi bi-check2"></i><span>应用到当前对话</span></button>
+                </div>
             </footer>
         </section>
     </div>
@@ -545,8 +569,8 @@
                 <section class="macos-launch-step">
                     <span class="macos-launch-step-number">3</span>
                     <div>
-                        <h3>保持终端开启</h3>
-                        <p>脚本完成环境自检后会重新打开网页。终端保持开启时，本地桥接才会继续运行；需要停止时按 <kbd>Control + C</kbd>。</p>
+                        <h3>终端可以关闭</h3>
+                        <p>脚本完成环境自检后会把桥接转入后台并重新打开网页。看到连接成功后可以关闭终端；需要停止时回到网页设置，点击“停止后台连接”。</p>
                     </div>
                 </section>
 
@@ -561,7 +585,7 @@
                 </details>
             </div>
             <footer class="help-footer">
-                <span>此教程会在 macOS 每次下载脚本后自动显示</span>
+                <span>此教程会在 macOS 每次下载脚本后自动显示；桥接启动后终端可以关闭</span>
                 <button class="primary-button" id="macos-launch-help-confirm" type="button">我知道了</button>
             </footer>
         </section>
@@ -618,22 +642,22 @@
                     <section class="help-topic">
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
-                            <h3>对话与角色</h3>
-                            <p>“新对话”可并行保留多个会话；提示词库保存常用 System 内容；智能体角色可一键应用到当前对话。</p>
+                            <h3>对话与智能体</h3>
+                            <p>“新对话”可并行保留多个会话；超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，均可应用到当前对话。</p>
                         </div>
                     </section>
                     <section class="help-topic">
                         <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
                         <div>
                             <h3>专注聊天</h3>
-                            <p>连接成功后设置会自动收起。点击页头“设置”可让聊天区收窄并重新显示连接、参数、用量和请求检查器；点击“聊天”返回全宽对话。</p>
+                            <p>连接成功后设置会自动收起。对话较多时，左侧区域显示对话列表；点击页头“设置”后，同一区域切换到连接、参数、用量和请求检查器。</p>
                         </div>
                     </section>
                     <section class="help-topic">
                         <i class="bi bi-wrench-adjustable-circle" aria-hidden="true"></i>
                         <div>
                             <h3>连接排查</h3>
-                            <p>先用“检查连接”或本机工具的“检测连接”。失败时页面会自动打开设置并展开“请求检查器”；本机桥接还应确认启动终端仍保持开启。</p>
+                            <p>先用“检查连接”或本机工具的“检测连接”。失败时页面会自动打开设置并展开“请求检查器”；本机桥接成功转入后台后不需要保持终端开启。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -654,9 +678,9 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v20</div>
+    <div class="build-version" title="当前部署版本">v21</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=20"></script>
+    <script type="module" src="script.js?v=21"></script>
 </body>
 </html>

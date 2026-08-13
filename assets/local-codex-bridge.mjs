@@ -5,7 +5,7 @@ import readline from 'node:readline';
 import { mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
-const BRIDGE_VERSION = 'v20';
+const BRIDGE_VERSION = 'v21';
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.AI_SHAKEDOWN_BRIDGE_PORT || 4510);
 const TOKEN = process.env.AI_SHAKEDOWN_BRIDGE_TOKEN || '';
@@ -565,6 +565,15 @@ const server = http.createServer(async (request, response) => {
             await handleChat(request, response);
             return;
         }
+        if (request.method === 'POST' && url.pathname === '/shutdown') {
+            sendJson(response, 200, { ok: true, message: '后台桥接正在停止' });
+            setTimeout(() => {
+                server.close();
+                rpc?.stop();
+                process.exit(0);
+            }, 80).unref();
+            return;
+        }
         sendJson(response, 404, { error: '未找到本地桥接接口' });
     } catch (error) {
         if (!response.headersSent) sendJson(response, 500, { error: error.message || '本地桥接失败' });
@@ -596,7 +605,7 @@ async function main() {
         server.listen(PORT, HOST, resolve);
     });
     console.log(`AI Shakedown Console 本地 ${LOCAL_TOOL.label} 桥接已启动：http://${HOST}:${PORT}`);
-    console.log('请保持此终端窗口开启；按 Ctrl+C 停止。');
+    console.log('桥接将在后台持续运行，启动终端可以关闭；可从网页设置中停止。');
     if (RETURN_URL) openBrowser(`${RETURN_URL}#local_bridge=${LOCAL_PROVIDER}.${PORT}.${TOKEN}`);
 }
 

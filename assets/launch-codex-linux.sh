@@ -11,7 +11,9 @@ CLI_COMMAND="__CLI_COMMAND__"
 CLI_LABEL="__CLI_LABEL__"
 STATE_DIR="${AI_SHAKEDOWN_STATE_DIR:-$HOME/.cache/ai-shakedown-console}"
 PID_FILE="$STATE_DIR/${LOCAL_PROVIDER}.pid"
-BRIDGE_FILE=""
+BRIDGE_FILE="$STATE_DIR/ai-shakedown-local-ai-bridge-${LOCAL_PROVIDER}.mjs"
+BRIDGE_DOWNLOAD="$STATE_DIR/ai-shakedown-local-ai-bridge-${LOCAL_PROVIDER}.download"
+LOG_FILE="$STATE_DIR/${LOCAL_PROVIDER}.log"
 BRIDGE_PID=""
 
 fail() {
@@ -59,7 +61,7 @@ stop_previous_bridges() {
   local old_pid=""
   if [ -f "$PID_FILE" ]; then
     old_pid="$(sed -n '1p' "$PID_FILE" 2>/dev/null || true)"
-    stop_owned_bridge "$old_pid" || fail "无法停止旧桥接（PID ${old_pid}）。请回到旧终端按 Control + C 后重试。"
+    stop_owned_bridge "$old_pid" || fail "无法停止旧桥接（PID ${old_pid}）。请在网页点击“停止后台连接”后重试。"
     rm -f "$PID_FILE"
   fi
 
@@ -67,7 +69,7 @@ stop_previous_bridges() {
     for old_pid in $(pgrep -f 'ai-shakedown-local-ai-bridge.*\.mjs|AI-Shakedown-Console.*/assets/local-codex-bridge\.mjs' 2>/dev/null || true); do
       [ "$old_pid" = "$$" ] && continue
       is_registered_bridge_pid "$old_pid" && continue
-      stop_owned_bridge "$old_pid" || fail "无法停止旧版桥接（PID ${old_pid}）。请回到旧终端按 Control + C 后重试。"
+      stop_owned_bridge "$old_pid" || fail "无法停止旧版桥接（PID ${old_pid}）。请在网页点击“停止后台连接”后重试。"
     done
   fi
 }
@@ -103,20 +105,11 @@ choose_available_port() {
   fail "连续检查 100 个端口仍未找到空闲端口。请关闭不需要的本地服务后重试。"
 }
 
-cleanup() {
-  local exit_status=$?
-  trap - EXIT INT TERM
-  if [ -n "$BRIDGE_PID" ] && kill -0 "$BRIDGE_PID" >/dev/null 2>&1; then
-    kill "$BRIDGE_PID" >/dev/null 2>&1 || true
-  fi
-  if [ -f "$PID_FILE" ] && [ "$(sed -n '1p' "$PID_FILE" 2>/dev/null || true)" = "$BRIDGE_PID" ]; then
-    rm -f "$PID_FILE"
-  fi
-  [ -z "$BRIDGE_FILE" ] || rm -f "$BRIDGE_FILE"
-  exit "$exit_status"
+cleanup_download() {
+  rm -f "$BRIDGE_DOWNLOAD"
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup_download EXIT INT TERM
 
 NODE_BIN="$(command -v node || true)"
 if [ -z "$NODE_BIN" ]; then
@@ -161,21 +154,32 @@ command -v curl >/dev/null 2>&1 || fail "没有找到 curl。"
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR" 2>/dev/null || true
 
-BRIDGE_FILE="$(mktemp "${TMPDIR:-/tmp}/ai-shakedown-local-ai-bridge.XXXXXXXX.mjs")"
-curl -fsSL "$BRIDGE_URL" -o "$BRIDGE_FILE" || fail "无法下载本地桥接程序。"
+curl -fsSL "$BRIDGE_URL" -o "$BRIDGE_DOWNLOAD" || fail "无法下载本地桥接程序。"
 
 stop_previous_bridges
+mv "$BRIDGE_DOWNLOAD" "$BRIDGE_FILE"
+chmod 600 "$BRIDGE_FILE" 2>/dev/null || true
 choose_available_port
 
 echo "正在启动 AI Shakedown Console ${LAUNCHER_VERSION} 本地 ${CLI_LABEL} 连接……"
-AI_SHAKEDOWN_BRIDGE_TOKEN="$BRIDGE_TOKEN" \
-AI_SHAKEDOWN_BRIDGE_PORT="$BRIDGE_PORT" \
-AI_SHAKEDOWN_ALLOWED_ORIGIN="$(printf '%s' "$RETURN_URL" | sed -E 's#^(https?://[^/]+).*$#\1#')" \
-AI_SHAKEDOWN_RETURN_URL="$RETURN_URL" \
-AI_SHAKEDOWN_LOCAL_PROVIDER="$LOCAL_PROVIDER" \
-AI_SHAKEDOWN_LOCAL_CLI_BIN="$LOCAL_CLI_BIN" \
-"$NODE_BIN" "$BRIDGE_FILE" &
+: > "$LOG_FILE"
+nohup env \
+  AI_SHAKEDOWN_BRIDGE_TOKEN="$BRIDGE_TOKEN" \
+  AI_SHAKEDOWN_BRIDGE_PORT="$BRIDGE_PORT" \
+  AI_SHAKEDOWN_ALLOWED_ORIGIN="$(printf '%s' "$RETURN_URL" | sed -E 's#^(https?://[^/]+).*$#\1#')" \
+  AI_SHAKEDOWN_RETURN_URL="$RETURN_URL" \
+  AI_SHAKEDOWN_LOCAL_PROVIDER="$LOCAL_PROVIDER" \
+  AI_SHAKEDOWN_LOCAL_CLI_BIN="$LOCAL_CLI_BIN" \
+  "$NODE_BIN" "$BRIDGE_FILE" >>"$LOG_FILE" 2>&1 </dev/null &
 BRIDGE_PID=$!
+sleep 1
+if ! kill -0 "$BRIDGE_PID" >/dev/null 2>&1; then
+  fail "后台桥接启动后立即退出。日志位置：${LOG_FILE}"
+fi
 printf '%s\n%s\n%s\n' "$BRIDGE_PID" "$BRIDGE_PORT" "$LAUNCHER_VERSION" > "$PID_FILE"
 chmod 600 "$PID_FILE" 2>/dev/null || true
-wait "$BRIDGE_PID"
+trap - EXIT INT TERM
+echo ""
+echo "本地 ${CLI_LABEL} 桥接已在后台启动（PID ${BRIDGE_PID}，端口 ${BRIDGE_PORT}）。"
+echo "现在可以关闭终端。停止连接请回到网页设置，点击“停止后台连接”。"
+echo "日志位置：${LOG_FILE}"

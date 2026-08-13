@@ -2,17 +2,17 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v20` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v21` · Worker：`proxy-6`
 
 ## 功能概览
 
 - 支持 OpenAI Compatible、Anthropic Messages 和 Google Gemini 三类协议。
 - 支持流式响应、安全 Markdown 渲染、请求检查、Token 与费用统计。
-- 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
+- 支持配置库、分为“内置 / 自定义”的智能体库、多对话页签，以及对话历史和连接配置的本地恢复；原提示词库内容会自动作为自定义智能体继续使用。
 - 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
-- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应自检启动脚本后即可检测工具、读取模型并直接对话。启动器会检查 Node.js、CLI 和登录状态，停止同工具旧桥接；端口冲突时自动寻找空闲端口，并优先复用系统或 Codex 桌面版自带的 Node 运行时。
+- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应自检启动脚本后即可检测工具、读取模型并直接对话。启动器会检查 Node.js、CLI 和登录状态，停止同工具旧桥接；端口冲突时自动寻找空闲端口，并优先复用系统或 Codex 桌面版自带的 Node 运行时。桥接成功后转入后台，终端可以关闭，并可从网页设置中停止。
 - 内置完整网页帮助：首次访问识别桌面或触摸环境并显示一次发送/换行说明；关闭后可通过消息输入框右上角的 `?` 随时重新打开。macOS 下载启动脚本后还会立即弹出运行教程，主动说明权限、文件名和隐私安全放行方法。
-- 连接成功后自动进入专注聊天：隐藏连接配置与请求检查器，只保留对话列表、聊天、智能体、提示词和 System 设置；点击页头“设置”后聊天区自动收窄，连接、参数、用量与请求检查器在同一面板中恢复。连接或请求失败时会自动返回设置并展开检查器。
+- 连接成功后自动进入专注聊天：隐藏连接配置与请求检查器，只保留聊天需要的内容；对话超过 4 个后自动固定为左侧列表，并在以后打开时保持。点击页头“设置”会在同一个左侧区域切换到连接、参数、用量与请求检查器，聊天区同步收缩。连接或请求失败时会自动返回设置并展开检查器。
 - 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
@@ -22,7 +22,7 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 
 ## 网页帮助与快捷键
 
-首次在当前站点打开 `v20` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与角色、连接排查以及数据隐私说明。
+首次在当前站点打开 `v21` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与智能体、连接排查以及数据隐私说明。
 
 桌面键盘快捷键：
 
@@ -39,8 +39,8 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 
 1. 首次进入或更换服务商时，左侧设置面板保持显示，用于配置连接、模型、生成参数和费用。
 2. 点击“检查连接”或本机工具的“检测连接”。连接成功后，设置面板会自动收起，聊天区扩展到整个工作区。
-3. 专注聊天状态只保留当前服务与模型、对话列表、导入记录、新对话、智能体角色、提示词、System 内容、消息输入和发送操作。
-4. 需要调整连接或查看底层请求时，点击页头“设置”。桌面端聊天区会自动收窄并恢复设置面板；移动端会从左侧打开设置抽屉。
+3. 专注聊天状态只保留当前服务与模型、对话、智能体、System 内容、消息输入和发送操作。对话数达到 5 个时会自动转入左侧列表，并保存这个布局偏好；以后即使关闭部分对话也保持左侧列表。
+4. 需要调整连接或查看底层请求时，点击页头“设置”。桌面端会在同一左侧区域由“对话”切换为“设置”，聊天区自动收窄；移动端会打开同一左侧抽屉。点击左侧顶部的“对话 / 设置”可随时切换。
 5. 请求检查器已经合并到设置底部，可按需展开查看请求、响应、流式事件、HTTP 状态和耗时。
 6. 连接或实际请求失败时，页面会自动返回设置并展开请求检查器；修复后重新检测或发送成功，即可再次进入专注聊天。
 
@@ -60,16 +60,16 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 
 预设的模型名称只是初始值，并按能力从强到弱排列。使用“读取”按钮请求模型列表后，服务端返回的模型会按能力标记、参数规模和版本号降序显示；选择“自定义模型…”可继续手动填写任意模型 ID。
 
-## 配置库、提示词和多对话
+## 配置库、智能体和多对话
 
 - 配置库：填写名称后保存当前服务商、协议、地址、认证、API Key、模型、生成参数和费用设置；选择已保存配置后可加载、覆盖保存或删除。“新建”会退出当前选择，以便另存一份配置。
-- 提示词库：填写提示词名称和 System 内容后保存；选择提示词后可加载到当前对话、覆盖保存或删除。
-- 多对话：点击“新对话”打开新的对话页签。每个页签分别保存消息历史和 System 提示词，可随时切换或关闭；首次请求成功后，页签名称会自动取自用户消息。
+- 智能体库：分为“内置智能体”和“自定义智能体”。内置区提供 268 个中文专家角色；自定义区可新建、编辑、保存、删除自己的 System 智能体，并应用到当前对话。原 `prompts.v1` 提示词库会自动显示在自定义区，无需手工迁移。
+- 多对话：点击“新对话”打开新的对话页签。每个对话分别保存消息历史、System 和当前智能体，可随时切换或关闭；首次请求成功后，名称会自动取自用户消息。前 4 个使用顶部页签，从第 5 个开始自动转入左侧列表并持久保持，页面也会向用户说明这一规则。
 - 本地记录：点击对话标签栏的“导入记录”，可选择单个/多个文件或整个目录。Codex 通常位于 `~/.codex/sessions/`，Gemini CLI 位于 `~/.gemini/tmp/*/chats/`，Claude Code 位于 `~/.claude/projects/`。导入后会生成独立对话页签，可用当前模型继续对话。
-- 本机 AI 工具：在“服务商预设”选择 Codex、Antigravity、Gemini CLI、Claude Code 或 OpenCode 的“本机登录”预设，页面会自动选择当前操作系统的启动脚本。下载后按页面给出的命令运行并保持终端开启，脚本会检查对应 CLI 是否可运行，启动本地桥接，再用带工具标识和随机配对令牌的地址重新打开页面。之后可点击“检测连接”和“读取”模型，无需向网页填写或复制 CLI 登录凭据。
+- 本机 AI 工具：在“服务商预设”选择 Codex、Antigravity、Gemini CLI、Claude Code 或 OpenCode 的“本机登录”预设，页面会自动选择当前操作系统的启动脚本。下载后按页面给出的命令运行，脚本会检查对应 CLI 是否可运行，将本地桥接转入后台，再用带工具标识和随机配对令牌的地址重新打开页面。显示成功后即可关闭终端；之后可点击“检测连接”和“读取”模型，无需向网页填写或复制 CLI 登录凭据。
 - 连续对话：Codex 通过 App Server 保持线程；Antigravity 官方 `agy -p` 以及其他 CLI 的无头模式按单次调用运行，桥接会重放当前网页对话以维持上下文。选择较长的对话时会增加每次调用的输入量。
-- 智能体角色库：点击输入区上方的“角色库”，可按部门筛选或搜索 268 个中文专家角色。选择角色后可预览完整定义，并一键替换当前对话的 System Prompt；角色标记随对话单独保存，手动修改或加载自定义提示词后自动解除。
-- 刷新恢复：当前配置、配置库、提示词库、对话页签、消息历史和当前激活页签都会自动恢复。
+- 智能体库：点击输入区上方的“智能体库”进入统一界面。内置角色可筛选、搜索和预览；自定义智能体可直接编辑并保存。应用后会替换当前对话的 System Prompt，智能体标记随对话单独保存。
+- 刷新恢复：当前配置、配置库、自定义智能体、对话、消息历史、当前激活项以及超过 4 个对话后的左侧布局都会自动恢复。
 
 以上数据只保存在当前站点的浏览器存储中，不会同步到其他浏览器或设备。
 
@@ -84,24 +84,25 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 macOS 从下载到连接：
 
 1. 在“服务商预设”选择所需的“本机登录”工具，系统选择 `macOS`。
-2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v20 为 `ai-shakedown-codex-macos-v20.command`，因此新版不会覆盖旧版文件。下载开始后，页面会自动弹出专用的 macOS 运行教程。
+2. 点击“下载自检启动脚本”。文件名固定且不含网页版本号，例如 Codex 始终为 `ai-shakedown-codex-macos.command`。新版可以直接覆盖旧下载；如果浏览器自动增加 `(1)`，可把实际文件拖入终端运行。下载开始后，页面会自动弹出专用的 macOS 运行教程。
 3. 在弹窗中点击“复制运行命令”，打开“终端”，按 `⌘ + V` 粘贴，再按 `Enter` 执行：
 
    ```bash
-   bash "$HOME/Downloads/ai-shakedown-codex-macos-v20.command"
+   bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
    ```
 
    不要直接双击 `.command` 文件。通过 `bash` 读取脚本不依赖可执行权限，因此不会触发“没有正确的访问权限”，也不需要 `chmod +x`。如果浏览器为重复下载的文件增加了 `(1)`、空格或其他后缀，可在终端输入 `bash `，把刚下载的文件拖进终端，再按回车。
 4. 如果 macOS 弹出“终端想要访问下载文件夹”，选择允许。若此前拒绝，可到“系统设置 → 隐私与安全性 → 文件与文件夹 → 终端”开启“下载”访问；不需要开启完整磁盘访问。
-5. 自检通过后脚本会启动仅监听 `127.0.0.1` 的桥接，并用实际端口重新打开网页。回到页面点击“检测连接”或“读取”模型即可。
+5. 自检通过后脚本会把仅监听 `127.0.0.1` 的桥接放到后台，并用实际端口重新打开网页。看到“现在可以关闭终端”后即可关闭窗口；回到页面点击“检测连接”或“读取”模型。
 
 停止、更新和端口处理：
 
-- 正常停止：在显示“本地桥接已启动”的终端按 `Control + C`。
+- 正常停止：打开网页“设置”，在当前本机工具卡片中点击“停止后台连接”。终端不需要保持打开。
 - 下载更新：直接下载并运行新版脚本。启动器会通过状态文件停止同一工具的旧桥接，也会清理没有状态文件的旧版 AI Shakedown 桥接，避免网页继续连接内存中的旧代码。
 - 端口冲突：网页会预选一个本地端口。若该端口被其他程序占用，启动器不会结束无关程序，而是在 100 个候选端口内寻找下一个空闲端口，并将实际端口随配对地址传回网页。
-- 自动停止失败：回到旧桥接终端按 `Control + C`，再运行新脚本。启动器不会对无法确认归属的进程执行强制结束。
-- 浏览器下载出现 `(1)`：优先使用刚下载的最新文件，或删除同版本旧下载后重新下载，使文件名与网页命令一致。
+- 自动停止失败：先在网页点击“停止后台连接”，再运行新脚本。启动器不会对无法确认归属的进程执行强制结束。
+- 浏览器下载出现 `(1)`：优先删除旧下载后重新下载，恢复固定文件名；也可在终端输入 `bash `，把刚下载的实际文件拖入终端再按回车。
+- 日志与状态：macOS/Linux 位于 `~/.cache/ai-shakedown-console/`，Windows 位于 `%LOCALAPPDATA%\AI-Shakedown-Console\`。每个工具分别保存 `.log`、`.pid` 和桥接程序，便于更新、停止与排查；其中不保存 CLI 登录凭据。
 
 ## 运行
 
@@ -146,10 +147,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v20` 部署包：
+在项目根目录生成 `v21` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v20.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v21.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -176,7 +177,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v20",
+  "appVersion": "v21",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -185,14 +186,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v20`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v20`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=20`](https://ai-shakedown-console.pages.dev/?v=20) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v21`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v21`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=21`](https://ai-shakedown-console.pages.dev/?v=21) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v20` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v20` 查询参数，避免新旧界面资源混用。
+- `v21` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、自定义智能体和对话；`prompts.v1` 中的旧提示词会直接显示在自定义智能体区。左侧对话布局另存于 `ai-shakedown-console.conversation-sidebar.v1`。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v21` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -226,11 +227,11 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 - AWS Bedrock、Google Vertex AI 等需要 SigV4/OAuth 交互式签名的平台不适合直接在浏览器中保管长期凭据，应通过自建的 OpenAI-compatible 网关接入。
 - 本地启动脚本不会读取、上传或显示各 CLI 的认证文件；登录状态和令牌刷新仍由本机 CLI 负责。桥接只监听 `127.0.0.1`，校验下载时生成的随机 Bearer 令牌和网页 Origin。页面配对令牌不写入持久化配置。
 - Codex 以 `read-only` 沙盒和 `never` 审批策略启动；Gemini 使用 `plan` 审批模式；Claude Code 禁用内置与 MCP 工具并启用安全/计划模式；OpenCode 注入 `permission: deny` 的运行时配置。Antigravity 目前没有已文档化的等价禁用工具参数，因此桥接在独立临时工作目录中运行 `agy -p`，同时加入纯对话安全指令；它仍应视为 Beta，不要用来处理不可信提示词或敏感本地环境。
-- 本地桥接依赖 Node.js 18+ 和所选 CLI。启动器将进程号、实际端口和版本写入当前用户的状态目录，仅用于安全停止同工具旧桥接；正常退出时会删除状态文件。关闭脚本所在终端后立即停止；升级 CLI 后如有兼容变化，应重新下载最新版脚本。实现依据见 [Codex CLI](https://developers.openai.com/codex/cli/)、[Codex App Server](https://developers.openai.com/codex/app-server/)、[Antigravity CLI](https://codelabs.developers.google.com/antigravity-cli-hands-on)、[Gemini CLI 无头模式](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/headless.md)、[Claude Code CLI](https://code.claude.com/docs/en/cli-usage) 和 [OpenCode CLI](https://opencode.ai/docs/cli/) 官方文档。
+- 本地桥接依赖 Node.js 18+ 和所选 CLI。启动器将桥接程序、日志、进程号、实际端口和版本写入当前用户的状态目录，用于后台运行、排查以及安全停止同工具旧桥接；不保存 CLI 登录凭据。启动成功后关闭终端不会停止桥接，可从网页发送带随机令牌的 `/shutdown` 请求正常停止。升级 CLI 后如有兼容变化，应重新下载并运行最新版脚本。实现依据见 [Codex CLI](https://developers.openai.com/codex/cli/)、[Codex App Server](https://developers.openai.com/codex/app-server/)、[Antigravity CLI](https://codelabs.developers.google.com/antigravity-cli-hands-on)、[Gemini CLI 无头模式](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/headless.md)、[Claude Code CLI](https://code.claude.com/docs/en/cli-usage) 和 [OpenCode CLI](https://opencode.ai/docs/cli/) 官方文档。
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v20` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v21` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。

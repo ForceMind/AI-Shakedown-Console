@@ -10,7 +10,10 @@ $CliCommand = "__CLI_COMMAND__"
 $CliLabel = "__CLI_LABEL__"
 $StateDirectory = if ($env:AI_SHAKEDOWN_STATE_DIR) { $env:AI_SHAKEDOWN_STATE_DIR } elseif ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "AI-Shakedown-Console" } else { Join-Path $HOME ".cache\ai-shakedown-console" }
 $PidFile = Join-Path $StateDirectory "$LocalProvider.pid"
-$BridgeFile = $null
+$BridgeFile = Join-Path $StateDirectory "ai-shakedown-local-ai-bridge-$LocalProvider.mjs"
+$BridgeDownload = Join-Path $StateDirectory "ai-shakedown-local-ai-bridge-$LocalProvider.download"
+$LogFile = Join-Path $StateDirectory "$LocalProvider.log"
+$ErrorLogFile = Join-Path $StateDirectory "$LocalProvider.error.log"
 $BridgeProcess = $null
 
 function Stop-WithMessage([string]$Message) {
@@ -58,7 +61,7 @@ function Stop-PreviousBridges {
     if (Test-Path $PidFile) {
         $OldPid = (Get-Content $PidFile -TotalCount 1 -ErrorAction SilentlyContinue) -as [int]
         if ($OldPid -and -not (Stop-OwnedBridge $OldPid)) {
-            Stop-WithMessage "无法停止旧桥接（PID ${OldPid}）。请回到旧终端按 Control + C 后重试。"
+            Stop-WithMessage "无法停止旧桥接（PID ${OldPid}）。请在网页点击“停止后台连接”后重试。"
         }
         Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
     }
@@ -70,7 +73,7 @@ function Stop-PreviousBridges {
         foreach ($LegacyBridge in $LegacyBridges) {
             if ($LegacyBridge.ProcessId -eq $PID -or (Test-RegisteredBridgePid $LegacyBridge.ProcessId)) { continue }
             if (-not (Stop-OwnedBridge $LegacyBridge.ProcessId)) {
-                Stop-WithMessage "无法停止旧版桥接（PID $($LegacyBridge.ProcessId)）。请回到旧终端按 Control + C 后重试。"
+                Stop-WithMessage "无法停止旧版桥接（PID $($LegacyBridge.ProcessId)）。请在网页点击“停止后台连接”后重试。"
             }
         }
     } catch {
@@ -138,12 +141,11 @@ try {
         if ($LASTEXITCODE -ne 0) { Stop-WithMessage "$CliLabel 无法运行，请先单独启动它并完成登录。" }
     }
 
-    $BridgeFile = Join-Path ([IO.Path]::GetTempPath()) ("ai-shakedown-local-ai-bridge-" + [guid]::NewGuid().ToString("N") + ".mjs")
-    Invoke-WebRequest -UseBasicParsing -Uri $BridgeUrl -OutFile $BridgeFile
-    $Origin = ([Uri]$ReturnUrl).GetLeftPart([System.UriPartial]::Authority)
-
     New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
+    Invoke-WebRequest -UseBasicParsing -Uri $BridgeUrl -OutFile $BridgeDownload
+    $Origin = ([Uri]$ReturnUrl).GetLeftPart([System.UriPartial]::Authority)
     Stop-PreviousBridges
+    Move-Item -Path $BridgeDownload -Destination $BridgeFile -Force
     $BridgePort = Select-AvailablePort ([int]$BridgePort)
 
     $env:AI_SHAKEDOWN_BRIDGE_TOKEN = $BridgeToken
@@ -154,20 +156,17 @@ try {
     $env:AI_SHAKEDOWN_LOCAL_CLI_BIN = $LocalCliBin
 
     Write-Host "正在启动 AI Shakedown Console $LauncherVersion 本地 $CliLabel 连接……"
-    $BridgeProcess = Start-Process -FilePath $NodeCommand.Source -ArgumentList @("`"$BridgeFile`"") -NoNewWindow -PassThru
+    Remove-Item $LogFile, $ErrorLogFile -Force -ErrorAction SilentlyContinue
+    $BridgeProcess = Start-Process -FilePath $NodeCommand.Source -ArgumentList @("`"$BridgeFile`"") -WindowStyle Hidden -RedirectStandardOutput $LogFile -RedirectStandardError $ErrorLogFile -PassThru
+    Start-Sleep -Seconds 1
+    $BridgeProcess.Refresh()
+    if ($BridgeProcess.HasExited) { Stop-WithMessage "后台桥接启动后立即退出。日志位置：$ErrorLogFile" }
     [IO.File]::WriteAllLines($PidFile, @([string]$BridgeProcess.Id, [string]$BridgePort, $LauncherVersion))
-    while (-not $BridgeProcess.HasExited) {
-        Start-Sleep -Milliseconds 250
-        $BridgeProcess.Refresh()
-    }
-    if ($BridgeProcess.ExitCode -ne 0) { Stop-WithMessage "本地桥接已退出（代码 $($BridgeProcess.ExitCode)）。" }
+    Write-Host ""
+    Write-Host "本地 $CliLabel 桥接已在后台启动（PID $($BridgeProcess.Id)，端口 $BridgePort）。" -ForegroundColor Green
+    Write-Host "现在可以关闭 PowerShell。停止连接请回到网页设置，点击“停止后台连接”。"
+    Write-Host "日志位置：$LogFile"
 } catch {
+    Remove-Item $BridgeDownload -Force -ErrorAction SilentlyContinue
     Stop-WithMessage $_.Exception.Message
-} finally {
-    if ($BridgeProcess -and -not $BridgeProcess.HasExited) { Stop-Process -Id $BridgeProcess.Id -ErrorAction SilentlyContinue }
-    if ($BridgeProcess -and (Test-Path $PidFile)) {
-        $RecordedPid = (Get-Content $PidFile -TotalCount 1 -ErrorAction SilentlyContinue) -as [int]
-        if ($RecordedPid -eq $BridgeProcess.Id) { Remove-Item $PidFile -Force -ErrorAction SilentlyContinue }
-    }
-    if ($BridgeFile -and (Test-Path $BridgeFile)) { Remove-Item $BridgeFile -Force }
 }

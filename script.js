@@ -7,9 +7,11 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
+const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
+const CONVERSATION_SIDEBAR_THRESHOLD = 4;
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
 
 const LOCAL_TOOL_PROVIDERS = {
@@ -189,14 +191,16 @@ const elements = {
     httpStatus: $('http-status'), duration: $('request-duration'), requestProtocol: $('request-protocol'),
     inputTokens: $('total-input-tokens'), outputTokens: $('total-output-tokens'), totalRequests: $('total-requests'),
     totalCost: $('total-cost'), inputPrice: $('input-price'), outputPrice: $('output-price'), costLimit: $('cost-limit'),
-    settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
+    workspaceSidebar: $('workspace-sidebar'), settingsPanel: $('settings-panel'), drawerOverlay: $('drawer-overlay'), toastRegion: $('toast-region'),
     settingsToggle: $('settings-toggle'), settingsToggleIcon: $('settings-toggle-icon'),
     settingsToggleLabel: $('settings-toggle-label'), settingsInspector: $('settings-inspector'),
+    sidebarConversationsButton: $('sidebar-conversations-button'), sidebarSettingsButton: $('sidebar-settings-button'),
+    conversationSidebar: $('conversation-sidebar'), conversationSidebarList: $('conversation-sidebar-list'),
+    conversationSidebarCount: $('conversation-sidebar-count'), conversationSidebarToggle: $('conversation-sidebar-toggle'),
+    sidebarNewConversation: $('sidebar-new-conversation'), sidebarImportConversations: $('sidebar-import-conversations'),
     clearSavedSettings: $('clear-saved-settings'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
-    promptSelect: $('prompt-select'), promptName: $('prompt-name'), promptSave: $('prompt-save'),
-    promptLoad: $('prompt-load'), promptDelete: $('prompt-delete'),
     conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
     localSessionImport: $('local-session-import'), localSessionModal: $('local-session-modal'),
     localSessionClose: $('local-session-close'), localSessionFilesButton: $('local-session-files-button'),
@@ -204,7 +208,7 @@ const elements = {
     localSessionDirectory: $('local-session-directory'),
     localCodexSetup: $('local-codex-setup'), localCodexPlatform: $('local-codex-platform'),
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
-    localCodexCheck: $('local-codex-check'), localCodexCommand: $('local-codex-command'),
+    localCodexCheck: $('local-codex-check'), localCodexStop: $('local-codex-stop'), localCodexCommand: $('local-codex-command'),
     localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
     localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
     localToolNote: $('local-tool-note'),
@@ -216,6 +220,11 @@ const elements = {
     agentDetailName: $('agent-detail-name'), agentDetailDescription: $('agent-detail-description'),
     agentPromptPreview: $('agent-prompt-preview'), agentSourceLink: $('agent-source-link'),
     agentApply: $('agent-apply'), agentLibrarySource: $('agent-library-source'), activeAgent: $('active-agent'),
+    agentBuiltInTab: $('agent-built-in-tab'), agentCustomTab: $('agent-custom-tab'),
+    customAgentCount: $('custom-agent-count'), customAgentNew: $('custom-agent-new'),
+    customAgentEditor: $('custom-agent-editor'), customAgentName: $('custom-agent-name'),
+    customAgentPrompt: $('custom-agent-prompt'), customAgentSave: $('custom-agent-save'),
+    customAgentDelete: $('custom-agent-delete'),
     contextProvider: $('context-provider'), contextProtocol: $('context-protocol'), contextModel: $('context-model'),
     contextAgent: $('context-agent'), contextAgentItem: $('context-agent-item')
 };
@@ -228,6 +237,7 @@ const state = {
     agentCatalog: null,
     selectedAgentId: '',
     selectedAgentContent: '',
+    agentLibraryMode: 'built-in',
     agentDetailRequest: 0,
     agentReturnFocus: null,
     localSessionReturnFocus: null,
@@ -264,10 +274,12 @@ function initialize() {
     restorePrompts();
     restoreConversations();
     elements.newConversation.addEventListener('click', () => createConversation());
+    elements.sidebarNewConversation.addEventListener('click', () => createConversation());
+    elements.sidebarImportConversations.addEventListener('click', openLocalSessionImport);
     updateUsageDisplay();
     renderHelpEnvironment();
     maybeShowHelpIntro();
-    syncWorkspaceMode();
+    initializeWorkspaceLayout();
 }
 
 function bindEvents() {
@@ -310,15 +322,20 @@ function bindEvents() {
     elements.profileLoad.addEventListener('click', loadProfile);
     elements.profileDelete.addEventListener('click', deleteProfile);
     elements.profileSelect.addEventListener('change', syncProfileSelection);
-    elements.promptSave.addEventListener('click', savePrompt);
-    elements.promptLoad.addEventListener('click', loadPrompt);
-    elements.promptDelete.addEventListener('click', deletePrompt);
-    elements.promptSelect.addEventListener('change', syncPromptSelection);
     elements.agentLibraryOpen.addEventListener('click', openAgentLibrary);
     elements.agentLibraryClose.addEventListener('click', closeAgentLibrary);
     elements.agentSearch.addEventListener('input', renderAgentList);
     elements.agentDepartment.addEventListener('change', renderAgentList);
     elements.agentApply.addEventListener('click', applySelectedAgent);
+    elements.agentBuiltInTab.addEventListener('click', () => setAgentLibraryMode('built-in'));
+    elements.agentCustomTab.addEventListener('click', () => setAgentLibraryMode('custom'));
+    elements.customAgentNew.addEventListener('click', startNewCustomAgent);
+    elements.customAgentSave.addEventListener('click', saveCustomAgent);
+    elements.customAgentDelete.addEventListener('click', deleteCustomAgent);
+    elements.customAgentPrompt.addEventListener('input', () => {
+        state.selectedAgentContent = elements.customAgentPrompt.value.trim();
+        elements.agentApply.disabled = !state.selectedAgentContent;
+    });
     elements.activeAgent.addEventListener('click', openActiveAgent);
     elements.agentLibraryModal.addEventListener('click', (event) => {
         if (event.target === elements.agentLibraryModal) closeAgentLibrary();
@@ -350,6 +367,7 @@ function bindEvents() {
     });
     elements.localCodexDownload.addEventListener('click', downloadLocalCodexLauncher);
     elements.localCodexCheck.addEventListener('click', testLocalCodexConnection);
+    elements.localCodexStop.addEventListener('click', stopLocalCodexConnection);
     elements.localCodexCopyCommand.addEventListener('click', copyLocalCodexCommand);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.testButton.addEventListener('click', testConnection);
@@ -381,7 +399,10 @@ function bindEvents() {
 
     elements.settingsToggle.addEventListener('click', toggleSettings);
     $('settings-close').addEventListener('click', closeSettings);
-    elements.drawerOverlay.addEventListener('click', closeSettings);
+    elements.sidebarConversationsButton.addEventListener('click', openConversationSidebar);
+    elements.sidebarSettingsButton.addEventListener('click', openSettings);
+    elements.conversationSidebarToggle.addEventListener('click', openConversationSidebar);
+    elements.drawerOverlay.addEventListener('click', closeWorkspaceSidebar);
     window.addEventListener('resize', syncWorkspaceMode);
     const persistentElements = [
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
@@ -579,9 +600,9 @@ function updateLocalCodexCommand() {
     const tool = currentLocalTool()?.tool || 'codex';
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     const commands = {
-        macos: `bash "$HOME/Downloads/ai-shakedown-${slug}-macos-${APP_VERSION}.command"`,
-        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows-${APP_VERSION}.ps1"`,
-        linux: `bash "$HOME/Downloads/ai-shakedown-${slug}-linux-${APP_VERSION}.sh"`
+        macos: `bash "$HOME/Downloads/ai-shakedown-${slug}-macos.command"`,
+        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows.ps1"`,
+        linux: `bash "$HOME/Downloads/ai-shakedown-${slug}-linux.sh"`
     };
     elements.localCodexCommand.textContent = commands[state.localCodex.platform] || commands.macos;
     elements.localCodexGuide.hidden = state.localCodex.platform !== 'macos';
@@ -631,9 +652,9 @@ function localCodexLauncherSpec(platform) {
     const tool = currentLocalTool()?.tool || 'codex';
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     return {
-        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos-${APP_VERSION}.command` },
-        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows-${APP_VERSION}.ps1` },
-        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux-${APP_VERSION}.sh` }
+        macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos.command` },
+        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows.ps1` },
+        linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux.sh` }
     }[platform];
 }
 
@@ -652,8 +673,9 @@ async function downloadLocalCodexLauncher() {
     try {
         const token = createLocalCodexToken();
         const port = LOCAL_CODEX_DEFAULT_PORT + crypto.getRandomValues(new Uint16Array(1))[0] % 90;
-        const templateUrl = new URL(`${spec.template}?v=${APP_VERSION}`, window.location.href);
-        const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${APP_VERSION}`, window.location.href);
+        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const templateUrl = new URL(`${spec.template}?v=${assetVersion}`, window.location.href);
+        const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${assetVersion}`, window.location.href);
         const returnUrl = new URL(window.location.href);
         returnUrl.search = '';
         returnUrl.hash = '';
@@ -684,7 +706,7 @@ async function downloadLocalCodexLauncher() {
         saveLocalCodexPairing();
         setLocalCodexStatus('idle', '脚本已下载');
         updateEndpointPreview();
-        showToast(`${APP_VERSION} 自检启动脚本已下载，运行后页面会自动重新打开并连接`);
+        showToast('自检启动脚本已下载，运行后页面会自动重新打开并连接');
         if (state.localCodex.platform === 'macos') openMacosLauncherHelp(spec.fileName);
     } catch (error) {
         setLocalCodexStatus('error', '下载失败');
@@ -724,14 +746,38 @@ async function testLocalCodexConnection() {
         const accountLabel = account.planType || payload.version || account.type || '已连接';
         setLocalCodexStatus('success', accountLabel);
         setConnectionState('success', `${tool.title}已连接`, `${duration} ms`);
-        showToast(`${tool.title}已连接 · ${accountLabel}`);
+        elements.localCodexStop.disabled = false;
+        showToast(`${tool.title}已连接 · ${accountLabel}；桥接在后台运行，终端可以关闭`);
     } catch (error) {
         setLocalCodexStatus('error', '连接失败');
         setConnectionState('error', '连接失败', '');
         const message = error instanceof TypeError
-            ? '未检测到本地桥接。请运行刚下载的脚本，并保持终端窗口开启。'
+            ? '未检测到本地桥接。请运行刚下载的脚本；显示后台启动成功后即可关闭终端。'
             : error.message;
         showToast(message, true);
+    }
+}
+
+async function stopLocalCodexConnection() {
+    if (state.busy || !state.localCodex.token) return;
+    const tool = currentLocalTool();
+    try {
+        elements.localCodexStop.disabled = true;
+        const response = await fetch(`http://127.0.0.1:${state.localCodex.port}/shutdown`, {
+            method: 'POST',
+            headers: localCodexAuthorizationHeaders(true)
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(getErrorMessage(payload, `HTTP ${response.status}`));
+        try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore. */ }
+        state.localCodex.token = '';
+        state.localCodex.tool = '';
+        setLocalCodexStatus('idle', '已停止');
+        setConnectionState('idle', '后台连接已停止', '');
+        showToast(`${tool?.title || '本地连接'}已停止`);
+    } catch (error) {
+        elements.localCodexStop.disabled = false;
+        showToast(error instanceof TypeError ? '无法连接后台桥接，可能已经停止' : error.message, true);
     }
 }
 
@@ -928,7 +974,7 @@ function applySettings(settings) {
 
 function clearSavedSettings() {
     try {
-        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY, HELP_INTRO_STORAGE_KEY]
+        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY, HELP_INTRO_STORAGE_KEY, CONVERSATION_SIDEBAR_STORAGE_KEY]
             .forEach((key) => localStorage.removeItem(key));
     } catch (_) { /* Ignore storage restrictions. */ }
     try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore storage restrictions. */ }
@@ -946,7 +992,8 @@ function clearSavedSettings() {
     elements.apiKey.value = '';
     elements.systemPrompt.value = '';
     renderProfileOptions();
-    renderPromptOptions();
+    updateAgentCount();
+    document.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
     createConversation({ silent: true, systemPrompt: '' });
     showToast('已清除配置、提示词、对话、API Key 和帮助提示状态');
 }
@@ -1060,35 +1107,37 @@ function restorePrompts() {
     state.prompts = readStoredArray(PROMPTS_STORAGE_KEY).filter((item) => (
         item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.content === 'string'
     ));
-    renderPromptOptions();
+    updateAgentCount();
 }
 
-function renderPromptOptions(selectedId = elements.promptSelect.value) {
-    elements.promptSelect.replaceChildren(new Option('自定义提示词库', ''));
-    for (const prompt of state.prompts) {
-        elements.promptSelect.appendChild(new Option(prompt.name, prompt.id));
-    }
-    elements.promptSelect.value = state.prompts.some((item) => item.id === selectedId) ? selectedId : '';
-    syncPromptSelection();
+function updateAgentCount() {
+    const builtInCount = state.agentCatalog?.count || state.agentCatalog?.agents?.length || 268;
+    elements.agentCount.textContent = String(builtInCount + state.prompts.length);
+    elements.customAgentCount.textContent = String(state.prompts.length);
 }
 
-function syncPromptSelection() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
-    if (prompt) elements.promptName.value = prompt.name;
-    else if (!elements.promptSelect.value) elements.promptName.value = '';
-    elements.promptLoad.disabled = !prompt;
-    elements.promptDelete.disabled = !prompt;
+function startNewCustomAgent() {
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = false;
+    elements.customAgentName.value = '';
+    elements.customAgentPrompt.value = elements.systemPrompt.value;
+    elements.customAgentDelete.disabled = true;
+    elements.agentApply.disabled = !elements.customAgentPrompt.value.trim();
+    renderAgentList();
+    elements.customAgentName.focus();
 }
 
-function savePrompt() {
-    const name = elements.promptName.value.trim();
-    const content = elements.systemPrompt.value.trim();
+function saveCustomAgent() {
+    const name = elements.customAgentName.value.trim();
+    const content = elements.customAgentPrompt.value.trim();
     if (!name || !content) {
-        showToast('请填写提示词名称和 System 内容', true);
+        showToast('请填写智能体名称和 System 定义', true);
         return;
     }
-    const selectedId = elements.promptSelect.value;
-    let prompt = state.prompts.find((item) => item.id === selectedId);
+    let prompt = state.prompts.find((item) => item.id === state.selectedAgentId);
     if (prompt) {
         prompt.name = name;
         prompt.content = content;
@@ -1098,33 +1147,26 @@ function savePrompt() {
         state.prompts.push(prompt);
     }
     if (!writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts)) return;
-    renderPromptOptions(prompt.id);
-    showToast(`已保存提示词“${name}”`);
+    state.selectedAgentId = prompt.id;
+    state.selectedAgentContent = content;
+    elements.customAgentDelete.disabled = false;
+    elements.agentApply.disabled = false;
+    updateAgentCount();
+    renderAgentList();
+    showToast(`已保存自定义智能体“${name}”`);
 }
 
-function loadPrompt() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
-    if (!prompt) return;
-    elements.systemPrompt.value = prompt.content;
-    const conversation = activeConversation();
-    if (conversation) {
-        conversation.systemPrompt = prompt.content;
-        conversation.activeAgent = null;
-    }
-    renderActiveAgent();
-    persistSettings();
-    persistConversations();
-    showToast(`已加载提示词“${prompt.name}”`);
-}
-
-function deletePrompt() {
-    const prompt = state.prompts.find((item) => item.id === elements.promptSelect.value);
+function deleteCustomAgent() {
+    const prompt = state.prompts.find((item) => item.id === state.selectedAgentId);
     if (!prompt) return;
     state.prompts = state.prompts.filter((item) => item.id !== prompt.id);
     writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts);
-    renderPromptOptions();
-    elements.promptName.value = '';
-    showToast(`已删除提示词“${prompt.name}”`);
+    updateAgentCount();
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    renderAgentList();
+    startNewCustomAgent();
+    showToast(`已删除自定义智能体“${prompt.name}”`);
 }
 
 async function loadAgentCatalog() {
@@ -1134,7 +1176,7 @@ async function loadAgentCatalog() {
     const catalog = await response.json();
     if (!Array.isArray(catalog?.agents)) throw new Error('角色索引格式无效');
     state.agentCatalog = catalog;
-    elements.agentCount.textContent = String(catalog.count || catalog.agents.length);
+    updateAgentCount();
     elements.agentLibrarySource.textContent = `agency-agents-zh ${catalog.version || ''} · ${catalog.license || 'MIT'}`;
     elements.agentDepartment.replaceChildren(new Option('全部部门', ''));
     for (const department of catalog.departments || []) {
@@ -1142,6 +1184,32 @@ async function loadAgentCatalog() {
         if (count) elements.agentDepartment.appendChild(new Option(`${department.name} (${count})`, department.id));
     }
     return catalog;
+}
+
+function setAgentLibraryMode(mode) {
+    state.agentLibraryMode = mode === 'custom' ? 'custom' : 'built-in';
+    const custom = state.agentLibraryMode === 'custom';
+    elements.agentBuiltInTab.classList.toggle('active', !custom);
+    elements.agentBuiltInTab.setAttribute('aria-selected', String(!custom));
+    elements.agentCustomTab.classList.toggle('active', custom);
+    elements.agentCustomTab.setAttribute('aria-selected', String(custom));
+    elements.agentDepartment.hidden = custom;
+    elements.customAgentNew.hidden = !custom;
+    elements.customAgentSave.hidden = !custom;
+    elements.customAgentDelete.hidden = !custom;
+    elements.agentLibrarySource.textContent = custom
+        ? '自定义智能体 · 仅保存在当前浏览器'
+        : `agency-agents-zh ${state.agentCatalog?.version || ''} · ${state.agentCatalog?.license || 'MIT'}`;
+    elements.agentSearch.placeholder = custom ? '搜索自定义智能体' : '搜索角色、能力或文件名';
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    elements.agentDetailEmpty.hidden = false;
+    elements.agentDetailEmpty.querySelector('span').textContent = custom ? '选择或新建一个自定义智能体' : '选择一个角色';
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = true;
+    elements.agentApply.disabled = true;
+    elements.customAgentDelete.disabled = true;
+    renderAgentList();
 }
 
 async function openAgentLibrary() {
@@ -1155,8 +1223,9 @@ async function openAgentLibrary() {
     elements.agentList.appendChild(loading);
     try {
         await loadAgentCatalog();
-        renderAgentList();
-        const activeAgentId = activeConversation()?.activeAgent?.id;
+        const activeAgent = activeConversation()?.activeAgent;
+        const activeAgentId = activeAgent?.id;
+        setAgentLibraryMode(activeAgent?.custom ? 'custom' : state.agentLibraryMode);
         if (activeAgentId && activeAgentId !== state.selectedAgentId) await selectAgent(activeAgentId);
         else if (activeAgentId) {
             renderAgentList();
@@ -1185,9 +1254,13 @@ function closeAgentLibrary() {
 }
 
 function filteredAgents() {
+    const query = elements.agentSearch.value.trim().toLocaleLowerCase('zh-CN');
+    if (state.agentLibraryMode === 'custom') {
+        return state.prompts.filter((agent) => !query || [agent.name, agent.content]
+            .some((value) => String(value || '').toLocaleLowerCase('zh-CN').includes(query)));
+    }
     if (!state.agentCatalog) return [];
     const department = elements.agentDepartment.value;
-    const query = elements.agentSearch.value.trim().toLocaleLowerCase('zh-CN');
     return state.agentCatalog.agents.filter((agent) => {
         if (department && agent.department !== department) return false;
         if (!query) return true;
@@ -1198,12 +1271,13 @@ function filteredAgents() {
 
 function renderAgentList() {
     const agents = filteredAgents();
-    elements.agentResultsCount.textContent = `${agents.length} 个角色`;
+    const custom = state.agentLibraryMode === 'custom';
+    elements.agentResultsCount.textContent = `${agents.length} 个${custom ? '自定义' : '角色'}`;
     elements.agentList.replaceChildren();
     if (!agents.length) {
         const empty = document.createElement('div');
         empty.className = 'agent-list-empty';
-        empty.textContent = '没有匹配的角色';
+        empty.textContent = custom ? '还没有自定义智能体，点击“新建自定义”开始' : '没有匹配的角色';
         elements.agentList.appendChild(empty);
         return;
     }
@@ -1217,13 +1291,13 @@ function renderAgentList() {
 
         const emoji = document.createElement('span');
         emoji.className = 'agent-list-emoji';
-        emoji.textContent = agent.emoji || '●';
+        emoji.textContent = custom ? '✦' : (agent.emoji || '●');
         const name = document.createElement('span');
         name.className = 'agent-list-name';
         name.textContent = agent.name;
         const description = document.createElement('span');
         description.className = 'agent-list-description';
-        description.textContent = agent.description;
+        description.textContent = custom ? '自定义 System 智能体' : agent.description;
         button.append(emoji, name, description);
         button.addEventListener('click', () => selectAgent(agent.id));
         elements.agentList.appendChild(button);
@@ -1232,6 +1306,10 @@ function renderAgentList() {
 }
 
 async function selectAgent(agentId) {
+    if (state.agentLibraryMode === 'custom') {
+        selectCustomAgent(agentId);
+        return;
+    }
     const agent = state.agentCatalog?.agents.find((item) => item.id === agentId);
     if (!agent) return;
     state.selectedAgentId = agent.id;
@@ -1263,10 +1341,62 @@ async function selectAgent(agentId) {
     }
 }
 
+function selectCustomAgent(agentId) {
+    const agent = state.prompts.find((item) => item.id === agentId);
+    if (!agent) return;
+    state.selectedAgentId = agent.id;
+    state.selectedAgentContent = agent.content;
+    elements.agentDetailEmpty.hidden = true;
+    elements.agentDetailContent.hidden = true;
+    elements.customAgentEditor.hidden = false;
+    elements.customAgentName.value = agent.name;
+    elements.customAgentPrompt.value = agent.content;
+    elements.customAgentDelete.disabled = false;
+    elements.agentApply.disabled = false;
+    renderAgentList();
+}
+
 function applySelectedAgent() {
-    const agent = state.agentCatalog?.agents.find((item) => item.id === state.selectedAgentId);
     const conversation = activeConversation();
-    if (!agent || !state.selectedAgentContent || !conversation) return;
+    if (!state.selectedAgentContent || !conversation) return;
+    if (state.agentLibraryMode === 'custom') {
+        const name = elements.customAgentName.value.trim();
+        const content = elements.customAgentPrompt.value.trim();
+        if (!name || !content) {
+            showToast('请填写智能体名称和 System 定义', true);
+            return;
+        }
+        let savedAgent = state.prompts.find((item) => item.id === state.selectedAgentId);
+        if (savedAgent) {
+            savedAgent.name = name;
+            savedAgent.content = content;
+            savedAgent.updatedAt = new Date().toISOString();
+        } else {
+            savedAgent = { id: createId('prompt'), name, content, updatedAt: new Date().toISOString() };
+            state.prompts.push(savedAgent);
+        }
+        if (!writeStoredValue(PROMPTS_STORAGE_KEY, state.prompts)) return;
+        state.selectedAgentId = savedAgent.id;
+        state.selectedAgentContent = content;
+        updateAgentCount();
+        elements.systemPrompt.value = state.selectedAgentContent;
+        conversation.systemPrompt = state.selectedAgentContent;
+        conversation.activeAgent = {
+            id: savedAgent.id,
+            name,
+            emoji: '✦',
+            departmentName: '自定义',
+            custom: true
+        };
+        persistSettings();
+        persistConversations();
+        renderActiveAgent();
+        closeAgentLibrary();
+        showToast(`已应用自定义智能体“${name}”`);
+        return;
+    }
+    const agent = state.agentCatalog?.agents.find((item) => item.id === state.selectedAgentId);
+    if (!agent) return;
     elements.systemPrompt.value = state.selectedAgentContent;
     conversation.systemPrompt = state.selectedAgentContent;
     conversation.activeAgent = {
@@ -1285,6 +1415,7 @@ function applySelectedAgent() {
 async function openActiveAgent() {
     elements.agentSearch.value = '';
     elements.agentDepartment.value = '';
+    state.agentLibraryMode = activeConversation()?.activeAgent?.custom ? 'custom' : 'built-in';
     await openAgentLibrary();
 }
 
@@ -1750,6 +1881,7 @@ async function handleLocalSessionImport(event) {
         return;
     }
 
+    const sidebarWasEnabled = conversationSidebarEnabled();
     const previousConversations = state.conversations;
     const previousActiveId = state.activeConversationId;
     imported.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
@@ -1764,10 +1896,34 @@ async function handleLocalSessionImport(event) {
     renderActiveConversation();
     const skipped = unreadable + (parsed.length - imported.length);
     showToast(`已导入 ${imported.length} 个本地对话${skipped ? `，跳过 ${skipped} 个文件` : ''}`);
+    if (!sidebarWasEnabled && conversationSidebarEnabled()) {
+        if (!isMobileWorkspace()) openConversationSidebar();
+        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
+    }
 }
 
 function activeConversation() {
     return state.conversations.find((item) => item.id === state.activeConversationId) || null;
+}
+
+function conversationSidebarPreference() {
+    try { return localStorage.getItem(CONVERSATION_SIDEBAR_STORAGE_KEY) === '1'; } catch (_) { return false; }
+}
+
+function conversationSidebarEnabled() {
+    return conversationSidebarPreference() || state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD;
+}
+
+function syncConversationSidebarMode() {
+    if (state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD && !conversationSidebarPreference()) {
+        try { localStorage.setItem(CONVERSATION_SIDEBAR_STORAGE_KEY, '1'); } catch (_) { /* Storage can be unavailable. */ }
+    }
+    const enabled = conversationSidebarEnabled();
+    document.body.classList.toggle('conversation-sidebar-enabled', enabled);
+    if (!enabled) document.body.classList.remove('sidebar-conversations');
+    else if (document.body.classList.contains('chat-focused') && !isMobileWorkspace()) {
+        document.body.classList.add('sidebar-conversations');
+    }
 }
 
 function restoreConversations() {
@@ -1783,7 +1939,8 @@ function restoreConversations() {
                 id: item.activeAgent.id,
                 name: item.activeAgent.name,
                 emoji: typeof item.activeAgent.emoji === 'string' ? item.activeAgent.emoji : '',
-                departmentName: typeof item.activeAgent.departmentName === 'string' ? item.activeAgent.departmentName : ''
+                departmentName: typeof item.activeAgent.departmentName === 'string' ? item.activeAgent.departmentName : '',
+                custom: item.activeAgent.custom === true
             }
             : null,
         history: Array.isArray(item?.history) ? item.history.filter((message) => (
@@ -1830,11 +1987,16 @@ function createConversation(options = {}) {
         history: [],
         createdAt: new Date().toISOString()
     };
+    const sidebarWasEnabled = conversationSidebarEnabled();
     state.conversations.push(conversation);
     state.activeConversationId = conversation.id;
     persistConversations();
     renderConversationTabs();
     renderActiveConversation();
+    if (!sidebarWasEnabled && conversationSidebarEnabled() && !options.silent) {
+        if (!isMobileWorkspace()) openConversationSidebar();
+        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
+    }
     if (!options.silent) showToast('已新建对话窗口');
 }
 
@@ -1877,7 +2039,10 @@ function closeConversation(id) {
 }
 
 function renderConversationTabs() {
+    syncConversationSidebarMode();
     elements.conversationTabs.replaceChildren();
+    elements.conversationSidebarList.replaceChildren();
+    elements.conversationSidebarCount.textContent = String(state.conversations.length);
     for (const conversation of state.conversations) {
         const tab = document.createElement('div');
         tab.className = `conversation-tab${conversation.id === state.activeConversationId ? ' active' : ''}`;
@@ -1902,8 +2067,36 @@ function renderConversationTabs() {
         closeButton.addEventListener('click', () => closeConversation(conversation.id));
         tab.append(selectButton, closeButton);
         elements.conversationTabs.appendChild(tab);
+
+        const sidebarItem = document.createElement('div');
+        sidebarItem.className = `conversation-sidebar-item${conversation.id === state.activeConversationId ? ' active' : ''}`;
+        const sidebarSelect = document.createElement('button');
+        sidebarSelect.type = 'button';
+        sidebarSelect.role = 'tab';
+        sidebarSelect.ariaSelected = String(conversation.id === state.activeConversationId);
+        sidebarSelect.title = selectButton.title;
+        const sidebarTitle = document.createElement('strong');
+        sidebarTitle.textContent = conversation.title;
+        const sidebarMeta = document.createElement('small');
+        sidebarMeta.textContent = conversation.importedFrom ? '本地导入' : `${conversation.history.length} 条消息`;
+        sidebarSelect.append(sidebarTitle, sidebarMeta);
+        sidebarSelect.addEventListener('click', () => {
+            switchConversation(conversation.id);
+            if (isMobileWorkspace()) closeWorkspaceSidebar();
+        });
+        const sidebarClose = document.createElement('button');
+        sidebarClose.type = 'button';
+        sidebarClose.className = 'conversation-sidebar-close';
+        sidebarClose.title = '关闭对话';
+        sidebarClose.setAttribute('aria-label', `关闭${conversation.title}`);
+        sidebarClose.innerHTML = '<i class="bi bi-x"></i>';
+        sidebarClose.addEventListener('click', () => closeConversation(conversation.id));
+        sidebarItem.append(sidebarSelect, sidebarClose);
+        elements.conversationSidebarList.appendChild(sidebarItem);
     }
     elements.conversationTabs.querySelector('.conversation-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    elements.conversationSidebarList.querySelector('.conversation-sidebar-item.active')?.scrollIntoView({ block: 'nearest' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
 
 function renderActiveConversation() {
@@ -2381,7 +2574,7 @@ function describeError(error) {
     if (error.name === 'AbortError') return '请求已取消';
     if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) {
         if (currentLocalTool()) {
-            return `无法连接${currentLocalTool().title}。请运行下载的启动脚本并保持终端开启；若浏览器阻止本地网络访问，请允许访问 127.0.0.1。`;
+            return `无法连接${currentLocalTool().title}。请重新运行下载的启动脚本；显示后台启动成功后终端可以关闭。若浏览器阻止本地网络访问，请允许访问 127.0.0.1。`;
         }
         return '无法连接服务。请检查 URL、CORS、HTTPS/HTTP 混合内容以及自建服务是否已启动。';
     }
@@ -2492,6 +2685,7 @@ function syncControls() {
     elements.localSessionImport.disabled = state.busy;
     elements.localCodexDownload.disabled = state.busy;
     elements.localCodexCheck.disabled = state.busy;
+    elements.localCodexStop.disabled = state.busy || !state.localCodex.token;
     elements.stopButton.disabled = !state.busy || !state.controller;
     elements.messageInput.disabled = state.busy || locked;
     elements.sendButton.querySelector('span').textContent = locked ? '已达上限' : state.busy ? '请求中' : '发送';
@@ -2557,10 +2751,25 @@ function isMobileWorkspace() {
     return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 780px)').matches;
 }
 
+function initializeWorkspaceLayout() {
+    syncConversationSidebarMode();
+    if (conversationSidebarEnabled()) {
+        document.body.classList.add('chat-focused', 'sidebar-conversations');
+        document.body.classList.remove('sidebar-settings');
+    } else if (isMobileWorkspace()) {
+        document.body.classList.add('chat-focused');
+        document.body.classList.remove('sidebar-settings', 'sidebar-conversations');
+        elements.workspaceSidebar.classList.remove('is-open');
+    } else {
+        document.body.classList.add('sidebar-settings');
+        document.body.classList.remove('chat-focused', 'sidebar-conversations');
+    }
+    syncWorkspaceMode();
+}
+
 function settingsAreVisible() {
-    return isMobileWorkspace()
-        ? elements.settingsPanel.classList.contains('is-open')
-        : !document.body.classList.contains('chat-focused');
+    return document.body.classList.contains('sidebar-settings')
+        && (!isMobileWorkspace() || elements.workspaceSidebar.classList.contains('is-open'));
 }
 
 function syncWorkspaceMode() {
@@ -2570,6 +2779,8 @@ function syncWorkspaceMode() {
     elements.settingsToggle.title = settingsVisible ? '切换到专注聊天' : '打开设置';
     elements.settingsToggleLabel.textContent = settingsVisible ? '聊天' : '设置';
     elements.settingsToggleIcon.className = settingsVisible ? 'bi bi-chat-left-text' : 'bi bi-sliders';
+    elements.sidebarSettingsButton.classList.toggle('active', settingsVisible);
+    elements.sidebarConversationsButton.classList.toggle('active', !settingsVisible);
 }
 
 function toggleSettings() {
@@ -2579,15 +2790,44 @@ function toggleSettings() {
 
 function openSettings() {
     document.body.classList.remove('chat-focused');
-    elements.settingsPanel.classList.add('is-open');
+    document.body.classList.add('sidebar-settings');
+    document.body.classList.remove('sidebar-conversations');
+    elements.workspaceSidebar.classList.add('is-open');
     elements.drawerOverlay.classList.add('is-open');
     syncWorkspaceMode();
 }
 
 function closeSettings() {
     document.body.classList.add('chat-focused');
-    elements.settingsPanel.classList.remove('is-open');
+    document.body.classList.remove('sidebar-settings');
+    if (conversationSidebarEnabled()) document.body.classList.add('sidebar-conversations');
+    else document.body.classList.remove('sidebar-conversations');
+    if (isMobileWorkspace()) elements.workspaceSidebar.classList.remove('is-open');
     elements.drawerOverlay.classList.remove('is-open');
+    syncWorkspaceMode();
+}
+
+function openConversationSidebar() {
+    if (!conversationSidebarEnabled()) {
+        closeSettings();
+        return;
+    }
+    document.body.classList.add('chat-focused', 'sidebar-conversations');
+    document.body.classList.remove('sidebar-settings');
+    if (isMobileWorkspace()) {
+        elements.workspaceSidebar.classList.add('is-open');
+        elements.drawerOverlay.classList.add('is-open');
+    } else {
+        elements.drawerOverlay.classList.remove('is-open');
+    }
+    syncWorkspaceMode();
+}
+
+function closeWorkspaceSidebar() {
+    if (!isMobileWorkspace()) return;
+    elements.workspaceSidebar.classList.remove('is-open');
+    elements.drawerOverlay.classList.remove('is-open');
+    document.body.classList.add('chat-focused');
     syncWorkspaceMode();
 }
 
