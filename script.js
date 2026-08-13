@@ -7,7 +7,7 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
@@ -199,6 +199,7 @@ const elements = {
     conversationSidebarCount: $('conversation-sidebar-count'), conversationSidebarToggle: $('conversation-sidebar-toggle'),
     sidebarNewConversation: $('sidebar-new-conversation'), sidebarImportConversations: $('sidebar-import-conversations'),
     clearSavedSettings: $('clear-saved-settings'),
+    pwaInstallCard: $('pwa-install-card'), pwaInstallButton: $('pwa-install-button'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
     conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
@@ -240,6 +241,9 @@ const state = {
     agentLibraryMode: 'built-in',
     agentDetailRequest: 0,
     agentReturnFocus: null,
+    pwaInstallPrompt: null,
+    pwaUpdateWorker: null,
+    pwaRefreshing: false,
     localSessionReturnFocus: null,
     helpReturnFocus: null,
     macosLaunchHelpReturnFocus: null,
@@ -280,6 +284,7 @@ function initialize() {
     renderHelpEnvironment();
     maybeShowHelpIntro();
     initializeWorkspaceLayout();
+    initializePwa();
 }
 
 function bindEvents() {
@@ -432,6 +437,72 @@ function bindEvents() {
         else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
         else closeSettings();
     });
+}
+
+function isStandalonePwa() {
+    return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+function syncPwaInstallCard() {
+    elements.pwaInstallCard.hidden = !state.pwaInstallPrompt || isStandalonePwa();
+}
+
+async function installPwa() {
+    const prompt = state.pwaInstallPrompt;
+    if (!prompt) return;
+    elements.pwaInstallButton.disabled = true;
+    try {
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+            state.pwaInstallPrompt = null;
+            syncPwaInstallCard();
+            showToast('AI Shakedown Console 已安装');
+        }
+    } finally {
+        elements.pwaInstallButton.disabled = false;
+    }
+}
+
+function showPwaUpdate(worker) {
+    if (state.pwaUpdateWorker === worker) return;
+    state.pwaUpdateWorker = worker;
+    showActionToast('发现新版本，刷新后即可使用', '立即刷新', () => {
+        state.pwaRefreshing = true;
+        worker.postMessage({ type: 'SKIP_WAITING' });
+    });
+}
+
+async function initializePwa() {
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        state.pwaInstallPrompt = event;
+        syncPwaInstallCard();
+    });
+    window.addEventListener('appinstalled', () => {
+        state.pwaInstallPrompt = null;
+        syncPwaInstallCard();
+    });
+    elements.pwaInstallButton.addEventListener('click', installPwa);
+
+    if (!('serviceWorker' in navigator) || !globalThis.isSecureContext) return;
+    try {
+        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const registration = await navigator.serviceWorker.register(`/assets/service-worker.js?v=${assetVersion}`, { scope: '/' });
+        if (registration.waiting && navigator.serviceWorker.controller) showPwaUpdate(registration.waiting);
+        registration.addEventListener('updatefound', () => {
+            const worker = registration.installing;
+            worker?.addEventListener('statechange', () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) showPwaUpdate(worker);
+            });
+        });
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!state.pwaRefreshing) return;
+            window.location.reload();
+        });
+    } catch (error) {
+        console.warn('PWA 初始化失败', error);
+    }
 }
 
 function detectClientEnvironment() {
@@ -995,7 +1066,7 @@ function clearSavedSettings() {
     updateAgentCount();
     document.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
     createConversation({ silent: true, systemPrompt: '' });
-    showToast('已清除配置、提示词、对话、API Key 和帮助提示状态');
+    showToast('已清除配置、自定义智能体、对话、API Key 和帮助提示状态');
 }
 
 function readStoredArray(key) {
@@ -2741,6 +2812,23 @@ function showToast(message, error = false) {
     toast.textContent = message;
     elements.toastRegion.appendChild(toast);
     window.setTimeout(() => toast.remove(), 4500);
+}
+
+function showActionToast(message, actionLabel, action) {
+    const toast = document.createElement('div');
+    toast.className = 'toast with-action';
+    const copy = document.createElement('span');
+    copy.textContent = message;
+    const button = document.createElement('button');
+    button.className = 'toast-action';
+    button.type = 'button';
+    button.textContent = actionLabel;
+    button.addEventListener('click', () => {
+        toast.remove();
+        action();
+    });
+    toast.append(copy, button);
+    elements.toastRegion.appendChild(toast);
 }
 
 function scrollChatToBottom() {

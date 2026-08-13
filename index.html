@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
+    <meta name="application-name" content="AI Shakedown Console">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Shakedown">
+    <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=21">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=22">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=22">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=22">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
     <header class="app-header">
@@ -258,6 +265,17 @@
                         </button>
                     </div>
                 </details>
+
+                <section class="pwa-install-card" id="pwa-install-card" aria-label="安装网页应用" hidden>
+                    <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-device-ssd"></i></span>
+                    <div>
+                        <strong>安装为桌面应用</strong>
+                        <small>独立窗口运行，并可离线打开页面和本地保存的对话。</small>
+                    </div>
+                    <button class="secondary-button compact" id="pwa-install-button" type="button">
+                        <i class="bi bi-download"></i><span>安装</span>
+                    </button>
+                </section>
 
                 <div class="endpoint-preview" title="最终请求地址">
                     <i class="bi bi-link-45deg"></i>
@@ -664,7 +682,14 @@
                         <i class="bi bi-shield-check" aria-hidden="true"></i>
                         <div>
                             <h3>数据与隐私</h3>
-                            <p>配置、API Key、提示词和对话保存在当前浏览器。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
+                            <p>配置、API Key、自定义智能体和对话保存在当前浏览器。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
+                        <i class="bi bi-window-plus" aria-hidden="true"></i>
+                        <div>
+                            <h3>安装与离线</h3>
+                            <p>支持的浏览器会在设置中显示“安装”按钮。安装后可用独立窗口打开，离线时仍能查看页面和本地数据；远程模型调用仍需联网。</p>
                         </div>
                     </section>
                 </div>
@@ -678,9 +703,9 @@
 
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v21</div>
+    <div class="build-version" title="当前部署版本">v22</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=21"></script>
+    <script type="module" src="script.js?v=22"></script>
 </body>
 </html>
