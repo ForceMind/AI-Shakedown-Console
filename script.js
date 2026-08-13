@@ -7,7 +7,7 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
@@ -250,6 +250,7 @@ const state = {
     localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     controller: null,
     busy: false,
+    messageComposing: false,
     totals: { input: 0, output: 0, requests: 0, cost: 0 },
     inspector: { request: '尚无请求', response: '尚无响应', events: '尚无流式事件' },
     inspectorTab: 'request'
@@ -395,8 +396,20 @@ function bindEvents() {
         });
     });
 
+    elements.messageInput.addEventListener('compositionstart', () => {
+        state.messageComposing = true;
+    });
+    elements.messageInput.addEventListener('compositionend', () => {
+        window.setTimeout(() => {
+            state.messageComposing = false;
+        }, 0);
+    });
+    elements.messageInput.addEventListener('blur', () => {
+        state.messageComposing = false;
+    });
     elements.messageInput.addEventListener('keydown', (event) => {
-        if (!event.isComposing && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        const isComposing = state.messageComposing || event.isComposing || event.keyCode === 229;
+        if (!isComposing && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
             elements.messageForm.requestSubmit();
         }
@@ -549,7 +562,7 @@ function renderHelpEnvironment() {
     elements.helpSendShortcut.textContent = environment.send;
     elements.helpNewlineShortcut.textContent = environment.newline;
     elements.helpNewlineNote.textContent = environment.newlineNote;
-    elements.helpPlatformNote.textContent = environment.note;
+    elements.helpPlatformNote.textContent = `${environment.note} 中文输入法组词和选择候选词时不会触发快捷发送。`;
     elements.helpOpen.title = `使用帮助：${environment.send} 发送，${environment.newline} 换行`;
     elements.helpOpen.setAttribute('aria-label', `打开使用帮助；${environment.send} 发送，${environment.newline} 换行`);
     elements.sendButton.title = `发送消息（${environment.send}）`;

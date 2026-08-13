@@ -115,6 +115,20 @@ h1 {
     font-size: 12px;
 }
 
+.build-version {
+    display: block;
+    width: max-content;
+    margin-top: 1px;
+    color: #8a958f;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 8px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    user-select: none;
+}
+
 h2 {
     font-size: 16px;
     line-height: 1.3;
@@ -2405,23 +2419,6 @@ textarea:focus {
     z-index: 100;
     display: grid;
     gap: 8px;
-}
-
-.build-version {
-    position: fixed;
-    right: 9px;
-    bottom: 7px;
-    z-index: 90;
-    padding: 2px 5px;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--muted);
-    font-family: "SFMono-Regular", Consolas, monospace;
-    font-size: 10px;
-    line-height: 1.3;
-    pointer-events: none;
-    user-select: none;
 }
 
 .toast {
