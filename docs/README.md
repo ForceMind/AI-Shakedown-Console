@@ -10,6 +10,7 @@
 | 使用本机登录的 Codex、Gemini 等工具 | [本机 AI 指南](./LOCAL_AI.md) |
 | `.command` 没权限、Node 未找到或端口冲突 | [故障排查](./TROUBLESHOOTING.md) |
 | 安装 PWA 或理解离线范围 | [使用指南：PWA](./USER_GUIDE.md#安装-pwa) |
+| Edge PWA 输入拼音但没有候选窗 | [故障排查：Edge PWA 中文输入](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗) |
 | 部署到 Cloudflare Pages | [部署与发布](./DEPLOYMENT.md) |
 | 理解代码、数据流和安全设计 | [架构说明](./ARCHITECTURE.md) |
 | 提交修改 | [贡献指南](../CONTRIBUTING.md) |

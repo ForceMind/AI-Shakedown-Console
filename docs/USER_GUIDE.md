@@ -111,6 +111,8 @@ API Key、Authorization 和敏感查询参数会在显示时脱敏。复制检�
 
 使用 HTTPS 打开线上站点，在设置中点击“安装为桌面应用”；如果没有显示按钮，可使用地址栏或浏览器菜单中的安装入口。
 
+macOS 上由 Edge 安装的 PWA 是一个独立的原生 App Shim。若第三方中文输入法可以输入拼音但不显示候选窗，这与网页内候选词确认被快捷键打断不是同一问题。先完全退出 PWA 和 Edge，并测试系统自带“简体拼音”；仍异常时从 `edge://apps` 卸载且不要清除浏览数据，重启 Edge 后重新安装。完整原理和步骤见 [Edge PWA 输入拼音但没有候选窗](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
+
 ### Safari / iPhone / iPad
 
 - macOS Safari：使用“文件 → 添加到程序坞”。
