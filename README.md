@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v18` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v19` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -11,12 +11,26 @@
 - 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
 - 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
 - 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应自检启动脚本后即可检测工具、读取模型并直接对话。启动器会检查 Node.js、CLI 和登录状态，停止同工具旧桥接；端口冲突时自动寻找空闲端口，并优先复用系统或 Codex 桌面版自带的 Node 运行时。
+- 内置完整网页帮助：首次访问识别桌面或触摸环境并显示一次发送/换行说明；关闭后可通过消息输入框右上角的 `?` 随时重新打开。
 - 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
 - 无构建步骤，图标、Markdown 解析器和 HTML 清洗器均随站点自托管。
 
 AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链接、表格、行内代码和代码块。解析后的 HTML 会在显示前清洗；流式生成期间保持纯文本，完成或停止后再渲染 Markdown。
+
+## 网页帮助与快捷键
+
+首次在当前站点打开 `v19` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与角色、连接排查以及数据隐私说明。
+
+桌面键盘快捷键：
+
+- macOS：`⌘ + Enter` 发送；`Shift + Enter` 换行。
+- Windows / Linux：`Ctrl + Enter` 发送；`Shift + Enter` 换行。
+- 普通 `Enter` 也会保留换行，适合输入多段提示词。
+- 输入法正在组词时不会触发快捷发送，避免误提交未完成的中文输入。
+
+触摸设备会显示“点击发送按钮”和系统键盘的 `Return / Enter` 换行提示；连接外接键盘后仍可使用对应系统的组合键发送。首次帮助状态保存在 `ai-shakedown-console.help-intro.v1`，点击“清除全部本地数据”或清除站点数据后会再次显示。
 
 ## 协议和预设
 
@@ -56,11 +70,11 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 macOS 从下载到连接：
 
 1. 在“服务商预设”选择所需的“本机登录”工具，系统选择 `macOS`。
-2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v18 为 `ai-shakedown-codex-macos-v18.command`，因此新版不会覆盖旧版文件。
+2. 点击“下载自检启动脚本”。文件名包含版本，例如 Codex v19 为 `ai-shakedown-codex-macos-v19.command`，因此新版不会覆盖旧版文件。
 3. 打开“终端”，复制网页给出的命令运行：
 
    ```bash
-   bash "$HOME/Downloads/ai-shakedown-codex-macos-v18.command"
+   bash "$HOME/Downloads/ai-shakedown-codex-macos-v19.command"
    ```
 
    不要双击 `.command` 文件。通过 `bash` 读取脚本不依赖可执行权限，因此不需要 `chmod +x`。
@@ -118,10 +132,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v18` 部署包：
+在项目根目录生成 `v19` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v18.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v19.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -148,7 +162,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v18",
+  "appVersion": "v19",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -157,14 +171,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v18`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v18`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=18`](https://ai-shakedown-console.pages.dev/?v=18) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v19`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v19`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=19`](https://ai-shakedown-console.pages.dev/?v=19) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v18` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v18` 查询参数，避免新旧界面资源混用。
+- `v19` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v19` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -202,7 +216,7 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v18` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v19` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。

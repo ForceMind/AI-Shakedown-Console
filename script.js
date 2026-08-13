@@ -7,8 +7,9 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
+const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
 
 const LOCAL_TOOL_PROVIDERS = {
@@ -174,6 +175,10 @@ const elements = {
     topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), reasoningEffort: $('reasoning-effort'),
     systemPrompt: $('system-prompt'),
     messageForm: $('message-form'), messageInput: $('message-input'), sendButton: $('send-button'),
+    helpOpen: $('help-open'), helpModal: $('help-modal'), helpClose: $('help-close'), helpConfirm: $('help-confirm'),
+    helpEnvironmentLabel: $('help-environment-label'), helpSendShortcut: $('help-send-shortcut'),
+    helpNewlineShortcut: $('help-newline-shortcut'), helpNewlineNote: $('help-newline-note'),
+    helpPlatformNote: $('help-platform-note'),
     testButton: $('test-connection'), loadModelsButton: $('load-models'), stopButton: $('stop-request'),
     chatWindow: $('chat-window'), emptyState: $('empty-state'), emptyEndpoint: $('empty-endpoint'),
     activeModelTitle: $('active-model-title'), connectionState: $('connection-state'),
@@ -221,6 +226,7 @@ const state = {
     agentDetailRequest: 0,
     agentReturnFocus: null,
     localSessionReturnFocus: null,
+    helpReturnFocus: null,
     localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     controller: null,
     busy: false,
@@ -253,6 +259,8 @@ function initialize() {
     restoreConversations();
     elements.newConversation.addEventListener('click', () => createConversation());
     updateUsageDisplay();
+    renderHelpEnvironment();
+    maybeShowHelpIntro();
 }
 
 function bindEvents() {
@@ -317,6 +325,12 @@ function bindEvents() {
     elements.localSessionModal.addEventListener('click', (event) => {
         if (event.target === elements.localSessionModal) closeLocalSessionImport();
     });
+    elements.helpOpen.addEventListener('click', () => openHelp(false));
+    elements.helpClose.addEventListener('click', closeHelp);
+    elements.helpConfirm.addEventListener('click', closeHelp);
+    elements.helpModal.addEventListener('click', (event) => {
+        if (event.target === elements.helpModal) closeHelp();
+    });
     elements.localCodexPlatform.addEventListener('change', () => {
         state.localCodex.platform = elements.localCodexPlatform.value;
         updateLocalCodexCommand();
@@ -346,7 +360,7 @@ function bindEvents() {
     });
 
     elements.messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (!event.isComposing && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
             elements.messageForm.requestSubmit();
         }
@@ -377,10 +391,92 @@ function bindEvents() {
     });
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
-        if (!elements.localSessionModal.hidden) closeLocalSessionImport();
+        if (!elements.helpModal.hidden) closeHelp();
+        else if (!elements.localSessionModal.hidden) closeLocalSessionImport();
         else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
         else closeSettings();
     });
+}
+
+function detectClientEnvironment() {
+    const raw = `${navigator.userAgentData?.platform || ''} ${navigator.platform || ''} ${navigator.userAgent || ''}`.toLowerCase();
+    const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+    const touch = navigator.maxTouchPoints > 0 || coarsePointer;
+    if (raw.includes('android')) {
+        return {
+            label: 'Android 触摸设备', send: '点击发送按钮', newline: 'Enter / 换行键',
+            newlineNote: '外接键盘可用 Shift + Enter',
+            note: '触摸设备建议点击发送按钮；连接外接键盘后也可用 Ctrl + Enter 发送。'
+        };
+    }
+    const ios = /iphone|ipad|ipod/.test(raw) || (raw.includes('mac') && touch && navigator.maxTouchPoints > 1);
+    if (ios) {
+        return {
+            label: 'iPhone / iPad 触摸设备', send: '点击发送按钮', newline: 'Return / 换行键',
+            newlineNote: '外接键盘可用 Shift + Enter',
+            note: '触摸设备建议点击发送按钮；连接外接键盘后也可用 ⌘ + Enter 发送。'
+        };
+    }
+    const platform = detectLocalPlatform();
+    if (platform === 'windows') {
+        return {
+            label: 'Windows 桌面', send: 'Ctrl + Enter', newline: 'Shift + Enter',
+            newlineNote: '普通 Enter 也会换行', note: '已按 Windows 键盘显示快捷键。'
+        };
+    }
+    if (platform === 'linux') {
+        return {
+            label: 'Linux 桌面', send: 'Ctrl + Enter', newline: 'Shift + Enter',
+            newlineNote: '普通 Enter 也会换行', note: '已按 Linux 键盘显示快捷键。'
+        };
+    }
+    return {
+        label: 'macOS 桌面', send: '⌘ + Enter', newline: 'Shift + Enter',
+        newlineNote: '普通 Enter 也会换行', note: '已按 macOS 键盘显示快捷键。'
+    };
+}
+
+function renderHelpEnvironment() {
+    const environment = detectClientEnvironment();
+    elements.helpEnvironmentLabel.textContent = environment.label;
+    elements.helpSendShortcut.textContent = environment.send;
+    elements.helpNewlineShortcut.textContent = environment.newline;
+    elements.helpNewlineNote.textContent = environment.newlineNote;
+    elements.helpPlatformNote.textContent = environment.note;
+    elements.helpOpen.title = `使用帮助：${environment.send} 发送，${environment.newline} 换行`;
+    elements.helpOpen.setAttribute('aria-label', `打开使用帮助；${environment.send} 发送，${environment.newline} 换行`);
+    elements.sendButton.title = `发送消息（${environment.send}）`;
+}
+
+function markHelpIntroSeen() {
+    try { localStorage.setItem(HELP_INTRO_STORAGE_KEY, '1'); } catch (_) { /* Storage can be unavailable. */ }
+}
+
+function helpIntroSeen() {
+    try { return localStorage.getItem(HELP_INTRO_STORAGE_KEY) === '1'; } catch (_) { return false; }
+}
+
+function maybeShowHelpIntro() {
+    if (helpIntroSeen()) return;
+    window.setTimeout(() => openHelp(true), 250);
+}
+
+function openHelp(automatic = false) {
+    renderHelpEnvironment();
+    state.helpReturnFocus = automatic ? null : document.activeElement;
+    elements.helpModal.hidden = false;
+    document.body.classList.add('modal-open');
+    markHelpIntroSeen();
+    window.requestAnimationFrame(() => (automatic ? elements.helpConfirm : elements.helpClose).focus());
+}
+
+function closeHelp() {
+    if (elements.helpModal.hidden) return;
+    elements.helpModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.helpReturnFocus?.focus) state.helpReturnFocus.focus();
+    else elements.messageInput.focus();
+    state.helpReturnFocus = null;
 }
 
 function detectLocalPlatform() {
@@ -790,7 +886,7 @@ function applySettings(settings) {
 
 function clearSavedSettings() {
     try {
-        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY]
+        [SETTINGS_STORAGE_KEY, PROFILES_STORAGE_KEY, PROMPTS_STORAGE_KEY, CONVERSATIONS_STORAGE_KEY, HELP_INTRO_STORAGE_KEY]
             .forEach((key) => localStorage.removeItem(key));
     } catch (_) { /* Ignore storage restrictions. */ }
     try { sessionStorage.removeItem(LOCAL_CODEX_SESSION_KEY); } catch (_) { /* Ignore storage restrictions. */ }
@@ -810,7 +906,7 @@ function clearSavedSettings() {
     renderProfileOptions();
     renderPromptOptions();
     createConversation({ silent: true, systemPrompt: '' });
-    showToast('已清除配置、提示词、对话和 API Key');
+    showToast('已清除配置、提示词、对话、API Key 和帮助提示状态');
 }
 
 function readStoredArray(key) {

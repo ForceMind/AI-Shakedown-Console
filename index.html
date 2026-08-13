@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#18201d">
     <title>AI Shakedown Console</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=18">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=19">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=18">
+    <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
     <header class="app-header">
@@ -366,7 +366,10 @@
                 </div>
                 <textarea id="system-prompt" rows="2" placeholder="设置模型身份、目标和边界，例如：You are a helpful assistant."></textarea>
                 <div class="message-compose-row">
-                    <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off"></textarea>
+                    <div class="message-input-wrap">
+                        <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
+                        <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
+                    </div>
                     <button class="send-button" id="send-button" type="submit" title="发送消息">
                         <i class="bi bi-arrow-up"></i>
                         <span>发送</span>
@@ -484,11 +487,89 @@
         </section>
     </div>
 
+    <div class="modal-backdrop" id="help-modal" hidden>
+        <section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-describedby="help-intro">
+            <header class="help-header">
+                <div>
+                    <span class="eyebrow">HELP &amp; SHORTCUTS</span>
+                    <h2 id="help-title">使用帮助</h2>
+                </div>
+                <button class="icon-button" id="help-close" type="button" title="关闭帮助" aria-label="关闭帮助">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="help-body">
+                <div class="help-environment" id="help-intro">
+                    <i class="bi bi-display" aria-hidden="true"></i>
+                    <div>
+                        <span>已识别当前环境</span>
+                        <strong id="help-environment-label">桌面浏览器</strong>
+                    </div>
+                </div>
+
+                <section class="help-section" aria-labelledby="help-shortcuts-title">
+                    <div class="help-section-heading">
+                        <i class="bi bi-keyboard" aria-hidden="true"></i>
+                        <h3 id="help-shortcuts-title">发送与换行</h3>
+                    </div>
+                    <div class="help-shortcut-grid">
+                        <div class="help-shortcut-card">
+                            <span>发送消息</span>
+                            <kbd id="help-send-shortcut">⌘ + Enter</kbd>
+                            <small>也可以点击右侧“发送”按钮</small>
+                        </div>
+                        <div class="help-shortcut-card">
+                            <span>输入换行</span>
+                            <kbd id="help-newline-shortcut">Shift + Enter</kbd>
+                            <small id="help-newline-note">普通 Enter 也会换行</small>
+                        </div>
+                    </div>
+                    <p class="help-platform-note" id="help-platform-note"></p>
+                </section>
+
+                <div class="help-topic-grid">
+                    <section class="help-topic">
+                        <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                        <div>
+                            <h3>开始对话</h3>
+                            <p>先选择服务商和模型。API 服务填写地址与密钥；本机登录工具下载并运行自检脚本，再点击“检测连接”和“读取”模型。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
+                        <i class="bi bi-window-stack" aria-hidden="true"></i>
+                        <div>
+                            <h3>对话与角色</h3>
+                            <p>“新对话”可并行保留多个会话；提示词库保存常用 System 内容；智能体角色可一键应用到当前对话。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
+                        <i class="bi bi-wrench-adjustable-circle" aria-hidden="true"></i>
+                        <div>
+                            <h3>连接排查</h3>
+                            <p>先用“检查连接”或本机工具的“检测连接”。失败时查看右侧请求检查器；本机桥接还应确认启动终端仍保持开启。</p>
+                        </div>
+                    </section>
+                    <section class="help-topic">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                        <div>
+                            <h3>数据与隐私</h3>
+                            <p>配置、API Key、提示词和对话保存在当前浏览器。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <footer class="help-footer">
+                <span>关闭后可点击输入框右上角的 <strong>?</strong> 再次打开</span>
+                <button class="primary-button" id="help-confirm" type="button">我知道了</button>
+            </footer>
+        </section>
+    </div>
+
     <div class="drawer-overlay" id="drawer-overlay"></div>
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
-    <div class="build-version" title="当前部署版本">v18</div>
+    <div class="build-version" title="当前部署版本">v19</div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=18"></script>
+    <script type="module" src="script.js?v=19"></script>
 </body>
 </html>
