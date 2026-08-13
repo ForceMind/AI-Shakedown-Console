@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v22` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v23` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -23,14 +23,14 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 
 ## 网页帮助与快捷键
 
-首次在当前站点打开 `v22` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与智能体、PWA 安装、连接排查以及数据隐私说明。
+首次在当前站点打开 `v23` 时，页面会识别操作系统和输入方式，自动显示一次使用帮助。关闭后不会反复弹出；消息输入框右上角始终保留一个小型 `?` 按钮，可重新查看快捷键、开始对话、对话与智能体、PWA 安装、连接排查以及数据隐私说明。
 
 桌面键盘快捷键：
 
 - macOS：`⌘ + Enter` 发送；`Shift + Enter` 换行。
 - Windows / Linux：`Ctrl + Enter` 发送；`Shift + Enter` 换行。
 - 普通 `Enter` 也会保留换行，适合输入多段提示词。
-- 输入法正在组词时不会触发快捷发送，避免误提交未完成的中文输入。
+- 输入法正在组词时不会触发快捷发送；页面同时跟踪组合输入状态并兼容 macOS Safari 的 `keyCode 229`，避免中文候选词确认被误判成发送快捷键。
 
 触摸设备会显示“点击发送按钮”和系统键盘的 `Return / Enter` 换行提示；连接外接键盘后仍可使用对应系统的组合键发送。首次帮助状态保存在 `ai-shakedown-console.help-intro.v1`，点击“清除全部本地数据”或清除站点数据后会再次显示。
 
@@ -57,7 +57,7 @@ AI 回复支持 GitHub Flavored Markdown，包括标题、列表、引用、链�
 
 OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会发送该字段，也可选择 `none`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max` 或 `ultra`；其他本地 CLI 使用各自的默认推理设置。
 
-思考强度下拉菜单位于左侧连接配置的模型选择器正下方。页面右下角显示当前前端版本；`/api/status` 同时返回 `appVersion` 和 Worker 版本。HTML 入口使用 `no-store`，避免新部署后继续显示旧页面。Bootstrap Icons 及其字体保存在站点本地，不依赖第三方 CDN。
+思考强度下拉菜单位于左侧连接配置的模型选择器正下方。页面左上角副标题下方以极小文字显示当前前端版本，不会遮挡任何操作；`/api/status` 同时返回 `appVersion` 和 Worker 版本。HTML 入口使用 `no-store`，避免新部署后继续显示旧页面。Bootstrap Icons 及其字体保存在站点本地，不依赖第三方 CDN。
 
 预设的模型名称只是初始值，并按能力从强到弱排列。使用“读取”按钮请求模型列表后，服务端返回的模型会按能力标记、参数规模和版本号降序显示；选择“自定义模型…”可继续手动填写任意模型 ID。
 
@@ -84,7 +84,7 @@ OpenAI Compatible 和本机 Codex 支持思考强度。默认“自动”不会�
 
 ## 项目状态与可选后续
 
-`v22` 作为网页版本的收尾里程碑，已经覆盖多协议连接、本机登录工具、对话导入、多对话、内置/自定义智能体、完整帮助、后台桥接、PWA 安装和离线打开。当前没有阻塞合并或正常使用的必需功能。
+`v23` 在网页版本收尾里程碑上修复了中文输入法组合事件，并将版本标识移到左上角副标题下方；现有多协议连接、本机登录工具、对话导入、多对话、内置/自定义智能体、完整帮助、后台桥接、PWA 安装和离线能力保持不变。当前没有阻塞合并或正常使用的必需功能。
 
 若以后重新启动开发，优先级较高但不属于当前收尾范围的增强包括：加密的整站数据导出/导入、可选的跨设备同步、Playwright 端到端回归测试，以及由 Tauri 管理本机桥接的原生桌面版。这些功能都可以在不改变现有浏览器数据结构的前提下增量实现。
 
@@ -168,10 +168,10 @@ assets/apple-touch-icon.png
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v22` 部署包：
+在项目根目录生成 `v23` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v22.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v23.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -198,7 +198,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v22",
+  "appVersion": "v23",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -207,14 +207,15 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v22`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v22`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=22`](https://ai-shakedown-console.pages.dev/?v=22) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认左上角副标题下方显示 `v23`，且输入区与操作按钮不再被版本号遮挡。
+2. 在消息输入框中用中文输入法完成候选词选择，确认可以正常输入，再使用 `⌘ + Enter` 或 `Ctrl + Enter` 发送。
+3. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v23`、`workerVersion` 为 `proxy-6`。
+4. 若浏览器仍显示旧入口，可访问 [`/?v=23`](https://ai-shakedown-console.pages.dev/?v=23) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v22` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、自定义智能体和对话；`prompts.v1` 中的旧提示词会直接显示在自定义智能体区。左侧对话布局另存于 `ai-shakedown-console.conversation-sidebar.v1`。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML、PWA manifest 和 Service Worker 由 Worker 返回 `no-cache` / `no-store` 更新策略；CSS、脚本、图标和本地桥接资源使用 `v22` 查询参数，Service Worker 使用 `shell-v22` 与 `runtime-v22` 缓存名，避免新旧界面资源混用。
+- `v23` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、自定义智能体和对话；`prompts.v1` 中的旧提示词会直接显示在自定义智能体区。左侧对话布局另存于 `ai-shakedown-console.conversation-sidebar.v1`。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML、PWA manifest 和 Service Worker 由 Worker 返回 `no-cache` / `no-store` 更新策略；CSS、脚本、图标和本地桥接资源使用 `v23` 查询参数，Service Worker 使用 `shell-v23` 与 `runtime-v23` 缓存名，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -252,7 +253,7 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 
 ## 桌面应用路线图
 
-原生桌面封装列为 PWA 之后的可选后续计划，不包含在 `v22` 中。当前 PWA 已覆盖安装、独立窗口和离线打开，但原生封装仍可提供更深的本地进程管理：
+原生桌面封装列为 PWA 之后的可选后续计划，不包含在 `v23` 中。当前 PWA 已覆盖安装、独立窗口和离线打开，但原生封装仍可提供更深的本地进程管理：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。
