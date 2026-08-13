@@ -5,7 +5,7 @@ import readline from 'node:readline';
 import { mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
-const BRIDGE_VERSION = 'v15';
+const BRIDGE_VERSION = 'v16';
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.AI_SHAKEDOWN_BRIDGE_PORT || 4510);
 const TOKEN = process.env.AI_SHAKEDOWN_BRIDGE_TOKEN || '';

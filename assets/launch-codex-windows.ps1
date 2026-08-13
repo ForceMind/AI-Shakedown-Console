@@ -16,7 +16,20 @@ function Stop-WithMessage([string]$Message) {
 }
 
 try {
-    $NodeCommand = Get-Command node -ErrorAction Stop
+    $NodeCommand = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $NodeCommand) {
+        $NodeCandidates = @(
+            (Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\node.exe"),
+            (Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe")
+        )
+        foreach ($BundledNode in $NodeCandidates) {
+            if (Test-Path $BundledNode) {
+                $NodeCommand = Get-Command $BundledNode -ErrorAction SilentlyContinue
+                if ($NodeCommand) { break }
+            }
+        }
+    }
+    if (-not $NodeCommand) { Stop-WithMessage "没有找到 Node.js。已检查系统 PATH 和 Codex 自带运行时；请安装 Node.js 18 或更高版本。" }
     $NodeMajor = [int](& $NodeCommand.Source -p "Number(process.versions.node.split('.')[0])")
     if ($NodeMajor -lt 18) { Stop-WithMessage "Node.js 版本过低，需要 18 或更高版本。" }
 

@@ -2,7 +2,7 @@
 
 一个无需构建步骤的多协议 AI API 调试页面，用于验证 API Key、模型名称、网关地址和流式响应。既可浏览器直连，也可通过 Cloudflare Pages Worker 同域转发，解决上游未开放 CORS 时的访问问题。
 
-线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v15` · Worker：`proxy-6`
+线上版本：[ai-shakedown-console.pages.dev](https://ai-shakedown-console.pages.dev/) · 当前版本：`v16` · Worker：`proxy-6`
 
 ## 功能概览
 
@@ -10,7 +10,7 @@
 - 支持流式响应、安全 Markdown 渲染、请求检查、Token 与费用统计。
 - 支持配置库、提示词库、多对话页签，以及对话历史和连接配置的本地恢复。
 - 支持从本地 Codex、Gemini CLI、Claude Code 及通用 JSON / JSONL 记录导入历史对话。
-- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应启动脚本后即可检测工具、读取模型并直接对话。
+- 支持复用本机已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode：网页自动识别 macOS、Windows 或 Linux，下载对应启动脚本后即可检测工具、读取模型并直接对话。启动脚本会优先使用系统 Node.js，并自动回退到 Codex 桌面版自带的 Node 运行时。
 - 内置 [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) 的 268 个中文专家角色，可按部门筛选、搜索、预览并应用到当前对话。
 - 支持读取模型列表、模型强弱排序和 OpenAI `reasoning_effort` 思考强度。
 - 支持浏览器直连与 Cloudflare Pages Worker 同域代理，并限制代理上游白名单。
@@ -88,10 +88,10 @@ assets/favicon.svg
 
 可将以上文件按原目录结构压缩为 ZIP 后通过 Pages Direct Upload 创建生产部署。`_worker.js` 使用高级模式：`/api/proxy` 负责转发 API 请求，其他路径由 `env.ASSETS` 返回静态文件。
 
-在项目根目录生成 `v15` 部署包：
+在项目根目录生成 `v16` 部署包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v15.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v16.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -118,7 +118,7 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 ```json
 {
-  "appVersion": "v15",
+  "appVersion": "v16",
   "workerVersion": "proxy-6",
   "allowedUpstreamsConfigured": true,
   "assetsBindingConfigured": true
@@ -127,14 +127,14 @@ ALLOWED_UPSTREAMS=https://api.openai.com,https://api.anthropic.com,https://your-
 
 部署完成后：
 
-1. 打开线上页面，确认右下角显示 `v15`。
-2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v15`、`workerVersion` 为 `proxy-6`。
-3. 若浏览器仍显示旧入口，可访问 [`/?v=15`](https://ai-shakedown-console.pages.dev/?v=15) 绕过旧书签或中间缓存后再刷新。
+1. 打开线上页面，确认右下角显示 `v16`。
+2. 访问 [`/api/status`](https://ai-shakedown-console.pages.dev/api/status)，确认 `appVersion` 为 `v16`、`workerVersion` 为 `proxy-6`。
+3. 若浏览器仍显示旧入口，可访问 [`/?v=16`](https://ai-shakedown-console.pages.dev/?v=16) 绕过旧书签或中间缓存后再刷新。
 
 ### 浏览器缓存兼容
 
-- `v15` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
-- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v15` 查询参数，避免新旧界面资源混用。
+- `v16` 继续使用原有的 `ai-shakedown-console.settings.v1`、`profiles.v1`、`prompts.v1` 和 `conversations.v1` 存储键，升级部署不会清空原连接、API Key、提示词和对话。本地 AI 工具的配对令牌只保存在当前标签页的 `sessionStorage` 中。
+- HTML 入口由 Worker 返回 `no-store`，CSS、脚本、图标和本地桥接资源使用 `v16` 查询参数，避免新旧界面资源混用。
 - 角色索引使用 `no-cache`，角色正文 URL 附带上游 commit 标识；更新角色库后不会继续命中旧正文。
 
 ## 更新智能体角色库
@@ -172,7 +172,7 @@ node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 
 ## 桌面应用路线图
 
-桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v15` 中：
+桌面封装列为网页本地桥接稳定后的后续计划，不包含在 `v16` 中：
 
 1. 使用 Tauri 优先、Electron 作为兼容备选，将当前静态页面封装为 macOS、Windows 和 Linux 桌面应用。
 2. 由桌面主进程直接管理 Codex App Server、Antigravity、Gemini CLI、Claude Code 和 OpenCode 等本地进程，取消“先下载再运行脚本”的步骤。
