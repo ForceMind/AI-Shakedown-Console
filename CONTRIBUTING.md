@@ -66,10 +66,11 @@ git diff --check
 - 消息编辑分支、复制、选择、搜索、删除撤销、重试、继续和重新生成；
 - OpenAI/Anthropic/Gemini 图片请求映射，支持/不支持模型的附件按钮显隐；
 - 图片、文本和 PDF 附件选择、刷新恢复、发送与 IndexedDB 清理；
+- 完整备份在独立 Origin 追加恢复全部对话、System、草稿、分支、智能体标记和附件，重复导入不生成副本；
 - 第 5 个对话触发左侧列表；
 - PWA 安装、更新提示和离线外壳；
 - 三系统启动器的解析、错误提示和固定文件名；
-- 本机桥接的 status/models/chat/shutdown。
+- 本机桥接的 status/models/chat/shutdown，以及 Codex 默认 `ephemeral: true`、主动保存时为 `false`。
 
 ## 文档规范
 

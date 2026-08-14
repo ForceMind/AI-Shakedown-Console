@@ -8,6 +8,7 @@
 | --- | --- |
 | 第一次打开页面并发送消息 | [使用指南](./USER_GUIDE.md#第一次连接) |
 | 编辑 System、复制、搜索、导出消息或使用附件 | [使用指南：System 提示词](./USER_GUIDE.md#system-提示词) |
+| 把全部对话和附件迁移到另一台电脑 | [使用指南：完整备份与跨设备恢复](./USER_GUIDE.md#完整备份与跨设备恢复) |
 | 使用本机登录的 Codex、Gemini 等工具 | [本机 AI 指南](./LOCAL_AI.md) |
 | `.command` 没权限、Node 未找到或端口冲突 | [故障排查](./TROUBLESHOOTING.md) |
 | 安装 PWA 或理解离线范围 | [使用指南：PWA](./USER_GUIDE.md#安装-pwa) |

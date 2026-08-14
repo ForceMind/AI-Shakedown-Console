@@ -63,7 +63,7 @@ flowchart TB
 - 配置、智能体、对话和统计状态；
 - 稳定消息 ID、编辑分支、选择、搜索、复制、导出、重试与重新生成；
 - 图片/文本/PDF 附件处理、IndexedDB 持久化和多模态能力探测；
-- 本地记录导入；
+- 本地记录导入，以及全部对话/附件的备份与追加恢复；
 - 本机启动器生成、配对与控制；
 - PWA 安装和更新提示；
 - 专注聊天布局与环境帮助；
@@ -92,7 +92,7 @@ Cloudflare Pages Advanced Mode Worker：
 | `POST /v1/chat/completions` | 流式/非流式对话 |
 | `POST /shutdown` | 安全停止当前桥接 |
 
-Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单轮调用，桥接重放网页对话维持上下文。
+Codex 使用 App Server JSON-RPC 并保留线程。网页默认发送 `X-AI-Shakedown-Codex-History: ephemeral`，桥接在 `thread/start` 设置 `ephemeral: true`，避免网页对话物化为 Codex 最近任务；用户主动开启“同时保存到 Codex”后才改为 `ephemeral: false`。线程内存键同时包含保存模式，切换开关会创建隔离的新线程。其他 CLI 使用非交互单轮调用，桥接重放网页对话维持上下文。
 
 ### 三系统启动器
 
@@ -176,6 +176,12 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 
 当前数据结构没有云同步、加密或账号隔离。改变现有 key/schema 时必须提供向后兼容读取或清晰迁移说明。
 
+### 完整对话备份格式
+
+前端导出的 JSON envelope 使用 `format: "ai-shakedown-console-chat-backup"` 和 `formatVersion: 1`。主体包含 `backupId`、激活对话、全部对话快照和被引用附件：图片使用 base64，文本/PDF 使用 UTF-8 字符串。连接设置、API Key、配置库、自定义智能体库和本机配对信息不进入备份。
+
+导入按 `backupId + 源对话 ID + 索引` 生成稳定来源键，用于阻止同一文件重复导入；对话、消息和附件 ID 全部重新生成，分支父项与附件引用同步重映射。数据先写 IndexedDB，再追加 localStorage 对话；任一步失败会回滚本次新增附件与内存状态。导入只追加，不覆盖目标浏览器已有数据。
+
 ## 智能体资源
 
 `agents/index.json` 保存轻量元数据，角色正文按需从 `agents/content/**/*.md` 加载，避免首屏加载全部文本。导入脚本从上游 frontmatter 生成稳定索引并复制许可证。
@@ -187,6 +193,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 - Markdown 输出先解析后清洗；
 - 检查器显示时脱敏认证头和查询 Key；
 - 检查器隐藏图片 base64；附件只在用户选择并发送时进入对应模型请求；
+- 完整备份排除 API Key、连接配置和本机配对令牌，但文件自身不加密并可能包含完整对话与附件；
 - 本机配对令牌不持久化到 localStorage；
 - 用户可一键清除项目浏览器数据。
 
@@ -219,7 +226,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 - 新的 OpenAI-compatible 服务商预设；
 - 新的本地记录解析器；
 - 新的安全 CLI 无头适配；
-- 可选的数据导出/导入；
+- 加密的整站迁移包和可选云同步；
 - 可重复的浏览器回归测试。
 
 ### 更适合独立桌面层

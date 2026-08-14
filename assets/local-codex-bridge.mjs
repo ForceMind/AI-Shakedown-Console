@@ -230,7 +230,7 @@ function corsHeaders() {
     return {
         'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-AI-Shakedown-Conversation',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-AI-Shakedown-Conversation, X-AI-Shakedown-Codex-History',
         'Access-Control-Allow-Private-Network': 'true',
         'Cache-Control': 'no-store',
         'Vary': 'Origin'
@@ -297,17 +297,26 @@ function appendDelta(current, authoritative) {
     return current ? '' : authoritative;
 }
 
-async function runCodexTurn({ conversationKey, model, effort, messages, onDelta }) {
+async function runCodexTurn({ conversationKey, persistThread, model, effort, messages, onDelta }) {
     await rpc.start();
     let threadId = conversationThreads.get(conversationKey);
     const isNewThread = !threadId;
     if (!threadId) {
-        const started = await rpc.request('thread/start', {
-            model,
-            approvalPolicy: 'never',
-            sandbox: 'read-only',
-            serviceName: 'ai_shakedown_console'
-        });
+        let started;
+        try {
+            started = await rpc.request('thread/start', {
+                model,
+                approvalPolicy: 'never',
+                sandbox: 'read-only',
+                serviceName: 'ai_shakedown_console',
+                ephemeral: !persistThread
+            });
+        } catch (error) {
+            if (!persistThread && /ephemeral|unknown (field|parameter)|invalid params/i.test(error.message)) {
+                throw new Error('当前 Codex CLI 不支持临时任务，请先更新 Codex CLI；为避免写入最近任务，本次请求未继续');
+            }
+            throw error;
+        }
         threadId = started?.thread?.id;
         if (!threadId) throw new Error('Codex 未返回 thread id');
         conversationThreads.set(conversationKey, threadId);
@@ -450,11 +459,13 @@ function openAiDelta(text) {
 
 async function handleChat(request, response) {
     const body = await readJsonBody(request);
-    const conversationKey = String(request.headers['x-ai-shakedown-conversation'] || 'default').slice(0, 160);
+    const rawConversationKey = String(request.headers['x-ai-shakedown-conversation'] || 'default').slice(0, 160);
+    const persistThread = request.headers['x-ai-shakedown-codex-history'] === 'persisted';
+    const conversationKey = `${persistThread ? 'persisted' : 'ephemeral'}:${rawConversationKey}`;
     const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : undefined;
     const effort = typeof body.reasoning_effort === 'string' && body.reasoning_effort ? body.reasoning_effort : undefined;
     const run = LOCAL_PROVIDER === 'codex'
-        ? (onDelta) => runCodexTurn({ conversationKey, model, effort, messages: body.messages, onDelta })
+        ? (onDelta) => runCodexTurn({ conversationKey, persistThread, model, effort, messages: body.messages, onDelta })
         : () => runCliTurn({ model, messages: body.messages });
     if (body.stream !== false) {
         response.writeHead(200, {

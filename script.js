@@ -16,6 +16,9 @@ const CONVERSATION_SIDEBAR_THRESHOLD = 4;
 const MULTIMODAL_CAPABILITIES_STORAGE_KEY = 'ai-shakedown-console.multimodal-capabilities.v1';
 const ATTACHMENT_DATABASE_NAME = 'ai-shakedown-console.attachments.v1';
 const ATTACHMENT_STORE_NAME = 'files';
+const CHAT_BACKUP_FORMAT = 'ai-shakedown-console-chat-backup';
+const CHAT_BACKUP_FORMAT_VERSION = 1;
+const MAX_CHAT_BACKUP_FILE_BYTES = 512 * 1024 * 1024;
 const MAX_ATTACHMENTS_PER_MESSAGE = 6;
 const MAX_IMAGE_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const MAX_TEXT_ATTACHMENT_BYTES = 1024 * 1024;
@@ -240,8 +243,11 @@ const elements = {
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
     localCodexCheck: $('local-codex-check'), localCodexStop: $('local-codex-stop'), localCodexCommand: $('local-codex-command'),
     localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
+    localCodexHistoryOption: $('local-codex-history-option'), localCodexHistoryToggle: $('local-codex-history-toggle'),
     localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
     localToolNote: $('local-tool-note'),
+    chatBackupExport: $('chat-backup-export'), chatBackupImport: $('chat-backup-import'),
+    chatBackupFile: $('chat-backup-file'),
     agentLibraryOpen: $('agent-library-open'), agentLibraryModal: $('agent-library-modal'),
     agentLibraryClose: $('agent-library-close'), agentSearch: $('agent-search'),
     agentDepartment: $('agent-department'), agentList: $('agent-list'), agentCount: $('agent-count'),
@@ -286,6 +292,7 @@ const state = {
     localBridgeConnected: false,
     controller: null,
     busy: false,
+    chatBackupBusy: false,
     messageComposing: false,
     composerAttachments: [],
     attachmentDatabase: null,
@@ -717,6 +724,10 @@ function bindEvents() {
     elements.localCodexCheck.addEventListener('click', testLocalCodexConnection);
     elements.localCodexStop.addEventListener('click', stopLocalCodexConnection);
     elements.localCodexCopyCommand.addEventListener('click', copyLocalCodexCommand);
+    elements.localCodexHistoryToggle.addEventListener('change', persistSettings);
+    elements.chatBackupExport.addEventListener('click', exportAllConversations);
+    elements.chatBackupImport.addEventListener('click', () => elements.chatBackupFile.click());
+    elements.chatBackupFile.addEventListener('change', importConversationBackup);
     elements.messageForm.addEventListener('submit', sendMessage);
     elements.attachmentButton.addEventListener('click', () => elements.attachmentInput.click());
     elements.attachmentInput.addEventListener('change', handleAttachmentSelection);
@@ -1254,6 +1265,8 @@ function currentLocalTool() {
 
 function syncLocalCodexMode(enabled) {
     elements.localCodexSetup.hidden = !enabled;
+    const tool = enabled ? currentLocalTool() : null;
+    elements.localCodexHistoryOption.hidden = tool?.tool !== 'codex';
     const fixedFields = [
         elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.proxy, elements.customHeaders, elements.extraBody
@@ -1261,7 +1274,6 @@ function syncLocalCodexMode(enabled) {
     fixedFields.forEach((element) => { element.disabled = enabled; });
     $('key-visibility').disabled = enabled;
     if (enabled) {
-        const tool = currentLocalTool();
         elements.protocol.value = tool.protocol;
         elements.baseUrl.value = `http://127.0.0.1:${state.localCodex.port}`;
         elements.chatPath.value = '/v1/chat/completions';
@@ -1556,6 +1568,7 @@ function captureSettings() {
         topK: elements.topK.value,
         maxTokens: elements.maxTokens.value,
         reasoningEffort: elements.reasoningEffort.value,
+        codexPersistThreads: elements.localCodexHistoryToggle.checked,
         systemPrompt: activeConversation()?.systemPrompt ?? elements.systemPrompt.value,
         inputPrice: elements.inputPrice.value,
         outputPrice: elements.outputPrice.value,
@@ -1599,6 +1612,7 @@ function applySettings(settings) {
     }
     if (typeof settings.proxy === 'boolean') elements.proxy.checked = settings.proxy;
     if (typeof settings.stream === 'boolean') elements.stream.checked = settings.stream;
+    elements.localCodexHistoryToggle.checked = settings.codexPersistThreads === true;
 
     const selectedModel = typeof settings.model === 'string' ? settings.model : provider.model;
     const availableModels = Array.isArray(settings.availableModels)
@@ -1627,6 +1641,7 @@ function clearSavedSettings() {
     state.localCodex.port = LOCAL_CODEX_DEFAULT_PORT;
     state.localCodex.tool = '';
     state.localBridgeConnected = false;
+    elements.localCodexHistoryToggle.checked = false;
     state.profiles = [];
     state.prompts = [];
     state.conversations = [];
@@ -2361,6 +2376,9 @@ function buildHeaders() {
     if (currentLocalTool()) {
         Object.assign(merged, localCodexAuthorizationHeaders());
         merged['X-AI-Shakedown-Conversation'] = activeConversation()?.id || 'default';
+        if (currentLocalTool()?.tool === 'codex') {
+            merged['X-AI-Shakedown-Codex-History'] = elements.localCodexHistoryToggle.checked ? 'persisted' : 'ephemeral';
+        }
     }
     return merged;
 }
@@ -3759,6 +3777,252 @@ function downloadTextFile(name, text, type) {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function setChatBackupBusy(busy, action = '') {
+    state.chatBackupBusy = busy;
+    elements.chatBackupExport.querySelector('span').textContent = busy && action === 'export' ? '正在导出…' : '导出全部';
+    elements.chatBackupImport.querySelector('span').textContent = busy && action === 'import' ? '正在导入…' : '导入备份';
+    syncControls();
+}
+
+function backupConversationSnapshot(conversation) {
+    return {
+        id: conversation.id,
+        title: conversation.title,
+        systemPrompt: conversation.systemPrompt,
+        activeAgent: conversation.activeAgent ? { ...conversation.activeAgent } : null,
+        history: conversation.history.map((message) => ({
+            ...message,
+            attachments: (message.attachments || []).map((attachment) => ({ ...attachment }))
+        })),
+        draft: conversation.draft,
+        draftAttachments: (conversation.draftAttachments || []).map((attachment) => ({ ...attachment })),
+        createdAt: conversation.createdAt,
+        parentConversationId: conversation.parentConversationId || '',
+        branchAtMessageId: conversation.branchAtMessageId || ''
+    };
+}
+
+async function serializeBackupAttachment(record) {
+    const metadata = attachmentMetadata(record);
+    if (record.kind === 'image') {
+        let buffer;
+        if (record.data instanceof Blob) buffer = await record.data.arrayBuffer();
+        else if (record.data instanceof ArrayBuffer) buffer = record.data;
+        else if (ArrayBuffer.isView(record.data)) buffer = record.data.buffer.slice(record.data.byteOffset, record.data.byteOffset + record.data.byteLength);
+        else throw new Error(`${record.name} 的图片数据无法读取`);
+        return { ...metadata, encoding: 'base64', data: arrayBufferToBase64(buffer) };
+    }
+    return { ...metadata, encoding: 'utf-8', data: String(record.data ?? '') };
+}
+
+async function exportAllConversations() {
+    if (state.busy || state.chatBackupBusy) return;
+    persistActiveDraft();
+    setChatBackupBusy(true, 'export');
+    try {
+        const attachmentIds = [...referencedAttachmentIds()];
+        const attachments = [];
+        let missingAttachments = 0;
+        for (const id of attachmentIds) {
+            const record = await getAttachmentRecord(id);
+            if (!record) {
+                missingAttachments += 1;
+                continue;
+            }
+            attachments.push(await serializeBackupAttachment(record));
+        }
+        const now = new Date();
+        const backup = {
+            format: CHAT_BACKUP_FORMAT,
+            formatVersion: CHAT_BACKUP_FORMAT_VERSION,
+            backupId: createId('backup'),
+            appVersion: APP_VERSION,
+            exportedAt: now.toISOString(),
+            activeConversationId: state.activeConversationId,
+            conversations: state.conversations.map(backupConversationSnapshot),
+            attachments
+        };
+        const stamp = now.toISOString().slice(0, 19).replaceAll(':', '-');
+        downloadTextFile(
+            `AI-Shakedown-Console-全部对话-${stamp}.json`,
+            JSON.stringify(backup),
+            'application/json;charset=utf-8'
+        );
+        showToast(`已备份 ${backup.conversations.length} 个对话和 ${attachments.length} 个附件${missingAttachments ? `，${missingAttachments} 个附件数据已丢失` : ''}`, missingAttachments > 0);
+    } catch (error) {
+        showToast(`导出失败：${error.message}`, true);
+    } finally {
+        setChatBackupBusy(false);
+    }
+}
+
+function decodeBackupBase64(value, name) {
+    const maximumEncodedLength = Math.ceil(MAX_IMAGE_ATTACHMENT_BYTES / 3) * 4 + 8;
+    if (typeof value !== 'string' || value.length > maximumEncodedLength || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+        throw new Error(`${name} 的图片备份数据无效`);
+    }
+    let binary;
+    try { binary = atob(value); } catch (_) { throw new Error(`${name} 的图片备份数据无效`); }
+    if (binary.length > MAX_IMAGE_ATTACHMENT_BYTES) throw new Error(`${name} 的图片超过 5 MB`);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+}
+
+function deserializeBackupAttachment(value, newId) {
+    const metadata = normalizeAttachmentMetadata(value);
+    if (!metadata || typeof value.data !== 'string') throw new Error('备份中存在无效附件');
+    if (metadata.kind === 'image') {
+        if (value.encoding !== 'base64') throw new Error(`${metadata.name} 的图片编码无效`);
+        const bytes = decodeBackupBase64(value.data, metadata.name);
+        const type = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(metadata.type)
+            ? metadata.type
+            : 'application/octet-stream';
+        return { ...metadata, id: newId, type, size: bytes.byteLength, data: new Blob([bytes], { type }) };
+    }
+    const maximumCharacters = metadata.kind === 'pdf' ? MAX_EXTRACTED_ATTACHMENT_CHARS : MAX_TEXT_ATTACHMENT_BYTES;
+    if (value.encoding !== 'utf-8' || value.data.length > maximumCharacters) {
+        throw new Error(`${metadata.name} 的文本备份数据无效或过大`);
+    }
+    return { ...metadata, id: newId, data: value.data };
+}
+
+function conversationAttachmentIds(conversation) {
+    const ids = new Set();
+    for (const message of Array.isArray(conversation?.history) ? conversation.history : []) {
+        for (const attachment of Array.isArray(message?.attachments) ? message.attachments : []) {
+            if (typeof attachment?.id === 'string') ids.add(attachment.id);
+        }
+    }
+    for (const attachment of Array.isArray(conversation?.draftAttachments) ? conversation.draftAttachments : []) {
+        if (typeof attachment?.id === 'string') ids.add(attachment.id);
+    }
+    return ids;
+}
+
+function remapBackupAttachments(values, attachmentIdMap) {
+    return (Array.isArray(values) ? values : []).map(normalizeAttachmentMetadata).filter(Boolean).map((attachment) => {
+        const id = attachmentIdMap.get(attachment.id);
+        return id ? { ...attachment, id } : null;
+    }).filter(Boolean);
+}
+
+function normalizeBackupAgent(value) {
+    if (!value || typeof value.id !== 'string' || typeof value.name !== 'string') return null;
+    return {
+        id: value.id,
+        name: value.name.slice(0, 120),
+        emoji: typeof value.emoji === 'string' ? value.emoji.slice(0, 12) : '',
+        departmentName: typeof value.departmentName === 'string' ? value.departmentName.slice(0, 120) : '',
+        custom: value.custom === true
+    };
+}
+
+function backupSourceConversationId(source, index) {
+    return typeof source?.id === 'string' && source.id ? source.id.slice(0, 200) : `conversation-${index + 1}`;
+}
+
+function importedBackupConversation(source, index, targetId, fileName, backupId, conversationIdMap, attachmentIdMap) {
+    const messageIdMap = new Map();
+    const history = (Array.isArray(source?.history) ? source.history : []).map(normalizeStoredMessage).filter(Boolean).map((message) => {
+        const id = createId('message');
+        messageIdMap.set(message.id, id);
+        return { ...message, id, attachments: remapBackupAttachments(message.attachments, attachmentIdMap) };
+    });
+    const sourceId = backupSourceConversationId(source, index);
+    return {
+        id: targetId,
+        title: typeof source?.title === 'string' && source.title.trim() ? source.title.trim().slice(0, 52) : `导入对话 ${index + 1}`,
+        systemPrompt: typeof source?.systemPrompt === 'string' ? source.systemPrompt : '',
+        activeAgent: normalizeBackupAgent(source?.activeAgent),
+        history,
+        draft: typeof source?.draft === 'string' ? source.draft : '',
+        draftAttachments: remapBackupAttachments(source?.draftAttachments, attachmentIdMap),
+        createdAt: typeof source?.createdAt === 'string' ? source.createdAt : new Date().toISOString(),
+        parentConversationId: conversationIdMap.get(typeof source?.parentConversationId === 'string' ? source.parentConversationId.slice(0, 200) : '') || '',
+        branchAtMessageId: messageIdMap.get(source?.branchAtMessageId) || '',
+        importedFrom: {
+            source: 'backup',
+            fileName,
+            sourceKey: `backup:${backupId}:${sourceId}:${index}`
+        }
+    };
+}
+
+async function importConversationBackup() {
+    const file = elements.chatBackupFile.files?.[0];
+    if (!file || state.busy || state.chatBackupBusy) return;
+    elements.chatBackupFile.value = '';
+    if (file.size > MAX_CHAT_BACKUP_FILE_BYTES) {
+        showToast('备份文件不能超过 512 MB', true);
+        return;
+    }
+    setChatBackupBusy(true, 'import');
+    const storedAttachmentIds = [];
+    const previousConversations = state.conversations;
+    const previousActiveConversationId = state.activeConversationId;
+    try {
+        let backup;
+        try { backup = JSON.parse(await file.text()); } catch (_) { throw new Error('文件不是有效的 JSON 备份'); }
+        if (backup?.format !== CHAT_BACKUP_FORMAT || backup?.formatVersion !== CHAT_BACKUP_FORMAT_VERSION
+            || typeof backup.backupId !== 'string' || !backup.backupId.trim() || backup.backupId.length > 160
+            || !Array.isArray(backup.conversations) || !Array.isArray(backup.attachments)) {
+            throw new Error('这不是受支持的 AI Shakedown Console 完整备份');
+        }
+        const backupId = backup.backupId.trim();
+
+        const existingSourceKeys = new Set(state.conversations.map((item) => item.importedFrom?.sourceKey).filter(Boolean));
+        const selected = backup.conversations.map((source, index) => {
+            const sourceId = backupSourceConversationId(source, index);
+            return { source, index, sourceId, targetId: createId('conversation'), sourceKey: `backup:${backupId}:${sourceId}:${index}` };
+        }).filter((item) => !existingSourceKeys.has(item.sourceKey));
+        if (!selected.length) {
+            showToast('这份备份已经导入过，没有新增对话');
+            return;
+        }
+
+        const requiredAttachmentIds = new Set();
+        selected.forEach(({ source }) => conversationAttachmentIds(source).forEach((id) => requiredAttachmentIds.add(id)));
+        const attachmentIdMap = new Map();
+        const attachmentValues = new Map();
+        for (const attachment of backup.attachments) {
+            if (typeof attachment?.id === 'string' && requiredAttachmentIds.has(attachment.id) && !attachmentValues.has(attachment.id)) {
+                attachmentValues.set(attachment.id, attachment);
+                attachmentIdMap.set(attachment.id, createId('attachment'));
+            }
+        }
+        for (const [oldId, attachment] of attachmentValues) {
+            const record = deserializeBackupAttachment(attachment, attachmentIdMap.get(oldId));
+            await putAttachmentRecord(record);
+            storedAttachmentIds.push(record.id);
+        }
+
+        const conversationIdMap = new Map();
+        for (const { sourceId, targetId } of selected) {
+            if (!conversationIdMap.has(sourceId)) conversationIdMap.set(sourceId, targetId);
+        }
+        const imported = selected.map(({ source, index, targetId }) => importedBackupConversation(
+            source, index, targetId, file.name, backupId, conversationIdMap, attachmentIdMap
+        ));
+        state.conversations = [...state.conversations, ...imported];
+        state.activeConversationId = conversationIdMap.get(typeof backup.activeConversationId === 'string' ? backup.activeConversationId.slice(0, 200) : '') || imported.at(-1).id;
+        if (!persistConversations()) throw new Error('浏览器空间不足，无法保存导入的对话');
+        renderConversationTabs();
+        renderActiveConversation();
+        syncConversationSidebarMode();
+        closeSettings();
+        const missingAttachments = requiredAttachmentIds.size - attachmentIdMap.size;
+        showToast(`已追加 ${imported.length} 个对话和 ${storedAttachmentIds.length} 个附件${missingAttachments ? `，跳过 ${missingAttachments} 个缺失附件` : ''}`, missingAttachments > 0);
+    } catch (error) {
+        state.conversations = previousConversations;
+        state.activeConversationId = previousActiveConversationId;
+        await Promise.all(storedAttachmentIds.map((id) => deleteAttachmentRecord(id).catch(() => {})));
+        showToast(`导入失败：${error.message}`, true);
+    } finally {
+        setChatBackupBusy(false);
+    }
+}
+
 function exportSelectedMessages() {
     const messages = selectedMessages();
     if (!messages.length) return;
@@ -4066,6 +4330,9 @@ function syncControls() {
     elements.localCodexDownload.disabled = state.busy;
     elements.localCodexCheck.disabled = state.busy;
     elements.localCodexStop.disabled = state.busy || !state.localCodex.token;
+    elements.localCodexHistoryToggle.disabled = state.busy;
+    elements.chatBackupExport.disabled = state.busy || state.chatBackupBusy;
+    elements.chatBackupImport.disabled = state.busy || state.chatBackupBusy;
     elements.stopButton.disabled = !state.busy || !state.controller;
     elements.messageInput.disabled = state.busy || locked;
     elements.attachmentButton.disabled = state.busy || state.multimodalStatus !== 'supported';

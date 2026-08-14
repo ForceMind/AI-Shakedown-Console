@@ -59,7 +59,7 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 
 工具限制：
 
-- Codex：`read-only` 沙盒与 `never` 审批；
+- Codex：默认 `ephemeral` 临时任务、`read-only` 沙盒与 `never` 审批；只有用户主动打开“同时保存到 Codex”才创建可见任务；
 - Gemini CLI：`plan` 审批；
 - Claude Code：禁用内置/MCP 工具并使用安全、计划模式；
 - OpenCode：注入 `permission: deny` 并禁用分享；
@@ -72,6 +72,9 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 - 对话、System Prompt 和自定义智能体可能包含业务机密，并保存在浏览器本地。
 - 导入器会跳过明显的凭据文件名，但不能识别所有敏感内容。
 - 导入前由用户选择文件；项目不会主动扫描整个磁盘。
+- “完整备份”排除 API Key、连接配置、CLI 登录和配对令牌，但会包含全部对话、System、草稿以及附件内容。
+- 完整备份 JSON 没有加密；图片以 base64 保存，不能把它当作脱敏或加密文件。只应通过可信渠道传输并存放在受控位置。
+- 完整备份导入只追加并重新生成本地 ID；同一 `backupId` 的同一对话只导入一次，不会覆盖目标浏览器数据。
 - 发送到远程模型前，应遵守对应服务商的数据处理与保留政策。
 
 ## 输出渲染

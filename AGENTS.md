@@ -36,6 +36,20 @@
 - Preserve the stable stored-message schema and attachment IndexedDB references when editing chat behavior. Images are sent as protocol-native multimodal blocks; text/code and locally extracted PDF text are sent as named text attachments. Never expose image base64 in the request inspector.
 - Chromium `FileList` objects are live. Copy selected files with `Array.from(input.files)` before clearing a file input, or the async attachment pipeline can receive an empty list.
 
+## Local Codex task visibility
+
+- Webpage Codex conversations must default to App Server `thread/start` with `ephemeral: true`, so they remain in the webpage and do not appear in Codex recent tasks. `serviceName` is metrics metadata and is not a privacy or visibility control.
+- Only send `ephemeral: false` after the user explicitly enables “同时保存到 Codex”. Include the history mode in the in-memory conversation key so switching the toggle starts a separate thread instead of changing the visibility of an existing one.
+- If an installed Codex version rejects the `ephemeral` field, fail safely and ask the user to update. Never silently retry without the field, because that would materialize a task the user chose not to save.
+- Release tests must exercise both modes against an App Server stub and confirm the exact `thread/start` payload. Existing materialized Codex tasks are user data; never delete them automatically.
+
+## Complete chat backup and restore
+
+- The complete backup format is `ai-shakedown-console-chat-backup` version 1. It contains all conversations, System content, active-agent metadata, drafts, branches, and referenced IndexedDB attachments, but never API keys, connection profiles, CLI authentication, pairing tokens, or the custom-agent library.
+- Images are base64 in the backup; text and extracted PDF content are UTF-8. Treat the JSON as unencrypted sensitive data and keep the 512 MiB import limit.
+- Restore is append-only. Remap conversation, message, and attachment IDs; preserve branch and attachment relationships; use the backup/source key to prevent duplicate imports; roll back newly written attachments if the import cannot be persisted.
+- Preserve the stable stored-message schema and verify backup/restore with separate browser Origins, including attachments, drafts, System, active-agent metadata, duplicate import protection, and post-reload persistence.
+
 ## Same-version PWA candidates
 
 - If the user explicitly keeps the public version unchanged, do not silently raise it. Advance an internal Service Worker cache revision such as `v25-r2`, retain `updateViaCache: "none"`, regenerate and verify the v25 ZIP, and document that this is a same-version content revision.

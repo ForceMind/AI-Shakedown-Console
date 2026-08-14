@@ -994,7 +994,8 @@ textarea:focus {
 }
 
 .pwa-install-card,
-.pwa-ime-card {
+.pwa-ime-card,
+.chat-backup-card {
     padding: 10px;
     border: 1px solid #b8dacd;
     border-radius: 7px;
@@ -1006,7 +1007,8 @@ textarea:focus {
 }
 
 .pwa-install-card[hidden],
-.pwa-ime-card[hidden] {
+.pwa-ime-card[hidden],
+.chat-backup-card[hidden] {
     display: none;
 }
 
@@ -1014,6 +1016,16 @@ textarea:focus {
     border-color: #dfc98f;
     background: #fff9e9;
     align-items: start;
+}
+
+.chat-backup-card {
+    border-color: #c8d3cf;
+    background: #f6f8f7;
+    align-items: start;
+}
+
+.chat-backup-card .pwa-install-icon {
+    background: #42554d;
 }
 
 .pwa-ime-card .pwa-install-icon {
@@ -1032,21 +1044,55 @@ textarea:focus {
 }
 
 .pwa-install-card > div,
-.pwa-ime-card > div {
+.pwa-ime-card > div,
+.chat-backup-card > div {
     min-width: 0;
     display: grid;
     gap: 2px;
 }
 
 .pwa-install-card strong,
-.pwa-ime-card strong {
+.pwa-ime-card strong,
+.chat-backup-card strong {
     font-size: 11px;
 }
 
 .pwa-install-card small,
-.pwa-ime-card small {
+.pwa-ime-card small,
+.chat-backup-card small {
     color: #4e7566;
     font-size: 9px;
+    line-height: 1.45;
+}
+
+.chat-backup-actions {
+    display: grid !important;
+    gap: 6px !important;
+}
+
+.chat-backup-actions .secondary-button {
+    white-space: nowrap;
+}
+
+.local-codex-history-option {
+    align-items: center;
+}
+
+.local-codex-history-option > span:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.local-codex-history-option strong {
+    color: var(--ink);
+    font-size: 11px;
+}
+
+.local-codex-history-option small {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 500;
     line-height: 1.45;
 }
 
@@ -3010,7 +3056,8 @@ textarea:focus {
     }
 
     .pwa-install-card,
-    .pwa-ime-card {
+    .pwa-ime-card,
+    .chat-backup-card {
         grid-template-columns: 34px minmax(0, 1fr);
     }
 
@@ -3018,6 +3065,12 @@ textarea:focus {
     .pwa-ime-card button {
         grid-column: 1 / -1;
         width: 100%;
+    }
+
+    .chat-backup-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
 
     .workspace-sidebar {
