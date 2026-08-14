@@ -4,8 +4,9 @@
 
 - OpenAI Compatible、Anthropic Messages、Gemini 的流式与非流式结构；
 - `vision-model` 接受图片，`text-model` 明确拒绝图片；
+- System 提示词是否映射到三类协议的正确字段；
 - `error-model` 的普通消息返回 500，用于验证失败保留和重试；
-- `/mock/assertions` 返回本次测试收到的协议、模型、图片和附件文字标记。
+- `/mock/assertions` 返回本次测试收到的协议、模型、System、图片和附件文字标记。
 
 启动：
 

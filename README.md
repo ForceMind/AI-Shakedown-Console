@@ -4,7 +4,7 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v25" src="https://img.shields.io/badge/version-v25-11795a?style=flat-square">
+    <img alt="Version v26" src="https://img.shields.io/badge/version-v26-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
     <img alt="No build step" src="https://img.shields.io/badge/build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
@@ -22,7 +22,7 @@
 
 AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode。
 
-`v25` 是当前稳定版本：除了本机桥接、Markdown 智能体和 PWA 输入法方案，还补齐了消息编辑、分支、复制、搜索、导出、失败重试，以及经过真实能力检查后才出现的图片/文本/PDF 附件。
+`v26` 是当前稳定版本：在 v25 的完整聊天与多模态能力上，修复了窄窗口/PWA 中输入区未贴底的网格布局问题，并将常驻 System 文本框收起为状态条与弹窗编辑。
 
 ## 为什么使用它
 
@@ -52,10 +52,11 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 
 - **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数。
 - **专注聊天**：连接成功后隐藏配置和检查器；对话超过 4 个后自动切换为持久化左侧列表。
+- **贴底输入区**：消息区随窗口弹性伸缩，输入框在浏览器和 PWA 窄窗口中都始终停在底部。
 - **完整消息操作**：单条复制、编辑并重发、自动分支、重新生成、继续生成、从此处删除；支持多选复制、导出和删除。
 - **按能力显示附件**：检查连接时发送 16×16 测试图片；只有当前协议、地址和模型实际接受图片时才显示附件按钮，避免给纯文本模型展示无效入口。
 - **本地附件处理**：图片按三种协议映射为多模态输入；文本/代码直接读取；PDF 使用自托管 PDF.js 在浏览器本地提取文字。附件草稿和历史文件保存在 IndexedDB。
-- **智能体库**：内置与自定义智能体统一管理；自定义 System 支持安全 Markdown 实时预览，每个对话独立保存当前角色。
+- **智能体与 System**：内置与自定义智能体统一管理；聊天区只显示 System 状态，点击“编辑”在弹窗中修改，避免提示词长期占用输入空间。
 - **本地记录导入**：支持 Codex、Gemini CLI、Claude Code 及通用 JSON/JSONL 文件，可继续使用当前模型对话。
 - **本机 CLI 桥接**：启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；当前 PWA 自动连接，不重复打开网页。
 - **安全 Markdown**：使用 Marked 解析 GitHub Flavored Markdown，再由 DOMPurify 清洗后显示。
@@ -149,7 +150,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v25` 已完成计划中的网页版本：多协议与多模态连接、本机登录工具、完整聊天操作、多对话、智能体、附件、导入、帮助、PWA、后台桥接、中文输入兼容和可重复发布流程均已落地。
+`v26` 已完成计划中的网页版本：多协议与多模态连接、本机登录工具、完整聊天操作、多对话、智能体、附件、导入、帮助、PWA、后台桥接、中文输入兼容和稳定的贴底编辑器均已落地。
 
 暂不纳入本版本的方向包括：加密的整站导出/导入、跨设备同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

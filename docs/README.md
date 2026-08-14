@@ -7,7 +7,7 @@
 | 目标 | 推荐文档 |
 | --- | --- |
 | 第一次打开页面并发送消息 | [使用指南](./USER_GUIDE.md#第一次连接) |
-| 编辑、复制、搜索、导出消息或使用附件 | [使用指南：消息与附件](./USER_GUIDE.md#消息编辑复制与分支) |
+| 编辑 System、复制、搜索、导出消息或使用附件 | [使用指南：System 提示词](./USER_GUIDE.md#system-提示词) |
 | 使用本机登录的 Codex、Gemini 等工具 | [本机 AI 指南](./LOCAL_AI.md) |
 | `.command` 没权限、Node 未找到或端口冲突 | [故障排查](./TROUBLESHOOTING.md) |
 | 安装 PWA 或理解离线范围 | [使用指南：PWA](./USER_GUIDE.md#安装-pwa) |
@@ -48,7 +48,7 @@
 ## 文档约定
 
 - 命令默认在项目根目录运行，除非文中另有说明。
-- `v25` 表示网页与 PWA 资源版本；`proxy-6` 表示 Worker 接口版本，两者独立。
+- `v26` 表示网页与 PWA 资源版本；`proxy-6` 表示 Worker 接口版本，两者独立。
 - 页面显示文字以当前发布版为准；文档中的目录和按钮名称与中文版界面一致。
 - 本机桥接统称“本机 AI”，实际支持 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode。
 

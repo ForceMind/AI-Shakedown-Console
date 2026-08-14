@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=25">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=25">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=25">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=26">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=26">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=26">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
     <header class="app-header">
@@ -24,7 +24,7 @@
             <div>
                 <h1>AI Shakedown Console</h1>
                 <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v25</small>
+                <small class="build-version" title="当前部署版本">v26</small>
             </div>
         </div>
         <div class="runtime-context" aria-label="当前运行上下文">
@@ -469,11 +469,16 @@
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
-                <div class="system-heading">
-                    <label class="system-field" for="system-prompt">System</label>
+                <div class="system-prompt-control">
+                    <div class="system-prompt-status">
+                        <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
+                        <span class="system-prompt-summary" id="system-prompt-summary">未设置，模型将使用默认行为</span>
+                    </div>
                     <button class="active-agent" id="active-agent" type="button" hidden></button>
+                    <button class="secondary-button compact system-prompt-edit" id="system-prompt-edit" type="button">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i><span>编辑</span>
+                    </button>
                 </div>
-                <textarea id="system-prompt" rows="2" placeholder="设置模型身份、目标和边界，例如：You are a helpful assistant."></textarea>
                 <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
                 <div class="message-compose-row">
                     <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
@@ -493,6 +498,32 @@
         </section>
 
     </main>
+
+    <div class="modal-backdrop" id="system-prompt-modal" hidden>
+        <section class="system-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="system-prompt-title" aria-describedby="system-prompt-description">
+            <header class="help-header">
+                <div>
+                    <span class="eyebrow">SYSTEM PROMPT</span>
+                    <h2 id="system-prompt-title">编辑 System 提示词</h2>
+                </div>
+                <button class="icon-button" id="system-prompt-close" type="button" title="关闭编辑" aria-label="关闭 System 提示词编辑">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="system-prompt-modal-body">
+                <p id="system-prompt-description">设置模型的身份、目标与边界。保存后会应用到当前对话；手动修改会取消当前已选智能体。</p>
+                <label class="system-prompt-modal-label" for="system-prompt">提示词内容</label>
+                <textarea id="system-prompt" rows="14" placeholder="例如：You are a helpful assistant."></textarea>
+            </div>
+            <footer class="help-footer system-prompt-modal-footer">
+                <span>内容仅保存在当前浏览器和当前对话中</span>
+                <div>
+                    <button class="secondary-button" id="system-prompt-cancel" type="button">取消</button>
+                    <button class="primary-button" id="system-prompt-save" type="button">保存</button>
+                </div>
+            </footer>
+        </section>
+    </div>
 
     <div class="modal-backdrop" id="agent-library-modal" hidden>
         <section class="agent-library-modal" role="dialog" aria-modal="true" aria-labelledby="agent-library-title">
@@ -720,7 +751,7 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，自定义 System 支持 Markdown 实时预览。</p>
+                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表。聊天区的 System 只显示状态，点击“编辑”后在弹窗中修改。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -734,7 +765,7 @@
                         <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
                         <div>
                             <h3>专注聊天</h3>
-                            <p>连接成功后设置会自动收起。对话较多时，左侧区域显示对话列表；点击页头“设置”后，同一区域切换到连接、参数、用量和请求检查器。</p>
+                            <p>连接成功后设置会自动收起。消息区随窗口弹性伸缩，输入框始终贴在底部；点击页头“设置”可切换到连接、参数、用量和请求检查器。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -771,6 +802,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=25"></script>
+    <script type="module" src="script.js?v=26"></script>
 </body>
 </html>

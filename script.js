@@ -7,7 +7,7 @@ const AGENT_CATALOG_URL = 'agents/index.json';
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v26';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
@@ -190,7 +190,10 @@ const elements = {
     customHeaders: $('custom-headers'), extraBody: $('extra-body'),
     endpointPreview: $('endpoint-preview'), stream: $('stream-toggle'), temperature: $('temperature'),
     topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), reasoningEffort: $('reasoning-effort'),
-    systemPrompt: $('system-prompt'),
+    systemPrompt: $('system-prompt'), systemPromptSummary: $('system-prompt-summary'),
+    systemPromptEdit: $('system-prompt-edit'), systemPromptModal: $('system-prompt-modal'),
+    systemPromptClose: $('system-prompt-close'), systemPromptCancel: $('system-prompt-cancel'),
+    systemPromptSave: $('system-prompt-save'),
     messageForm: $('message-form'), messageInput: $('message-input'), sendButton: $('send-button'),
     attachmentButton: $('attachment-button'), attachmentInput: $('attachment-input'),
     attachmentPreviewList: $('attachment-preview-list'),
@@ -273,6 +276,7 @@ const state = {
     pwaRefreshing: false,
     localSessionReturnFocus: null,
     helpReturnFocus: null,
+    systemPromptReturnFocus: null,
     macosLaunchHelpReturnFocus: null,
     localCodex: { token: '', port: LOCAL_CODEX_DEFAULT_PORT, platform: 'macos', tool: '' },
     localBridgeDiscoveryTimer: 0,
@@ -674,6 +678,13 @@ function bindEvents() {
         renderCustomAgentPreview();
     });
     elements.activeAgent.addEventListener('click', openActiveAgent);
+    elements.systemPromptEdit.addEventListener('click', openSystemPromptEditor);
+    elements.systemPromptClose.addEventListener('click', () => closeSystemPromptEditor(true));
+    elements.systemPromptCancel.addEventListener('click', () => closeSystemPromptEditor(true));
+    elements.systemPromptSave.addEventListener('click', saveSystemPrompt);
+    elements.systemPromptModal.addEventListener('click', (event) => {
+        if (event.target === elements.systemPromptModal) closeSystemPromptEditor(true);
+    });
     elements.agentLibraryModal.addEventListener('click', (event) => {
         if (event.target === elements.agentLibraryModal) closeAgentLibrary();
     });
@@ -779,7 +790,7 @@ function bindEvents() {
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
         elements.customHeaders, elements.extraBody, elements.stream, elements.temperature, elements.topP,
-        elements.topK, elements.maxTokens, elements.reasoningEffort, elements.systemPrompt,
+        elements.topK, elements.maxTokens, elements.reasoningEffort,
         elements.inputPrice, elements.outputPrice,
         elements.costLimit
     ];
@@ -787,17 +798,10 @@ function bindEvents() {
         element.addEventListener('input', persistSettings);
         element.addEventListener('change', persistSettings);
     });
-    elements.systemPrompt.addEventListener('input', () => {
-        const conversation = activeConversation();
-        if (!conversation) return;
-        conversation.systemPrompt = elements.systemPrompt.value;
-        conversation.activeAgent = null;
-        renderActiveAgent();
-        persistConversations();
-    });
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
-        if (!elements.macosLaunchHelpModal.hidden) closeMacosLauncherHelp();
+        if (!elements.systemPromptModal.hidden) closeSystemPromptEditor(true);
+        else if (!elements.macosLaunchHelpModal.hidden) closeMacosLauncherHelp();
         else if (!elements.helpModal.hidden) closeHelp();
         else if (!elements.localSessionModal.hidden) closeLocalSessionImport();
         else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
@@ -1552,7 +1556,7 @@ function captureSettings() {
         topK: elements.topK.value,
         maxTokens: elements.maxTokens.value,
         reasoningEffort: elements.reasoningEffort.value,
-        systemPrompt: elements.systemPrompt.value,
+        systemPrompt: activeConversation()?.systemPrompt ?? elements.systemPrompt.value,
         inputPrice: elements.inputPrice.value,
         outputPrice: elements.outputPrice.value,
         costLimit: elements.costLimit.value
@@ -2085,10 +2089,57 @@ async function openActiveAgent() {
     await openAgentLibrary();
 }
 
+function openSystemPromptEditor() {
+    const conversation = activeConversation();
+    if (!conversation) return;
+    state.systemPromptReturnFocus = document.activeElement;
+    elements.systemPrompt.value = conversation.systemPrompt || '';
+    elements.systemPromptModal.hidden = false;
+    document.body.classList.add('modal-open');
+    window.requestAnimationFrame(() => {
+        elements.systemPrompt.focus({ preventScroll: true });
+        const end = elements.systemPrompt.value.length;
+        elements.systemPrompt.setSelectionRange(end, end);
+    });
+}
+
+function closeSystemPromptEditor(discard = true) {
+    if (elements.systemPromptModal.hidden) return;
+    if (discard) elements.systemPrompt.value = activeConversation()?.systemPrompt || '';
+    elements.systemPromptModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (state.systemPromptReturnFocus?.focus) state.systemPromptReturnFocus.focus();
+    else elements.systemPromptEdit.focus();
+    state.systemPromptReturnFocus = null;
+}
+
+function saveSystemPrompt() {
+    const conversation = activeConversation();
+    if (!conversation) return;
+    const previous = conversation.systemPrompt || '';
+    const next = elements.systemPrompt.value;
+    conversation.systemPrompt = next;
+    if (next !== previous) conversation.activeAgent = null;
+    persistSettings();
+    persistConversations();
+    renderActiveAgent();
+    closeSystemPromptEditor(false);
+    showToast(next.trim() ? 'System 提示词已保存' : 'System 提示词已清除');
+}
+
+function renderSystemPromptSummary() {
+    const conversation = activeConversation();
+    const configured = Boolean((conversation?.systemPrompt || '').trim());
+    elements.systemPromptSummary.textContent = configured ? '已设置' : '未设置，模型将使用默认行为';
+    elements.systemPromptEdit.title = configured ? '编辑当前 System 提示词' : '添加 System 提示词';
+    elements.systemPromptEdit.setAttribute('aria-label', elements.systemPromptEdit.title);
+}
+
 function renderActiveAgent() {
     const agent = activeConversation()?.activeAgent;
     elements.activeAgent.hidden = !agent;
     elements.contextAgentItem.hidden = !agent;
+    renderSystemPromptSummary();
     if (!agent) {
         elements.activeAgent.textContent = '';
         elements.activeAgent.title = '';
@@ -3029,7 +3080,7 @@ function deriveConversationTitle(text) {
 }
 
 function requestMessages(userMessage) {
-    const system = elements.systemPrompt.value.trim();
+    const system = (activeConversation()?.systemPrompt || '').trim();
     return [
         ...(system ? [{ role: 'system', content: system }] : []),
         ...(activeConversation()?.history || []),

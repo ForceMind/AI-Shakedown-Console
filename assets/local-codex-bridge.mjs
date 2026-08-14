@@ -6,7 +6,7 @@ import { access, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 
-const BRIDGE_VERSION = 'v25';
+const BRIDGE_VERSION = 'v26';
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.AI_SHAKEDOWN_BRIDGE_PORT || 4510);
 const TOKEN = process.env.AI_SHAKEDOWN_BRIDGE_TOKEN || '';
