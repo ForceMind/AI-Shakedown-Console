@@ -61,6 +61,14 @@
 
 - If the user explicitly keeps the public version unchanged, do not silently raise it. Advance an internal Service Worker cache revision such as `v25-r2`, retain `updateViaCache: "none"`, regenerate and verify the v25 ZIP, and document that this is a same-version content revision.
 
+## Built-in task presets
+
+- The built-in library contains 268 `agency-agents-zh` roles plus 120 project-owned task presets, for 388 total. Define project presets in `scripts/task-agent-presets.mjs`; never hand-edit generated files under `agents/content/task-presets/`.
+- Run `node scripts/build-task-agent-presets.mjs agents` after changing project presets. Updating upstream with `scripts/import-agency-agents.mjs` must automatically re-apply the 120 project presets so an upstream refresh cannot erase them.
+- Keep health presets limited to information organization, care preparation, and emergency-help navigation; never diagnose or adjust prescriptions. Legal, financial, and high-risk system presets must retain professional-review, privacy, backup, confirmation, and rollback boundaries.
+- Applying an agent changes only the current conversation's `systemPrompt` and `activeAgent`. Both the inline close button and “取消当前智能体” clear those fields while preserving message history and the stored-message schema.
+- Release tests must confirm the catalog total and source split (388 = 268 + 120), all content paths, search/apply behavior for health, Linux, macOS, and Windows examples, cache revision handling, and both cancellation paths.
+
 ## Release completion
 
 - Treat a user-facing feature or version change as incomplete until its Cloudflare Pages deployment ZIP has been generated and verified.

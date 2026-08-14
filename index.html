@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=26">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=26">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=26">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=27">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=27">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=27">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=26">
+    <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
     <header class="app-header">
@@ -24,7 +24,7 @@
             <div>
                 <h1>AI Shakedown Console</h1>
                 <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v26</small>
+                <small class="build-version" title="当前部署版本">v27</small>
             </div>
         </div>
         <div class="runtime-context" aria-label="当前运行上下文">
@@ -500,7 +500,7 @@
                     <button class="agent-library-button" id="agent-library-open" type="button">
                         <span class="agent-library-icon"><i class="bi bi-people"></i></span>
                         <span class="agent-library-copy"><strong>智能体库</strong><small>内置角色与自定义智能体</small></span>
-                        <span class="agent-count" id="agent-count">268</span>
+                        <span class="agent-count" id="agent-count">388</span>
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
@@ -509,7 +509,12 @@
                         <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
                         <span class="system-prompt-summary" id="system-prompt-summary">未设置，模型将使用默认行为</span>
                     </div>
-                    <button class="active-agent" id="active-agent" type="button" hidden></button>
+                    <div class="active-agent-control" id="active-agent-control" hidden>
+                        <button class="active-agent" id="active-agent" type="button"></button>
+                        <button class="active-agent-clear" id="active-agent-clear" type="button" title="取消当前智能体" aria-label="取消当前智能体">
+                            <i class="bi bi-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
                     <button class="secondary-button compact system-prompt-edit" id="system-prompt-edit" type="button">
                         <i class="bi bi-pencil-square" aria-hidden="true"></i><span>编辑</span>
                     </button>
@@ -564,7 +569,7 @@
         <section class="agent-library-modal" role="dialog" aria-modal="true" aria-labelledby="agent-library-title">
             <header class="agent-library-header">
                 <div>
-                    <span class="eyebrow">AGENCY AGENTS</span>
+                    <span class="eyebrow">AGENT LIBRARY</span>
                     <h2 id="agent-library-title">智能体角色库</h2>
                 </div>
                 <button class="icon-button" id="agent-library-close" type="button" title="关闭角色库" aria-label="关闭角色库">
@@ -620,8 +625,9 @@
                 </article>
             </div>
             <footer class="agent-library-footer">
-                <span id="agent-library-source">agency-agents-zh · MIT</span>
+                <span id="agent-library-source">388 个内置 · 上游 268 + 事务型预设 120</span>
                 <div class="agent-library-footer-actions">
+                    <button class="secondary-button" id="agent-remove" type="button" hidden><i class="bi bi-person-x"></i><span>取消当前智能体</span></button>
                     <button class="secondary-button" id="custom-agent-delete" type="button" hidden disabled><i class="bi bi-trash3"></i><span>删除</span></button>
                     <button class="secondary-button" id="custom-agent-save" type="button" hidden><i class="bi bi-floppy"></i><span>保存自定义</span></button>
                     <button class="primary-button" id="agent-apply" type="button" disabled><i class="bi bi-check2"></i><span>应用到当前对话</span></button>
@@ -786,7 +792,7 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表。聊天区的 System 只显示状态，点击“编辑”后在弹窗中修改。</p>
+                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表。智能体库包含 388 个内置角色；点击当前角色右侧的 × 可恢复普通对话。聊天区的 System 只显示状态，点击“编辑”后在弹窗中修改。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -837,6 +843,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=26"></script>
+    <script type="module" src="script.js?v=27"></script>
 </body>
 </html>

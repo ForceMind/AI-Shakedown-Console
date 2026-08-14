@@ -71,6 +71,17 @@ flowchart TB
 
 项目刻意保持单文件前端核心，便于无构建部署；新增大型能力前应评估是否需要在不引入构建链的前提下拆成原生 ES Modules。
 
+### 智能体目录
+
+`agents/index.json` 是前端读取的统一目录，v27 共包含 388 个内置智能体：
+
+- 268 个来自 `agency-agents-zh`，正文保存在原有部门目录；
+- 120 个项目事务型预设由 `scripts/task-agent-presets.mjs` 定义并生成到 `agents/content/task-presets/`；
+- `sources` 字段分别记录两个来源和数量，项目预设另带 `sourceType`、`presetRevision` 与正文 `contentRevision`；
+- 前端优先用 `contentRevision` 请求项目预设正文，避免上游修订未变时复用旧缓存。
+
+`scripts/build-task-agent-presets.mjs` 可在现有目录上单独重建项目预设；`scripts/import-agency-agents.mjs` 更新上游后会自动调用同一合并逻辑。应用角色只改当前对话的 `systemPrompt` 与 `activeAgent`；取消角色会把两者清空但不删除历史消息，也不改变存储结构。
+
 ### `_worker.js`
 
 Cloudflare Pages Advanced Mode Worker：
@@ -116,7 +127,7 @@ Codex 使用 App Server JSON-RPC 并保留线程。网页默认发送 `X-AI-Shak
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-公开版本仍为 `v26` 时，内部缓存可使用 `v26-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+公开版本仍为 `v27` 时，内部缓存可使用 `v27-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 #### macOS App Shim 与输入法边界
 

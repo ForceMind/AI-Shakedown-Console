@@ -111,14 +111,20 @@ index.html script.js style.css _worker.js vendor/ agents/ assets/
 
 ## 智能体上游
 
-更新 `agency-agents-zh` 时使用导入脚本，不要手工批量复制角色文件：
+智能体目录由 268 个 `agency-agents-zh` 上游角色和 120 个项目事务型预设组成。项目预设应修改 `scripts/task-agent-presets.mjs`，然后运行：
+
+```bash
+node scripts/build-task-agent-presets.mjs agents
+```
+
+更新 `agency-agents-zh` 时使用导入脚本，不要手工批量复制角色文件；导入结束后会自动重新合并项目预设：
 
 ```bash
 AGENCY_AGENTS_REVISION=<commit-sha> \
   node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 ```
 
-保留上游许可证并在 README 的第三方组件表中同步版本。
+保留上游许可证并在 README 的第三方组件表中同步版本。提交前运行 `node scripts/validate-agent-catalog.mjs agents`，确认目录总数为 388、项目预设为 120、正文路径完整，并回归“应用到当前对话”和两个取消入口。健康类预设不得诊断或调整处方；法律、财务和危险系统操作必须保留专业复核、备份、确认与回滚边界。
 
 ## 安全贡献
 

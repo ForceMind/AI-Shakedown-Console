@@ -4,10 +4,11 @@ const PROMPTS_STORAGE_KEY = 'ai-shakedown-console.prompts.v1';
 const CONVERSATIONS_STORAGE_KEY = 'ai-shakedown-console.conversations.v1';
 const CUSTOM_MODEL_VALUE = '__custom__';
 const AGENT_CATALOG_URL = 'agents/index.json';
+const DEFAULT_BUILT_IN_AGENT_COUNT = 388;
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
@@ -257,7 +258,8 @@ const elements = {
     agentDetailContent: $('agent-detail-content'), agentDetailDepartment: $('agent-detail-department'),
     agentDetailName: $('agent-detail-name'), agentDetailDescription: $('agent-detail-description'),
     agentPromptPreview: $('agent-prompt-preview'), agentSourceLink: $('agent-source-link'),
-    agentApply: $('agent-apply'), agentLibrarySource: $('agent-library-source'), activeAgent: $('active-agent'),
+    agentApply: $('agent-apply'), agentRemove: $('agent-remove'), agentLibrarySource: $('agent-library-source'),
+    activeAgentControl: $('active-agent-control'), activeAgent: $('active-agent'), activeAgentClear: $('active-agent-clear'),
     agentBuiltInTab: $('agent-built-in-tab'), agentCustomTab: $('agent-custom-tab'),
     customAgentCount: $('custom-agent-count'), customAgentNew: $('custom-agent-new'),
     customAgentEditor: $('custom-agent-editor'), customAgentName: $('custom-agent-name'),
@@ -676,6 +678,7 @@ function bindEvents() {
     elements.agentSearch.addEventListener('input', renderAgentList);
     elements.agentDepartment.addEventListener('change', renderAgentList);
     elements.agentApply.addEventListener('click', applySelectedAgent);
+    elements.agentRemove.addEventListener('click', clearActiveAgent);
     elements.agentBuiltInTab.addEventListener('click', () => setAgentLibraryMode('built-in'));
     elements.agentCustomTab.addEventListener('click', () => setAgentLibraryMode('custom'));
     elements.customAgentNew.addEventListener('click', startNewCustomAgent);
@@ -687,6 +690,7 @@ function bindEvents() {
         renderCustomAgentPreview();
     });
     elements.activeAgent.addEventListener('click', openActiveAgent);
+    elements.activeAgentClear.addEventListener('click', clearActiveAgent);
     elements.systemPromptEdit.addEventListener('click', openSystemPromptEditor);
     elements.systemPromptClose.addEventListener('click', () => closeSystemPromptEditor(true));
     elements.systemPromptCancel.addEventListener('click', () => closeSystemPromptEditor(true));
@@ -1833,9 +1837,18 @@ function restorePrompts() {
 }
 
 function updateAgentCount() {
-    const builtInCount = state.agentCatalog?.count || state.agentCatalog?.agents?.length || 268;
+    const builtInCount = state.agentCatalog?.count || state.agentCatalog?.agents?.length || DEFAULT_BUILT_IN_AGENT_COUNT;
     elements.agentCount.textContent = String(builtInCount + state.prompts.length);
     elements.customAgentCount.textContent = String(state.prompts.length);
+}
+
+function builtInAgentSourceSummary(catalog = state.agentCatalog) {
+    const total = catalog?.count || catalog?.agents?.length || DEFAULT_BUILT_IN_AGENT_COUNT;
+    const sources = Array.isArray(catalog?.sources) ? catalog.sources : [];
+    const upstream = sources.find((source) => source.id === 'agency-agents-zh');
+    const project = sources.find((source) => source.id === 'ai-shakedown-task-presets');
+    if (upstream && project) return `${total} 个内置 · 上游 ${upstream.count} + 事务型预设 ${project.count}`;
+    return `${total} 个内置智能体`;
 }
 
 function startNewCustomAgent() {
@@ -1901,7 +1914,7 @@ async function loadAgentCatalog() {
     if (!Array.isArray(catalog?.agents)) throw new Error('角色索引格式无效');
     state.agentCatalog = catalog;
     updateAgentCount();
-    elements.agentLibrarySource.textContent = `agency-agents-zh ${catalog.version || ''} · ${catalog.license || 'MIT'}`;
+    elements.agentLibrarySource.textContent = builtInAgentSourceSummary(catalog);
     elements.agentDepartment.replaceChildren(new Option('全部部门', ''));
     for (const department of catalog.departments || []) {
         const count = catalog.agents.filter((agent) => agent.department === department.id).length;
@@ -1923,7 +1936,7 @@ function setAgentLibraryMode(mode) {
     elements.customAgentDelete.hidden = !custom;
     elements.agentLibrarySource.textContent = custom
         ? '自定义智能体 · 仅保存在当前浏览器'
-        : `agency-agents-zh ${state.agentCatalog?.version || ''} · ${state.agentCatalog?.license || 'MIT'}`;
+        : builtInAgentSourceSummary();
     elements.agentSearch.placeholder = custom ? '搜索自定义智能体' : '搜索角色、能力或文件名';
     state.selectedAgentId = '';
     state.selectedAgentContent = '';
@@ -2041,16 +2054,25 @@ async function selectAgent(agentId) {
     elements.agentApply.disabled = true;
     elements.agentDetailEmpty.hidden = true;
     elements.agentDetailContent.hidden = false;
-    elements.agentDetailDepartment.textContent = agent.departmentName;
+    elements.agentDetailDepartment.textContent = agent.sourceType === 'project-preset'
+        ? `${agent.departmentName} · 项目预设`
+        : agent.departmentName;
     elements.agentDetailName.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
     elements.agentDetailDescription.textContent = agent.description;
-    elements.agentSourceLink.href = agent.sourceUrl;
+    elements.agentSourceLink.href = agent.sourceUrl || '#';
+    const sourceLabel = agent.sourceType === 'project-preset' ? '查看项目预设文件' : '查看上游角色文件';
+    elements.agentSourceLink.title = sourceLabel;
+    elements.agentSourceLink.setAttribute('aria-label', sourceLabel);
+    elements.agentSourceLink.hidden = !agent.sourceUrl;
     elements.agentPromptPreview.textContent = '正在加载角色定义...';
     renderAgentList();
 
     const requestId = ++state.agentDetailRequest;
     try {
-        const agentRevision = state.agentCatalog?.revision?.slice(0, 12) || state.agentCatalog?.version || 'current';
+        const agentRevision = agent.contentRevision
+            || state.agentCatalog?.revision?.slice(0, 12)
+            || state.agentCatalog?.version
+            || 'current';
         const response = await fetch(`${agent.contentPath}?v=${encodeURIComponent(agentRevision)}`, { cache: 'force-cache' });
         if (!response.ok) throw new Error(`角色定义加载失败（HTTP ${response.status}）`);
         const content = await response.text();
@@ -2147,6 +2169,26 @@ function applySelectedAgent() {
     showToast(`已应用智能体“${agent.name}”`);
 }
 
+function clearActiveAgent() {
+    const conversation = activeConversation();
+    const agent = conversation?.activeAgent;
+    if (!conversation || !agent) return;
+    conversation.activeAgent = null;
+    conversation.systemPrompt = '';
+    elements.systemPrompt.value = '';
+    state.selectedAgentId = '';
+    state.selectedAgentContent = '';
+    persistSettings();
+    persistConversations();
+    renderActiveAgent();
+    if (state.agentCatalog) renderAgentList();
+    if (!elements.agentLibraryModal.hidden) {
+        state.agentReturnFocus = elements.agentLibraryOpen;
+        closeAgentLibrary();
+    }
+    showToast(`已取消智能体“${agent.name}”，恢复普通对话`);
+}
+
 async function openActiveAgent() {
     elements.agentSearch.value = '';
     elements.agentDepartment.value = '';
@@ -2202,17 +2244,20 @@ function renderSystemPromptSummary() {
 
 function renderActiveAgent() {
     const agent = activeConversation()?.activeAgent;
-    elements.activeAgent.hidden = !agent;
+    elements.activeAgentControl.hidden = !agent;
+    elements.agentRemove.hidden = !agent;
     elements.contextAgentItem.hidden = !agent;
     renderSystemPromptSummary();
     if (!agent) {
         elements.activeAgent.textContent = '';
         elements.activeAgent.title = '';
+        elements.agentRemove.disabled = true;
         elements.contextAgent.textContent = '未启用';
         return;
     }
     elements.activeAgent.textContent = `${agent.emoji ? `${agent.emoji} ` : ''}${agent.name}`;
     elements.activeAgent.title = `当前角色：${agent.name}，点击查看`;
+    elements.agentRemove.disabled = false;
     elements.contextAgent.textContent = agent.name;
     elements.contextAgent.title = agent.name;
 }
