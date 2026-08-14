@@ -173,7 +173,8 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v26.zip
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
-5. 打开 `/api/status`，预期结构：
+5. 模拟 Safari 用户代理时，本机工具显示 WebKit 回环限制，下载与检测按钮禁用；Edge/Chrome 路径保持可用。
+6. 打开 `/api/status`，预期结构：
 
    ```json
    {

@@ -49,6 +49,7 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 本机桥接：
 
 - 只监听 `127.0.0.1`；
+- 不为绕过 Safari 的 HTTPS→HTTP 回环限制而安装自签名根证书、关闭浏览器安全策略、使用公共隧道或监听局域网地址；Safari 中应禁用无效检测并引导到 Edge/Chrome 普通标签页；
 - 校验下载时生成的随机 Bearer 令牌；
 - 校验发起请求的网页 Origin；
 - 自动端口发现先验证与候选端口绑定的 HMAC 挑战证明，再向该端口发送 Bearer 令牌；

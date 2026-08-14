@@ -165,16 +165,16 @@ API Key、Authorization 和敏感查询参数会在显示时脱敏。复制检�
 
 macOS 上由 Edge 安装的 PWA 是一个独立的原生 App Shim。若第三方中文输入法可以输入拼音但不显示候选窗，这与网页内候选词确认被快捷键打断不是同一问题。重装 Edge PWA 只能临时刷新输入上下文，浏览器更新后可能复发。
 
-需要长期稳定使用第三方中文输入法时，请改用下方 Safari Web App；普通 Edge 标签页也不会依赖 PWA App Shim。完整原理和应急步骤见 [Edge PWA 输入拼音但没有候选窗](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
+需要长期稳定使用第三方中文输入法和云端 API 时，请改用下方 Safari Web App；普通 Edge 标签页也不会依赖 PWA App Shim。若要连接本机 Codex 等 CLI，请使用 Edge/Chrome 普通标签页。完整原理和应急步骤见 [Edge PWA 输入拼音但没有候选窗](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
 
 ### Safari / iPhone / iPad
 
-- macOS Safari：打开本站，使用“文件 → 添加到程序坞”。这是 macOS 第三方中文输入法的推荐安装方式，不依赖 Edge 的更新和 App Shim 生命周期。
+- macOS Safari：打开本站，使用“文件 → 添加到程序坞”。这是第三方中文输入法配合云端 API 的推荐方式，不依赖 Edge 的更新和 App Shim 生命周期。Safari/WebKit 当前会阻止线上 HTTPS 页面访问本机 `127.0.0.1`，因此本机 CLI 请使用 Edge/Chrome 普通标签页。
 - iPhone/iPad：使用分享菜单中的“添加到主屏幕”。
 
 ### 离线范围
 
-离线时可以打开应用外壳，并查看当前浏览器已保存的配置、智能体和对话。远程 API 仍需要网络，本机 AI 仍需要同一台电脑上的桥接进程。
+离线时可以打开应用外壳，并查看当前浏览器已保存的配置、智能体和对话。远程 API 仍需要网络；本机 AI 需要同一台电脑上的桥接进程和支持回环连接的 Edge/Chrome 页面。
 
 内容更新安装完成后，页面会显示“立即刷新”。确认后切换到新缓存，不会清空现有本地数据。同一个公开版本的候选修订也会使用独立缓存修订号，避免 PWA 继续使用旧脚本。
 

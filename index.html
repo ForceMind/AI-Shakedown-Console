@@ -128,6 +128,16 @@
                         <span class="local-codex-state" id="local-codex-status" data-state="idle">尚未连接</span>
                     </div>
                     <p id="local-tool-description">下载并运行适合当前系统的启动脚本。脚本只在 <code>127.0.0.1</code> 启动受随机令牌保护的桥接服务，不会把本地 AI 工具凭据交给网页。</p>
+                    <section class="local-codex-compatibility" id="local-codex-compatibility" aria-label="Safari 本机连接兼容性" hidden>
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <div>
+                            <strong>Safari 暂不支持本机连接</strong>
+                            <small>Safari / Safari Web App 会阻止线上 HTTPS 页面访问 <code>127.0.0.1</code>。请复制网址，在 Edge 或 Chrome 的普通标签页中连接本机 CLI；Safari Web App 仍可使用云端 API。</small>
+                        </div>
+                        <button class="secondary-button compact" id="local-codex-copy-supported-url" type="button">
+                            <i class="bi bi-copy"></i><span>复制网址</span>
+                        </button>
+                    </section>
                     <label class="toggle-row local-codex-history-option" id="local-codex-history-option" hidden>
                         <span>
                             <strong>同时保存到 Codex</strong>
@@ -307,7 +317,7 @@
                     <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-keyboard"></i></span>
                     <div>
                         <strong>macOS 中文输入法稳定方案</strong>
-                        <small>Edge 更新会重建 Chromium App Shim，第三方输入法候选窗可能再次失效。长期使用请改由 Safari 打开本站，并选择“文件 → 添加到程序坞”。</small>
+                        <small>Safari Web App 可避开 Edge App Shim 的第三方输入法故障，适合云端 API；本机 Codex 等 CLI 连接请使用 Edge/Chrome 普通标签页。</small>
                         <details>
                             <summary>查看一次性迁移步骤</summary>
                             <ol>
@@ -315,7 +325,7 @@
                                 <li>打开 Safari，粘贴地址并访问。</li>
                                 <li>选择“文件 → 添加到程序坞”。以后从新图标启动。</li>
                             </ol>
-                            <p>这是独立的 Safari Web App，不依赖 Edge App Shim；Edge 更新不会再破坏它的输入上下文。</p>
+                            <p>这是独立的 Safari Web App，不依赖 Edge App Shim；但 Safari 会阻止线上页面连接 <code>127.0.0.1</code>，本机 CLI 不能在此模式使用。</p>
                         </details>
                     </div>
                     <button class="secondary-button compact" id="pwa-ime-copy-url" type="button">
@@ -811,7 +821,7 @@
                         <i class="bi bi-window-plus" aria-hidden="true"></i>
                         <div>
                             <h3>安装与离线</h3>
-                            <p>支持的浏览器会在设置中显示“安装”按钮。macOS 使用第三方中文输入法时，推荐从 Safari 选择“文件 → 添加到程序坞”，避免 Edge 更新后候选窗失效。</p>
+                            <p>支持的浏览器会在设置中显示“安装”按钮。macOS 使用第三方中文输入法和云端 API 时，可从 Safari 选择“文件 → 添加到程序坞”；本机 Codex 等 CLI 连接请使用 Edge/Chrome 普通标签页。</p>
                         </div>
                     </section>
                 </div>

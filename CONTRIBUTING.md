@@ -71,6 +71,7 @@ git diff --check
 - PWA 安装、更新提示和离线外壳；
 - 三系统启动器的解析、错误提示和固定文件名；
 - 本机桥接的 status/models/chat/shutdown，以及 Codex 默认 `ephemeral: true`、主动保存时为 `false`。
+- Safari 用户代理下，本机工具应显示 WebKit 回环连接限制，下载和检测按钮应禁用；Edge/Chrome 路径仍应正常下载、自动发现并连接。
 
 ## 文档规范
 

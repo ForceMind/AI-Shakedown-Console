@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v26-r2`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v26-r2`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v26-r3`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v26-r3`;
 const APP_SHELL = [
     '/',
     '/index.html',

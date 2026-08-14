@@ -243,6 +243,8 @@ const elements = {
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
     localCodexCheck: $('local-codex-check'), localCodexStop: $('local-codex-stop'), localCodexCommand: $('local-codex-command'),
     localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
+    localCodexCompatibility: $('local-codex-compatibility'),
+    localCodexCopySupportedUrl: $('local-codex-copy-supported-url'),
     localCodexHistoryOption: $('local-codex-history-option'), localCodexHistoryToggle: $('local-codex-history-toggle'),
     localToolTitle: $('local-tool-title'), localToolDescription: $('local-tool-description'),
     localToolNote: $('local-tool-note'),
@@ -724,6 +726,7 @@ function bindEvents() {
     elements.localCodexCheck.addEventListener('click', testLocalCodexConnection);
     elements.localCodexStop.addEventListener('click', stopLocalCodexConnection);
     elements.localCodexCopyCommand.addEventListener('click', copyLocalCodexCommand);
+    elements.localCodexCopySupportedUrl.addEventListener('click', copyLocalCodexSupportedUrl);
     elements.localCodexHistoryToggle.addEventListener('change', persistSettings);
     elements.chatBackupExport.addEventListener('click', exportAllConversations);
     elements.chatBackupImport.addEventListener('click', () => elements.chatBackupFile.click());
@@ -836,6 +839,17 @@ function isMacosEdgePwa() {
         && /\bEdg\//.test(navigator.userAgent || '');
 }
 
+function isMacosSafari() {
+    const userAgent = navigator.userAgent || '';
+    return detectLocalPlatform() === 'macos'
+        && /Safari\//.test(userAgent)
+        && !/(?:Chrome|Chromium|CriOS|Edg|OPR)\//.test(userAgent);
+}
+
+function isLocalBridgeTransportSupported() {
+    return !(isMacosSafari() && window.location.protocol === 'https:');
+}
+
 function syncPwaImeCard() {
     const visible = isMacosEdgePwa();
     elements.pwaImeCard.hidden = !visible;
@@ -859,7 +873,7 @@ async function copyPwaMigrationUrl() {
     url.search = '';
     try {
         await navigator.clipboard.writeText(url.href);
-        showToast('地址已复制：请在 Safari 打开，再选择“文件 → 添加到程序坞”');
+        showToast('地址已复制：Safari Web App 适合云端 API；本机 CLI 请保留 Edge/Chrome 普通标签页');
     } catch (_) {
         showToast(`请在 Safari 打开：${url.href}`, true);
     }
@@ -1223,7 +1237,8 @@ function startLocalBridgeDiscovery(duration = LOCAL_BRIDGE_DISCOVERY_MS) {
 
 function resumeLocalBridgeDiscovery() {
     const tool = currentLocalTool();
-    if (state.localBridgeConnected || !state.localCodex.token || !tool || tool.tool !== state.localCodex.tool) return;
+    if (!isLocalBridgeTransportSupported()
+        || state.localBridgeConnected || !state.localCodex.token || !tool || tool.tool !== state.localCodex.tool) return;
     if (state.localBridgeDiscoveryUntil > Date.now()) {
         if (!state.localBridgeDiscoveryTimer && !state.localBridgeDiscoveryRunning) {
             state.localBridgeDiscoveryTimer = window.setTimeout(runLocalBridgeDiscovery, 0);
@@ -1259,13 +1274,33 @@ async function copyLocalCodexCommand() {
     }
 }
 
+async function copyLocalCodexSupportedUrl() {
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    try {
+        await navigator.clipboard.writeText(url.href);
+        showToast('网址已复制：请粘贴到 Edge 或 Chrome 的普通标签页');
+    } catch (_) {
+        showToast(`请在 Edge 或 Chrome 打开：${url.href}`, true);
+    }
+}
+
 function currentLocalTool() {
     return LOCAL_TOOL_PROVIDERS[elements.provider.value] || null;
+}
+
+function pendingConnectionStateText() {
+    return currentLocalTool() && !isLocalBridgeTransportSupported()
+        ? 'Safari 不支持本机桥接'
+        : '尚未检查';
 }
 
 function syncLocalCodexMode(enabled) {
     elements.localCodexSetup.hidden = !enabled;
     const tool = enabled ? currentLocalTool() : null;
+    const transportSupported = isLocalBridgeTransportSupported();
+    elements.localCodexCompatibility.hidden = !enabled || transportSupported;
     elements.localCodexHistoryOption.hidden = tool?.tool !== 'codex';
     const fixedFields = [
         elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
@@ -1286,10 +1321,15 @@ function syncLocalCodexMode(enabled) {
         elements.localToolDescription.innerHTML = `${tool.description} 启动脚本只监听 <code>127.0.0.1</code>，不会把凭据交给网页。`;
         elements.localToolNote.textContent = `脚本会检查 Node.js、${tool.cli} 和登录状态；新版启动器会停止同工具的旧桥接，自动避让端口，并由当前应用直接完成连接。`;
         const paired = state.localCodex.token && state.localCodex.tool === tool.tool;
-        setLocalCodexStatus(paired ? 'idle' : 'error', paired ? '等待检测' : '需要运行脚本');
+        setLocalCodexStatus(
+            transportSupported ? (paired ? 'idle' : 'error') : 'error',
+            transportSupported ? (paired ? '等待检测' : '需要运行脚本') : 'Safari 不支持'
+        );
         updateLocalCodexCommand();
-        resumeLocalBridgeDiscovery();
+        if (transportSupported) resumeLocalBridgeDiscovery();
+        else stopLocalBridgeDiscovery();
     }
+    syncControls();
 }
 
 function localCodexLauncherSpec(platform) {
@@ -1309,6 +1349,10 @@ function createLocalCodexToken() {
 
 async function downloadLocalCodexLauncher() {
     if (state.busy) return;
+    if (!isLocalBridgeTransportSupported()) {
+        showToast('Safari 会阻止线上页面访问本机桥接；请复制网址并改用 Edge/Chrome 普通标签页', true);
+        return;
+    }
     const tool = currentLocalTool();
     if (!tool) return;
     const spec = localCodexLauncherSpec(state.localCodex.platform);
@@ -1376,6 +1420,12 @@ function localCodexAuthorizationHeaders(contentType = false) {
 
 async function testLocalCodexConnection() {
     if (state.busy) return;
+    if (!isLocalBridgeTransportSupported()) {
+        setLocalCodexStatus('error', 'Safari 不支持');
+        setConnectionState('error', 'Safari 无法连接本机桥接', '');
+        showToast('Safari/WebKit 会阻止线上 HTTPS 页面访问 127.0.0.1；请改用 Edge/Chrome 普通标签页', true);
+        return;
+    }
     const tool = currentLocalTool();
     setLocalCodexStatus('idle', '检测中');
     setConnectionState('idle', '检查中', '');
@@ -1448,7 +1498,7 @@ function applyProvider(provider) {
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
-    setConnectionState('idle', '尚未检查', '');
+    setConnectionState('idle', pendingConnectionStateText(), '');
 }
 
 function populateModels(models, selectedModel = elements.model.value.trim(), sortByStrength = false) {
@@ -1624,7 +1674,7 @@ function applySettings(settings) {
     syncReasoningControl();
     updateEndpointPreview();
     updateActiveModel();
-    setConnectionState('idle', '尚未检查', '');
+    setConnectionState('idle', pendingConnectionStateText(), '');
 }
 
 function clearSavedSettings() {
@@ -2482,6 +2532,9 @@ function buildRequestBody(messages, stream, overrides = {}) {
 }
 
 function validateConfiguration() {
+    if (currentLocalTool() && !isLocalBridgeTransportSupported()) {
+        throw new Error('Safari/WebKit 会阻止线上 HTTPS 页面访问本机桥接；请改用 Edge 或 Chrome 普通标签页');
+    }
     if (currentLocalTool() && (!state.localCodex.token || state.localCodex.tool !== currentLocalTool().tool)) {
         throw new Error(`请先下载并运行本机 ${currentLocalTool().cli} 启动脚本`);
     }
@@ -3576,6 +3629,9 @@ function describeError(error) {
     if (error.name === 'AbortError') return '请求已取消';
     if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) {
         if (currentLocalTool()) {
+            if (!isLocalBridgeTransportSupported()) {
+                return 'Safari/WebKit 会阻止线上 HTTPS 页面访问 127.0.0.1。请改用 Edge 或 Chrome 的普通标签页连接本机 CLI。';
+            }
             return `无法连接${currentLocalTool().title}。请重新运行下载的启动脚本；显示后台启动成功后终端可以关闭。若浏览器阻止本地网络访问，请允许访问 127.0.0.1。`;
         }
         return '无法连接服务。请检查 URL、CORS、HTTPS/HTTP 混合内容以及自建服务是否已启动。';
@@ -4323,14 +4379,15 @@ function setBusy(busy) {
 
 function syncControls() {
     const locked = isCostLimitReached();
-    elements.sendButton.disabled = state.busy || locked;
-    elements.testButton.disabled = state.busy;
-    elements.loadModelsButton.disabled = state.busy;
+    const localBridgeUnavailable = Boolean(currentLocalTool()) && !isLocalBridgeTransportSupported();
+    elements.sendButton.disabled = state.busy || locked || localBridgeUnavailable;
+    elements.testButton.disabled = state.busy || localBridgeUnavailable;
+    elements.loadModelsButton.disabled = state.busy || localBridgeUnavailable;
     elements.localSessionImport.disabled = state.busy;
-    elements.localCodexDownload.disabled = state.busy;
-    elements.localCodexCheck.disabled = state.busy;
-    elements.localCodexStop.disabled = state.busy || !state.localCodex.token;
-    elements.localCodexHistoryToggle.disabled = state.busy;
+    elements.localCodexDownload.disabled = state.busy || localBridgeUnavailable;
+    elements.localCodexCheck.disabled = state.busy || localBridgeUnavailable;
+    elements.localCodexStop.disabled = state.busy || localBridgeUnavailable || !state.localCodex.token;
+    elements.localCodexHistoryToggle.disabled = state.busy || localBridgeUnavailable;
     elements.chatBackupExport.disabled = state.busy || state.chatBackupBusy;
     elements.chatBackupImport.disabled = state.busy || state.chatBackupBusy;
     elements.stopButton.disabled = !state.busy || !state.controller;

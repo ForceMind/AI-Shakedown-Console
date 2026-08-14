@@ -24,7 +24,7 @@
 
 macOS 上由 Edge/Chrome 安装的 PWA 会通过单独生成的原生 App Shim 运行。候选窗由 macOS 输入法和当前原生文本输入上下文绘制，网页只能接收组合事件，不能命令系统显示候选窗。第三方输入法、浏览器更新或 PWA 进程生命周期可能使 App Shim 的输入上下文失效；此时普通 Edge 标签页可以正常输入，只有已安装的 PWA 没有候选窗。
 
-### 一劳永逸的方案
+### 避开 Edge App Shim 的方案
 
 已确认重装 Edge PWA 后候选窗可以恢复，但 Edge 更新并重启后会再次失效。这说明重装只刷新了 App Shim 的原生文本输入上下文，并没有消除 Edge 更新对它的影响。
 
@@ -35,7 +35,9 @@ macOS 上由 Edge/Chrome 安装的 PWA 会通过单独生成的原生 App Shim �
 3. 选择 Safari 的“文件 → 添加到程序坞”。
 4. 以后从新生成的 AI Shakedown Console 图标启动。
 
-Safari Web App 仍是独立窗口、支持当前项目的 manifest 与 Service Worker，但它不依赖 Edge App Shim，因此 Edge 更新不会再次破坏它的文本输入上下文。由于 Safari 与 Edge 使用不同的站点存储，首次打开时需要重新填写连接配置；不要通过公开聊天或截图传递 API Key。
+Safari Web App 仍是独立窗口、支持当前项目的 manifest 与 Service Worker，但它不依赖 Edge App Shim，因此 Edge 更新不会再次破坏它的文本输入上下文。它适合使用云端 API；如果需要本机 Codex、Gemini CLI 等桥接，请保留一个 Edge/Chrome 普通标签页，因为 Safari/WebKit 会阻止线上 HTTPS 页面访问 `http://127.0.0.1`。
+
+Safari Web App 与 Safari、Edge 使用独立的网站数据，首次打开时需要重新填写云端连接配置或导入完整聊天备份；不要通过公开聊天或截图传递 API Key。
 
 ### 临时恢复 Edge PWA
 
@@ -131,10 +133,22 @@ bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
 
 ### 页面无法访问 `127.0.0.1`
 
-部分浏览器会询问本地网络访问权限，请允许当前站点访问本机服务。还应确认：
+#### Safari 或 Safari Web App
+
+当前 Safari/WebKit 会阻止线上 HTTPS 页面用 `fetch` 访问 `http://127.0.0.1`。即使启动脚本已经成功运行、macOS 本地网络权限已允许，网页仍会显示连接失败；这不是令牌、端口或 CLI 登录故障。
+
+- 本机 CLI：复制站点网址，在 Edge 或 Chrome 的普通标签页中打开并重新下载、运行脚本。
+- 中文输入法优先：Safari Web App 可继续使用云端 API；本机 CLI 暂时放在普通 Chromium 标签页。
+- 不要安装自签名根证书、关闭浏览器安全策略或把本机桥接暴露到局域网。后续桌面应用会作为同时解决输入法和本机桥接的方案。
+
+Safari Web App 本身也与 Safari 标签页隔离浏览历史、Cookie 和网站数据。可参考 [Apple 的 Safari Web App 说明](https://support.apple.com/104996) 与仍处于开放状态的 [WebKit loopback mixed-content issue](https://bugs.webkit.org/show_bug.cgi?id=171934)。
+
+#### Edge / Chrome
+
+部分 Chromium 版本会询问本地网络访问权限，请允许当前站点访问本机服务。还应确认：
 
 - 当前页面与下载启动器时的站点 Origin 相同；
-- 地址仍包含脚本加入的配对参数；
+- 当前标签页仍保留下载脚本时写入的临时配对信息；
 - 防火墙或安全软件没有阻止 Node 监听回环地址；
 - 桥接日志中没有立即退出的错误。
 
@@ -178,7 +192,7 @@ bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
 
 ### HTTPS 页面无法连接 HTTP 地址
 
-浏览器会阻止 HTTPS 页面的混合内容。Ollama、LM Studio 等本机 HTTP 服务适合在本地 HTTP 页面测试，或通过安全的本机桥接/受控 HTTPS 网关接入。
+浏览器会阻止 HTTPS 页面的混合内容。Chromium 允许项目以受令牌和 Origin 保护的方式访问回环地址，但 Safari 当前仍会阻止这条链路。Ollama、LM Studio 等任意本机 HTTP 服务适合在本地 HTTP 页面测试，或通过受控 HTTPS 网关接入；不要关闭浏览器安全策略。
 
 ### Worker 返回“尚未配置 ALLOWED_UPSTREAMS”
 
