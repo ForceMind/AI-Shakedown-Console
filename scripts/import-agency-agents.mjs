@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { applyTaskPresets } from './task-agent-presets.mjs';
 
 const sourceRoot = path.resolve(process.argv[2] || 'agency-agents-zh');
 const outputRoot = path.resolve(process.argv[3] || 'agents');
@@ -93,7 +94,7 @@ agents.sort((left, right) => (
 
 const sourcePackage = JSON.parse(await readFile(path.join(sourceRoot, 'package.json'), 'utf8'));
 const sourceRevision = process.env.AGENCY_AGENTS_REVISION || '';
-await writeFile(path.join(outputRoot, 'index.json'), `${JSON.stringify({
+const catalog = await applyTaskPresets(outputRoot, {
     source: sourceRepository,
     version: sourcePackage.version,
     revision: sourceRevision,
@@ -101,7 +102,8 @@ await writeFile(path.join(outputRoot, 'index.json'), `${JSON.stringify({
     count: agents.length,
     departments: Object.entries(departmentNames).map(([id, name]) => ({ id, name })),
     agents
-})}\n`, 'utf8');
+});
+await writeFile(path.join(outputRoot, 'index.json'), `${JSON.stringify(catalog)}\n`, 'utf8');
 await cp(path.join(sourceRoot, 'LICENSE'), path.join(outputRoot, 'LICENSE.agency-agents-zh'));
 
-console.log(`Imported ${agents.length} agents from agency-agents-zh ${sourcePackage.version}.`);
+console.log(`Imported ${agents.length} upstream agents and ${catalog.count - agents.length} task presets.`);

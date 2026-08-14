@@ -4,7 +4,7 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v25" src="https://img.shields.io/badge/version-v25-11795a?style=flat-square">
+    <img alt="Version v27" src="https://img.shields.io/badge/version-v27-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
     <img alt="No build step" src="https://img.shields.io/badge/build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
@@ -22,7 +22,7 @@
 
 AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode。
 
-`v25` 是当前稳定版本：除了本机桥接、Markdown 智能体和 PWA 输入法方案，还补齐了消息编辑、分支、复制、搜索、导出、失败重试，以及经过真实能力检查后才出现的图片/文本/PDF 附件。
+`v27` 是当前版本：智能体库增加 120 个面向真实事务的项目预设，覆盖健康与就医准备、Linux、macOS、Windows、办公、行政、法务、财务、生活、研究、内容、技术与客户运营；和原有上游角色合计 388 个，并可从聊天区或角色库一键取消当前智能体。
 
 ## 为什么使用它
 
@@ -31,9 +31,9 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 | 快速验证 API | 地址、密钥、模型、请求体、SSE 流和错误信息集中在一个页面 |
 | 连接不同厂商 | OpenAI Compatible、Anthropic Messages、Google Gemini 三类协议 |
 | 使用本机登录 | 复用 5 种本机 CLI 的现有登录，不把 CLI 凭据复制到网页 |
-| 管理长期对话 | 多对话、自动恢复、编辑分支、搜索、复制、导出和失败重试 |
+| 管理长期对话 | 多对话、自动恢复、编辑分支、搜索、复制、完整备份和失败重试 |
 | 发送本地文件 | 支持图片、文本/代码和可提取文字的 PDF；仅在模型通过图片探测后显示入口 |
-| 使用专业角色 | 268 个内置中文智能体，并支持自建 System 智能体 |
+| 使用专业角色 | 388 个内置中文智能体、明确取消入口，并支持自建 System 智能体 |
 | 像桌面应用运行 | 可安装 PWA，独立窗口启动并离线打开应用外壳 |
 | 排查连接问题 | 脱敏请求检查器、连接测试、模型列表和清晰的错误提示 |
 
@@ -48,16 +48,20 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 
 第一次使用本机 Codex 等工具？请直接阅读 [本机 AI 连接指南](./docs/LOCAL_AI.md)，其中包含 macOS 权限提示、完整命令、Node.js 检查、后台运行、更新、停止和端口冲突处理。
 
+> 浏览器提示：线上本机桥接请使用 Edge/Chrome。Safari Web App 适合第三方中文输入法与云端 API，但 WebKit 当前会阻止 HTTPS 页面访问 `127.0.0.1`；页面会直接显示兼容性说明，不再让用户反复检测。
+
 ## 核心能力
 
 - **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数。
 - **专注聊天**：连接成功后隐藏配置和检查器；对话超过 4 个后自动切换为持久化左侧列表。
+- **贴底输入区**：消息区随窗口弹性伸缩，输入框在浏览器和 PWA 窄窗口中都始终停在底部。
 - **完整消息操作**：单条复制、编辑并重发、自动分支、重新生成、继续生成、从此处删除；支持多选复制、导出和删除。
 - **按能力显示附件**：检查连接时发送 16×16 测试图片；只有当前协议、地址和模型实际接受图片时才显示附件按钮，避免给纯文本模型展示无效入口。
 - **本地附件处理**：图片按三种协议映射为多模态输入；文本/代码直接读取；PDF 使用自托管 PDF.js 在浏览器本地提取文字。附件草稿和历史文件保存在 IndexedDB。
-- **智能体库**：内置与自定义智能体统一管理；自定义 System 支持安全 Markdown 实时预览，每个对话独立保存当前角色。
+- **智能体与 System**：268 个上游角色和 120 个事务型项目预设统一管理；聊天区可直接取消当前智能体，System 点击“编辑”后在弹窗中修改。
 - **本地记录导入**：支持 Codex、Gemini CLI、Claude Code 及通用 JSON/JSONL 文件，可继续使用当前模型对话。
-- **本机 CLI 桥接**：启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；当前 PWA 自动连接，不重复打开网页。
+- **跨设备完整备份**：设置中可一次导出全部对话、System、智能体状态、草稿和附件，在另一台电脑追加恢复；同一备份重复导入不会生成副本。
+- **本机 CLI 桥接**：Edge/Chrome 启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；当前页面自动连接，不重复打开网页。
 - **安全 Markdown**：使用 Marked 解析 GitHub Flavored Markdown，再由 DOMPurify 清洗后显示。
 - **PWA 与离线外壳**：可安装到桌面或主屏幕；离线时仍能打开页面和查看浏览器本地数据。
 - **Cloudflare Pages Worker**：同域代理只允许访问 `ALLOWED_UPSTREAMS` 白名单，避免成为开放代理。
@@ -76,7 +80,7 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 
 | 工具 | 调用方式 | 安全约束 |
 | --- | --- | --- |
-| Codex | 官方 App Server，保持连续线程 | `read-only` 沙盒、`never` 审批 |
+| Codex | 官方 App Server，保持连续线程 | 默认临时任务；可选保存到 Codex；`read-only` 沙盒、`never` 审批 |
 | Antigravity | `agy -p` 单轮调用并重放上下文 | 独立临时目录与对话安全指令，Beta |
 | Gemini CLI | 无头 JSON 模式 | `plan` 审批模式 |
 | Claude Code | Print/JSON 模式 | 禁用内置与 MCP 工具，计划模式 |
@@ -129,7 +133,9 @@ ruby -run -e httpd . -p 4173 -b 127.0.0.1
 ## 数据与安全
 
 - 配置、API Key、自定义智能体、对话和附件元数据保存在当前站点的 `localStorage`；附件内容保存在同源 `IndexedDB`。只应在可信部署和个人设备上使用。
+- “完整备份”只包含对话相关数据和附件，不包含 API Key、连接配置或本机登录；备份 JSON 没有加密，应像私人对话和原文件一样妥善保管。
 - 本机桥接配对令牌只保存在当前标签页的 `sessionStorage`，桥接仅监听 `127.0.0.1` 并检查网页 Origin。
+- 不通过关闭 Safari 安全策略、安装自签名根证书或把桥接暴露到局域网来绕过 WebKit 限制；本机 CLI 改用 Edge/Chrome 普通标签页。
 - 同域代理只转发到 `ALLOWED_UPSTREAMS` 中列出的上游，不会把密钥写入 Worker 配置。
 - 共享设备使用完毕后，请在设置中点击“清除全部本地数据”。
 
@@ -141,7 +147,7 @@ ruby -run -e httpd . -p 4173 -b 127.0.0.1
 index.html / style.css / script.js   网页界面与全部前端逻辑
 _worker.js                           Cloudflare Pages Worker 与同域代理
 assets/                              PWA、本机桥接和三系统启动器
-agents/                              268 个中文智能体索引与正文
+agents/                              388 个中文智能体索引与正文
 vendor/                              固定版本的前端依赖与许可证
 docs/                                用户、部署、排查和架构文档
 scripts/                             智能体角色库导入工具
@@ -149,9 +155,9 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v25` 已完成计划中的网页版本：多协议与多模态连接、本机登录工具、完整聊天操作、多对话、智能体、附件、导入、帮助、PWA、后台桥接、中文输入兼容和可重复发布流程均已落地。
+`v27` 已完成计划中的网页版本：多协议与多模态连接、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、帮助、PWA、后台桥接、中文输入兼容和稳定的贴底编辑器均已落地。
 
-暂不纳入本版本的方向包括：加密的整站导出/导入、跨设备同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
+暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 
 ## 第三方组件
 
@@ -162,6 +168,7 @@ scripts/                             智能体角色库导入工具
 | [Bootstrap Icons](https://icons.getbootstrap.com/) | 1.11.3 | MIT | 界面图标 |
 | [PDF.js](https://mozilla.github.io/pdf.js/) | 5.4.296 | Apache-2.0 | 浏览器本地提取 PDF 文字 |
 | [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh) | 1.2.7 | MIT | 268 个中文智能体 |
+| AI Shakedown 事务型预设 | task-presets-r1 | MIT | 项目自带的 120 个办事型智能体 |
 
 依赖全部自托管，不从第三方 CDN 加载。完整许可文本保存在 `vendor/` 与 `agents/` 对应目录。
 

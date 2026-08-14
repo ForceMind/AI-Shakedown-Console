@@ -67,10 +67,10 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-正式 `v25` 包：
+正式 `v27` 包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v25.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v27.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -96,7 +96,7 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v25.zip \
 
 只改其中一处会导致页面、PWA 或本机启动器继续使用旧资源。
 
-若发布候选仍显示为同一个 `v25`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v25-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+若发布候选仍显示为同一个 `v27`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v27-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
 
 ## 正式发布清单
 
@@ -115,6 +115,10 @@ node --check _worker.js
 node --check assets/service-worker.js
 node --check assets/local-codex-bridge.mjs
 node --check scripts/import-agency-agents.mjs
+node --check scripts/task-agent-presets.mjs
+node --check scripts/build-task-agent-presets.mjs
+node --check scripts/validate-agent-catalog.mjs
+node scripts/validate-agent-catalog.mjs agents
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
@@ -137,16 +141,20 @@ Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
 - [ ] 支持图片的模型显示附件按钮，不支持或未知的配置不显示。
 - [ ] 图片、文本和 PDF 可选择、刷新恢复并发送；请求检查器不显示图片 base64。
 - [ ] 消息复制、编辑分支、搜索、选择、重试、继续和重新生成正常。
-- [ ] 手机宽度下消息操作可见，设置抽屉和输入区不互相遮挡。
+- [ ] System 只显示状态，编辑弹窗的保存、取消、`Esc` 与刷新恢复正常。
+- [ ] 智能体库显示 388 个内置角色，健康/Linux/macOS/Windows 等事务型预设可搜索、预览和应用；聊天区 `×` 与角色库“取消当前智能体”均能恢复普通对话且保留历史消息。
+- [ ] “导出全部”包含全部对话和 IndexedDB 附件；在独立 Origin 导入后，System、智能体标记、草稿、分支和附件均恢复，同一文件二次导入不重复。
+- [ ] 本机 Codex 默认发起 `thread/start` 时为 `ephemeral: true`；打开“同时保存到 Codex”后为 `false`，切换模式会创建不同线程。
+- [ ] 630×980 PWA 尺寸和桌面宽度下，输入区与聊天面板底部间隙均为 `0`；显示搜索/多选工具条后仍贴底。
 
 仓库内 `tests/mock-server.mjs` 提供无真实凭据的三协议回归上游；使用 `?no-sw=1` 打开本地页面可避免旧 Service Worker 干扰当前源文件测试。该参数仅用于本地回归，不改变正式 PWA 行为。
 
 ### 5. 发布包
 
 ```bash
-unzip -t AI-Shakedown-Console-cf-pages-worker-v25.zip
-zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v25.zip
-shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
+unzip -t AI-Shakedown-Console-cf-pages-worker-v27.zip
+zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v27.zip
+shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v27.zip
 ```
 
 - [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`。
@@ -166,15 +174,16 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
 
 ## 部署后检查
 
-1. 打开线上页面，确认左上角显示 `v25`。
+1. 打开线上页面，确认左上角显示 `v27`。
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
-5. 打开 `/api/status`，预期结构：
+5. 模拟 Safari 用户代理时，本机工具显示 WebKit 回环限制，下载与检测按钮禁用；Edge/Chrome 路径保持可用。
+6. 打开 `/api/status`，预期结构：
 
    ```json
    {
-     "appVersion": "v25",
+     "appVersion": "v27",
      "workerVersion": "proxy-6",
      "allowedUpstreamsConfigured": true,
      "assetsBindingConfigured": true
@@ -182,7 +191,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
    ```
 
 6. 已安装 PWA 时确认出现更新提示，刷新后仍保留配置与对话。
-7. 若入口仍使用旧资源，访问 `/?refresh=25-r2` 后刷新。
+7. 若入口仍使用旧资源，访问 `/?refresh=27` 后刷新。
 
 ## 缓存策略
 
@@ -192,11 +201,17 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v25.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-原有浏览器存储键在 `v25` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。新附件数据库和多模态能力缓存会按需创建；清除站点数据会一并删除它们。
+原有浏览器存储键在 `v27` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。新增的项目预设与智能体取消入口沿用原有 `systemPrompt` / `activeAgent` 结构，不需要数据迁移；System 编辑弹窗、完整备份、附件数据库、多模态能力缓存和 Codex 保存开关均按原有规则保留。
 
 ## 更新智能体库
 
-准备好上游 `agency-agents-zh` 本地目录后运行：
+只重建项目自带的 120 个事务型预设：
+
+```bash
+node scripts/build-task-agent-presets.mjs agents
+```
+
+准备好上游 `agency-agents-zh` 本地目录后，可重建 268 个上游角色并自动重新合并项目预设：
 
 ```bash
 node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
@@ -209,6 +224,6 @@ AGENCY_AGENTS_REVISION=<commit-sha> \
   node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 ```
 
-导入后检查 `agents/index.json`、角色数量、正文路径和 `agents/LICENSE.agency-agents-zh`，再执行完整发布清单。
+导入或生成后确认 `agents/index.json` 总数为 388、`sources` 分别为 268 和 120、所有正文路径存在，并检查 `agents/LICENSE.agency-agents-zh`，再执行完整发布清单。不要直接编辑生成的 `agents/content/task-presets/*.md`；应修改 `scripts/task-agent-presets.mjs` 后重建。
 
 [返回文档中心](./README.md) · [贡献指南](../CONTRIBUTING.md) · [返回项目首页](../README.md)

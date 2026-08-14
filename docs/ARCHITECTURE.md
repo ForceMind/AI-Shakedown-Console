@@ -52,7 +52,7 @@ flowchart TB
 
 ### `style.css`
 
-完整响应式布局，无预处理器。桌面端使用可收缩双栏，移动端把左侧区域变成抽屉。版本号位于左上角品牌副标题下方，不参与操作层布局。
+完整响应式布局，无预处理器。桌面端使用可收缩双栏，移动端把左侧区域变成抽屉。聊天面板为六个显式网格行，消息区固定占用弹性行、输入区固定占用最后一行；搜索或多选工具条隐藏时不会改变它们的位置。
 
 ### `script.js`
 
@@ -63,13 +63,24 @@ flowchart TB
 - 配置、智能体、对话和统计状态；
 - 稳定消息 ID、编辑分支、选择、搜索、复制、导出、重试与重新生成；
 - 图片/文本/PDF 附件处理、IndexedDB 持久化和多模态能力探测；
-- 本地记录导入；
+- 本地记录导入，以及全部对话/附件的备份与追加恢复；
 - 本机启动器生成、配对与控制；
 - PWA 安装和更新提示；
 - 专注聊天布局与环境帮助；
 - 中文输入法组合状态保护。
 
 项目刻意保持单文件前端核心，便于无构建部署；新增大型能力前应评估是否需要在不引入构建链的前提下拆成原生 ES Modules。
+
+### 智能体目录
+
+`agents/index.json` 是前端读取的统一目录，v27 共包含 388 个内置智能体：
+
+- 268 个来自 `agency-agents-zh`，正文保存在原有部门目录；
+- 120 个项目事务型预设由 `scripts/task-agent-presets.mjs` 定义并生成到 `agents/content/task-presets/`；
+- `sources` 字段分别记录两个来源和数量，项目预设另带 `sourceType`、`presetRevision` 与正文 `contentRevision`；
+- 前端优先用 `contentRevision` 请求项目预设正文，避免上游修订未变时复用旧缓存。
+
+`scripts/build-task-agent-presets.mjs` 可在现有目录上单独重建项目预设；`scripts/import-agency-agents.mjs` 更新上游后会自动调用同一合并逻辑。应用角色只改当前对话的 `systemPrompt` 与 `activeAgent`；取消角色会把两者清空但不删除历史消息，也不改变存储结构。
 
 ### `_worker.js`
 
@@ -92,7 +103,7 @@ Cloudflare Pages Advanced Mode Worker：
 | `POST /v1/chat/completions` | 流式/非流式对话 |
 | `POST /shutdown` | 安全停止当前桥接 |
 
-Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单轮调用，桥接重放网页对话维持上下文。
+Codex 使用 App Server JSON-RPC 并保留线程。网页默认发送 `X-AI-Shakedown-Codex-History: ephemeral`，桥接在 `thread/start` 设置 `ephemeral: true`，避免网页对话物化为 Codex 最近任务；用户主动开启“同时保存到 Codex”后才改为 `ephemeral: false`。线程内存键同时包含保存模式，切换开关会创建隔离的新线程。其他 CLI 使用非交互单轮调用，桥接重放网页对话维持上下文。
 
 ### 三系统启动器
 
@@ -116,7 +127,7 @@ Codex 使用 App Server JSON-RPC 并保留线程；其他 CLI 使用非交互单
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-公开版本仍为 `v25` 时，内部缓存可使用 `v25-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+公开版本仍为 `v27` 时，内部缓存可使用 `v27-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 #### macOS App Shim 与输入法边界
 
@@ -126,7 +137,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 
 - 候选窗已经出现，但 `Enter` 被误当成发送，属于前端组合事件处理范围；
 - 拼音按键已输入，但候选窗完全不出现，首先属于 App Shim、macOS 文本服务或输入法的原生边界；
-- 重新安装 Edge PWA 会重建 App Shim、应用登记和文本输入上下文，但浏览器更新后可能复发，也不等同于发布新的网页资源；macOS 第三方输入法的长期方案是 Safari“添加到程序坞”。
+- 重新安装 Edge PWA 会重建 App Shim、应用登记和文本输入上下文，但浏览器更新后可能复发，也不等同于发布新的网页资源；macOS 第三方输入法配合云端 API 的长期方案是 Safari“添加到程序坞”。本机 CLI 仍需 Edge/Chrome 普通标签页，因为 Safari/WebKit 会阻止线上 HTTPS 页面访问 HTTP 回环地址。
 
 这个边界用于避免把原生候选窗故障误判为缓存问题并反复提高网页版本。详细恢复流程见 [故障排查](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗)。
 
@@ -176,6 +187,12 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 
 当前数据结构没有云同步、加密或账号隔离。改变现有 key/schema 时必须提供向后兼容读取或清晰迁移说明。
 
+### 完整对话备份格式
+
+前端导出的 JSON envelope 使用 `format: "ai-shakedown-console-chat-backup"` 和 `formatVersion: 1`。主体包含 `backupId`、激活对话、全部对话快照和被引用附件：图片使用 base64，文本/PDF 使用 UTF-8 字符串。连接设置、API Key、配置库、自定义智能体库和本机配对信息不进入备份。
+
+导入按 `backupId + 源对话 ID + 索引` 生成稳定来源键，用于阻止同一文件重复导入；对话、消息和附件 ID 全部重新生成，分支父项与附件引用同步重映射。数据先写 IndexedDB，再追加 localStorage 对话；任一步失败会回滚本次新增附件与内存状态。导入只追加，不覆盖目标浏览器已有数据。
+
 ## 智能体资源
 
 `agents/index.json` 保存轻量元数据，角色正文按需从 `agents/content/**/*.md` 加载，避免首屏加载全部文本。导入脚本从上游 frontmatter 生成稳定索引并复制许可证。
@@ -187,6 +204,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 - Markdown 输出先解析后清洗；
 - 检查器显示时脱敏认证头和查询 Key；
 - 检查器隐藏图片 base64；附件只在用户选择并发送时进入对应模型请求；
+- 完整备份排除 API Key、连接配置和本机配对令牌，但文件自身不加密并可能包含完整对话与附件；
 - 本机配对令牌不持久化到 localStorage；
 - 用户可一键清除项目浏览器数据。
 
@@ -201,6 +219,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 ### 本机侧
 
 - 只绑定 `127.0.0.1`；
+- 线上页面通过 HTTP 回环地址连接，因此支持 Edge/Chrome；Safari/WebKit 当前把这条链路作为混合内容阻止，前端应直接显示兼容性说明，不应把它误报为脚本或本地网络权限故障；
 - Bearer 令牌与 Origin 双重检查；
 - 只停止可确认归属的桥接进程；
 - 使用临时工作目录和各 CLI 可用的最小权限模式；
@@ -219,7 +238,7 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 - 新的 OpenAI-compatible 服务商预设；
 - 新的本地记录解析器；
 - 新的安全 CLI 无头适配；
-- 可选的数据导出/导入；
+- 加密的整站迁移包和可选云同步；
 - 可重复的浏览器回归测试。
 
 ### 更适合独立桌面层

@@ -66,10 +66,12 @@ git diff --check
 - 消息编辑分支、复制、选择、搜索、删除撤销、重试、继续和重新生成；
 - OpenAI/Anthropic/Gemini 图片请求映射，支持/不支持模型的附件按钮显隐；
 - 图片、文本和 PDF 附件选择、刷新恢复、发送与 IndexedDB 清理；
+- 完整备份在独立 Origin 追加恢复全部对话、System、草稿、分支、智能体标记和附件，重复导入不生成副本；
 - 第 5 个对话触发左侧列表；
 - PWA 安装、更新提示和离线外壳；
 - 三系统启动器的解析、错误提示和固定文件名；
-- 本机桥接的 status/models/chat/shutdown。
+- 本机桥接的 status/models/chat/shutdown，以及 Codex 默认 `ephemeral: true`、主动保存时为 `false`。
+- Safari 用户代理下，本机工具应显示 WebKit 回环连接限制，下载和检测按钮应禁用；Edge/Chrome 路径仍应正常下载、自动发现并连接。
 
 ## 文档规范
 
@@ -109,14 +111,20 @@ index.html script.js style.css _worker.js vendor/ agents/ assets/
 
 ## 智能体上游
 
-更新 `agency-agents-zh` 时使用导入脚本，不要手工批量复制角色文件：
+智能体目录由 268 个 `agency-agents-zh` 上游角色和 120 个项目事务型预设组成。项目预设应修改 `scripts/task-agent-presets.mjs`，然后运行：
+
+```bash
+node scripts/build-task-agent-presets.mjs agents
+```
+
+更新 `agency-agents-zh` 时使用导入脚本，不要手工批量复制角色文件；导入结束后会自动重新合并项目预设：
 
 ```bash
 AGENCY_AGENTS_REVISION=<commit-sha> \
   node scripts/import-agency-agents.mjs /path/to/agency-agents-zh agents
 ```
 
-保留上游许可证并在 README 的第三方组件表中同步版本。
+保留上游许可证并在 README 的第三方组件表中同步版本。提交前运行 `node scripts/validate-agent-catalog.mjs agents`，确认目录总数为 388、项目预设为 120、正文路径完整，并回归“应用到当前对话”和两个取消入口。健康类预设不得诊断或调整处方；法律、财务和危险系统操作必须保留专业复核、备份、确认与回滚边界。
 
 ## 安全贡献
 

@@ -1,19 +1,17 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-// Keep the public app version at v25 while allowing a same-version release
-// candidate to replace stale PWA shell files reliably.
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v25-r2`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v25-r2`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v27`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v27`;
 const APP_SHELL = [
     '/',
     '/index.html',
-    '/style.css?v=25',
-    '/script.js?v=25',
-    '/assets/manifest.webmanifest?v=25',
-    '/assets/favicon.svg?v=25',
-    '/assets/apple-touch-icon.png?v=25',
-    '/assets/icon-192.png?v=25',
-    '/assets/icon-512.png?v=25',
-    '/assets/icon-maskable-512.png?v=25',
+    '/style.css?v=27',
+    '/script.js?v=27',
+    '/assets/manifest.webmanifest?v=27',
+    '/assets/favicon.svg?v=27',
+    '/assets/apple-touch-icon.png?v=27',
+    '/assets/icon-192.png?v=27',
+    '/assets/icon-512.png?v=27',
+    '/assets/icon-maskable-512.png?v=27',
     '/vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff',

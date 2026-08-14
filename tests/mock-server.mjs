@@ -108,7 +108,7 @@ async function handleApi(request, response, url) {
         || url.searchParams.get('model') === 'text-model'
         || url.pathname.includes('/models/text-model:');
     if (/\/chat\/completions$/.test(url.pathname)) {
-        requestRecords.push({ protocol: 'openai', model: body.model, image: hasOpenAiImage(body.messages), stream: Boolean(body.stream), sampleText: JSON.stringify(body).includes('sample-notes.md') });
+        requestRecords.push({ protocol: 'openai', model: body.model, system: (body.messages || []).some((message) => message.role === 'system'), image: hasOpenAiImage(body.messages), stream: Boolean(body.stream), sampleText: JSON.stringify(body).includes('sample-notes.md') });
         if (body.model === 'error-model' && !JSON.stringify(body).includes('仅回复 OK')) {
             sendJson(response, 500, { error: { message: 'Deliberate retry test failure.' } });
             return true;
@@ -119,7 +119,7 @@ async function handleApi(request, response, url) {
         return true;
     }
     if (/\/v1\/messages$/.test(url.pathname)) {
-        requestRecords.push({ protocol: 'anthropic', model: body.model, image: hasAnthropicImage(body.messages), stream: Boolean(body.stream), sampleText: JSON.stringify(body).includes('sample-notes.md') });
+        requestRecords.push({ protocol: 'anthropic', model: body.model, system: Boolean(body.system), image: hasAnthropicImage(body.messages), stream: Boolean(body.stream), sampleText: JSON.stringify(body).includes('sample-notes.md') });
         if (body.model === 'error-model' && !JSON.stringify(body).includes('仅回复 OK')) {
             sendJson(response, 500, { error: { message: 'Deliberate retry test failure.' } });
             return true;
@@ -131,7 +131,7 @@ async function handleApi(request, response, url) {
     }
     if (/:(?:streamGenerateContent|generateContent)$/.test(url.pathname)) {
         const geminiModel = url.pathname.match(/\/models\/([^/:]+):/)?.[1] || '';
-        requestRecords.push({ protocol: 'gemini', model: geminiModel, image: hasGeminiImage(body.contents), stream: /:streamGenerateContent$/.test(url.pathname), sampleText: JSON.stringify(body).includes('sample-notes.md') });
+        requestRecords.push({ protocol: 'gemini', model: geminiModel, system: Boolean(body.systemInstruction), image: hasGeminiImage(body.contents), stream: /:streamGenerateContent$/.test(url.pathname), sampleText: JSON.stringify(body).includes('sample-notes.md') });
         if (geminiModel === 'error-model' && !JSON.stringify(body).includes('仅回复 OK')) {
             sendJson(response, 500, { error: { message: 'Deliberate retry test failure.' } });
             return true;

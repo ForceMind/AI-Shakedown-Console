@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=25">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=25">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=25">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=27">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=27">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=27">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
     <header class="app-header">
@@ -24,7 +24,7 @@
             <div>
                 <h1>AI Shakedown Console</h1>
                 <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v25</small>
+                <small class="build-version" title="当前部署版本">v27</small>
             </div>
         </div>
         <div class="runtime-context" aria-label="当前运行上下文">
@@ -128,6 +128,24 @@
                         <span class="local-codex-state" id="local-codex-status" data-state="idle">尚未连接</span>
                     </div>
                     <p id="local-tool-description">下载并运行适合当前系统的启动脚本。脚本只在 <code>127.0.0.1</code> 启动受随机令牌保护的桥接服务，不会把本地 AI 工具凭据交给网页。</p>
+                    <section class="local-codex-compatibility" id="local-codex-compatibility" aria-label="Safari 本机连接兼容性" hidden>
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <div>
+                            <strong>Safari 暂不支持本机连接</strong>
+                            <small>Safari / Safari Web App 会阻止线上 HTTPS 页面访问 <code>127.0.0.1</code>。请复制网址，在 Edge 或 Chrome 的普通标签页中连接本机 CLI；Safari Web App 仍可使用云端 API。</small>
+                        </div>
+                        <button class="secondary-button compact" id="local-codex-copy-supported-url" type="button">
+                            <i class="bi bi-copy"></i><span>复制网址</span>
+                        </button>
+                    </section>
+                    <label class="toggle-row local-codex-history-option" id="local-codex-history-option" hidden>
+                        <span>
+                            <strong>同时保存到 Codex</strong>
+                            <small>默认关闭：网页使用临时任务，只在本页保存对话；开启后，新消息也会出现在 Codex 最近任务中。</small>
+                        </span>
+                        <input id="local-codex-history-toggle" type="checkbox">
+                        <span class="toggle-control" aria-hidden="true"></span>
+                    </label>
                     <label class="field compact-field" for="local-codex-platform">
                         <span>检测到的系统</span>
                         <select id="local-codex-platform">
@@ -267,6 +285,23 @@
                     </div>
                 </details>
 
+                <section class="chat-backup-card" aria-label="全部对话备份与恢复">
+                    <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-archive"></i></span>
+                    <div>
+                        <strong>完整备份与恢复</strong>
+                        <small>一次导出全部对话、System、智能体状态和附件。备份不包含 API Key、连接配置或本机登录；导入只会追加，不覆盖现有对话。</small>
+                    </div>
+                    <div class="chat-backup-actions">
+                        <button class="secondary-button compact" id="chat-backup-export" type="button">
+                            <i class="bi bi-download"></i><span>导出全部</span>
+                        </button>
+                        <button class="secondary-button compact" id="chat-backup-import" type="button">
+                            <i class="bi bi-upload"></i><span>导入备份</span>
+                        </button>
+                        <input id="chat-backup-file" type="file" accept="application/json,.json" hidden>
+                    </div>
+                </section>
+
                 <section class="pwa-install-card" id="pwa-install-card" aria-label="安装网页应用" hidden>
                     <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-device-ssd"></i></span>
                     <div>
@@ -282,7 +317,7 @@
                     <span class="pwa-install-icon" aria-hidden="true"><i class="bi bi-keyboard"></i></span>
                     <div>
                         <strong>macOS 中文输入法稳定方案</strong>
-                        <small>Edge 更新会重建 Chromium App Shim，第三方输入法候选窗可能再次失效。长期使用请改由 Safari 打开本站，并选择“文件 → 添加到程序坞”。</small>
+                        <small>Safari Web App 可避开 Edge App Shim 的第三方输入法故障，适合云端 API；本机 Codex 等 CLI 连接请使用 Edge/Chrome 普通标签页。</small>
                         <details>
                             <summary>查看一次性迁移步骤</summary>
                             <ol>
@@ -290,7 +325,7 @@
                                 <li>打开 Safari，粘贴地址并访问。</li>
                                 <li>选择“文件 → 添加到程序坞”。以后从新图标启动。</li>
                             </ol>
-                            <p>这是独立的 Safari Web App，不依赖 Edge App Shim；Edge 更新不会再破坏它的输入上下文。</p>
+                            <p>这是独立的 Safari Web App，不依赖 Edge App Shim；但 Safari 会阻止线上页面连接 <code>127.0.0.1</code>，本机 CLI 不能在此模式使用。</p>
                         </details>
                     </div>
                     <button class="secondary-button compact" id="pwa-ime-copy-url" type="button">
@@ -465,15 +500,25 @@
                     <button class="agent-library-button" id="agent-library-open" type="button">
                         <span class="agent-library-icon"><i class="bi bi-people"></i></span>
                         <span class="agent-library-copy"><strong>智能体库</strong><small>内置角色与自定义智能体</small></span>
-                        <span class="agent-count" id="agent-count">268</span>
+                        <span class="agent-count" id="agent-count">388</span>
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
-                <div class="system-heading">
-                    <label class="system-field" for="system-prompt">System</label>
-                    <button class="active-agent" id="active-agent" type="button" hidden></button>
+                <div class="system-prompt-control">
+                    <div class="system-prompt-status">
+                        <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
+                        <span class="system-prompt-summary" id="system-prompt-summary">未设置，模型将使用默认行为</span>
+                    </div>
+                    <div class="active-agent-control" id="active-agent-control" hidden>
+                        <button class="active-agent" id="active-agent" type="button"></button>
+                        <button class="active-agent-clear" id="active-agent-clear" type="button" title="取消当前智能体" aria-label="取消当前智能体">
+                            <i class="bi bi-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <button class="secondary-button compact system-prompt-edit" id="system-prompt-edit" type="button">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i><span>编辑</span>
+                    </button>
                 </div>
-                <textarea id="system-prompt" rows="2" placeholder="设置模型身份、目标和边界，例如：You are a helpful assistant."></textarea>
                 <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
                 <div class="message-compose-row">
                     <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
@@ -494,11 +539,37 @@
 
     </main>
 
+    <div class="modal-backdrop" id="system-prompt-modal" hidden>
+        <section class="system-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="system-prompt-title" aria-describedby="system-prompt-description">
+            <header class="help-header">
+                <div>
+                    <span class="eyebrow">SYSTEM PROMPT</span>
+                    <h2 id="system-prompt-title">编辑 System 提示词</h2>
+                </div>
+                <button class="icon-button" id="system-prompt-close" type="button" title="关闭编辑" aria-label="关闭 System 提示词编辑">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+            <div class="system-prompt-modal-body">
+                <p id="system-prompt-description">设置模型的身份、目标与边界。保存后会应用到当前对话；手动修改会取消当前已选智能体。</p>
+                <label class="system-prompt-modal-label" for="system-prompt">提示词内容</label>
+                <textarea id="system-prompt" rows="14" placeholder="例如：You are a helpful assistant."></textarea>
+            </div>
+            <footer class="help-footer system-prompt-modal-footer">
+                <span>内容仅保存在当前浏览器和当前对话中</span>
+                <div>
+                    <button class="secondary-button" id="system-prompt-cancel" type="button">取消</button>
+                    <button class="primary-button" id="system-prompt-save" type="button">保存</button>
+                </div>
+            </footer>
+        </section>
+    </div>
+
     <div class="modal-backdrop" id="agent-library-modal" hidden>
         <section class="agent-library-modal" role="dialog" aria-modal="true" aria-labelledby="agent-library-title">
             <header class="agent-library-header">
                 <div>
-                    <span class="eyebrow">AGENCY AGENTS</span>
+                    <span class="eyebrow">AGENT LIBRARY</span>
                     <h2 id="agent-library-title">智能体角色库</h2>
                 </div>
                 <button class="icon-button" id="agent-library-close" type="button" title="关闭角色库" aria-label="关闭角色库">
@@ -554,8 +625,9 @@
                 </article>
             </div>
             <footer class="agent-library-footer">
-                <span id="agent-library-source">agency-agents-zh · MIT</span>
+                <span id="agent-library-source">388 个内置 · 上游 268 + 事务型预设 120</span>
                 <div class="agent-library-footer-actions">
+                    <button class="secondary-button" id="agent-remove" type="button" hidden><i class="bi bi-person-x"></i><span>取消当前智能体</span></button>
                     <button class="secondary-button" id="custom-agent-delete" type="button" hidden disabled><i class="bi bi-trash3"></i><span>删除</span></button>
                     <button class="secondary-button" id="custom-agent-save" type="button" hidden><i class="bi bi-floppy"></i><span>保存自定义</span></button>
                     <button class="primary-button" id="agent-apply" type="button" disabled><i class="bi bi-check2"></i><span>应用到当前对话</span></button>
@@ -720,7 +792,7 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表并在以后保持。智能体库分为内置和自定义，自定义 System 支持 Markdown 实时预览。</p>
+                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表。智能体库包含 388 个内置角色；点击当前角色右侧的 × 可恢复普通对话。聊天区的 System 只显示状态，点击“编辑”后在弹窗中修改。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -734,7 +806,7 @@
                         <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
                         <div>
                             <h3>专注聊天</h3>
-                            <p>连接成功后设置会自动收起。对话较多时，左侧区域显示对话列表；点击页头“设置”后，同一区域切换到连接、参数、用量和请求检查器。</p>
+                            <p>连接成功后设置会自动收起。消息区随窗口弹性伸缩，输入框始终贴在底部；点击页头“设置”可切换到连接、参数、用量和请求检查器。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -748,14 +820,14 @@
                         <i class="bi bi-shield-check" aria-hidden="true"></i>
                         <div>
                             <h3>数据与隐私</h3>
-                            <p>配置、API Key、自定义智能体和对话保存在当前浏览器，附件内容保存在本站的 IndexedDB。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
+                            <p>配置、API Key、自定义智能体和对话保存在当前浏览器，附件内容保存在本站的 IndexedDB。换电脑前可到“设置 → 完整备份与恢复”导出全部对话和附件；备份不含密钥但没有加密。共享设备使用后请点击“清除全部本地数据”；本机 CLI 凭据不会交给网页。</p>
                         </div>
                     </section>
                     <section class="help-topic">
                         <i class="bi bi-window-plus" aria-hidden="true"></i>
                         <div>
                             <h3>安装与离线</h3>
-                            <p>支持的浏览器会在设置中显示“安装”按钮。macOS 使用第三方中文输入法时，推荐从 Safari 选择“文件 → 添加到程序坞”，避免 Edge 更新后候选窗失效。</p>
+                            <p>支持的浏览器会在设置中显示“安装”按钮。macOS 使用第三方中文输入法和云端 API 时，可从 Safari 选择“文件 → 添加到程序坞”；本机 Codex 等 CLI 连接请使用 Edge/Chrome 普通标签页。</p>
                         </div>
                     </section>
                 </div>
@@ -771,6 +843,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=25"></script>
+    <script type="module" src="script.js?v=27"></script>
 </body>
 </html>
