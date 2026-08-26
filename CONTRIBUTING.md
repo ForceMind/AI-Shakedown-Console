@@ -52,6 +52,8 @@ node --check _worker.js
 node --check assets/service-worker.js
 node --check assets/local-codex-bridge.mjs
 node --check scripts/import-agency-agents.mjs
+node scripts/validate-windows-launcher.mjs
+node scripts/validate-generation-parameters.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
@@ -60,6 +62,7 @@ git diff --check
 根据改动范围手动验证：
 
 - 远程 API 直连、流式和非流式回复；
+- Temperature、Top P、Top K、Max Tokens 各自关闭后不出现在请求检查器，重新开启后恢复原值；
 - Cloudflare 同域代理与白名单拒绝；
 - 中文输入法、发送快捷键和普通换行；
 - 对话、配置、自定义智能体刷新恢复；
@@ -69,7 +72,7 @@ git diff --check
 - 完整备份在独立 Origin 追加恢复全部对话、System、草稿、分支、智能体标记和附件，重复导入不生成副本；
 - 第 5 个对话触发左侧列表；
 - PWA 安装、更新提示和离线外壳；
-- 三系统启动器的解析、错误提示和固定文件名；
+- 三系统启动器的解析与错误提示；Windows 还需验证任意下载目录、空格/中文路径、重复文件名和双击运行；
 - 本机桥接的 status/models/chat/shutdown，以及 Codex 默认 `ephemeral: true`、主动保存时为 `false`。
 - Safari 用户代理下，本机工具应显示 WebKit 回环连接限制，下载和检测按钮应禁用；Edge/Chrome 路径仍应正常下载、自动发现并连接。
 

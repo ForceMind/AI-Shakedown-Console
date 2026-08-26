@@ -35,3 +35,21 @@ node scripts/validate-agent-catalog.mjs agents
 ```
 
 浏览器回归还应分别搜索并应用“家庭医生信息助手（非诊断）”“Linux 系统专家”“macOS 系统专家”和“Windows 系统专家”，再测试聊天区角色标签的 `×` 和角色库底部“取消当前智能体”。两个入口都必须保留已有消息，只清除当前角色与对应 System。
+
+## Windows 启动器回归
+
+静态组装检查：
+
+```bash
+node scripts/validate-windows-launcher.mjs
+```
+
+该检查验证 `.cmd` 包装层、前端下载契约、明文 PowerShell 载荷 round-trip、UTF-8 BOM、ASCII 执行区、命令长度、占位符替换、临时文件清理、TLS 1.2 和受控旧进程停止。正式候选仍需在 Windows PowerShell 5.1 与 PowerShell 7 实机运行，覆盖默认/自定义下载目录、空格/中文/`(1)` 文件名、Node/CLI 缺失、非零退出码和成功后的临时文件清理。
+
+## 生成参数开关回归
+
+```bash
+node scripts/validate-generation-parameters.mjs
+```
+
+该检查直接执行 `script.js` 中的请求体组装函数，确认四个开关关闭时即使输入框仍有数值、内部能力检查传入最大 Token 覆盖值，也不会发送 Temperature、Top P、Top K 或 Max Tokens；重新开启后恢复协议对应字段，Gemini 在全部关闭时不发送空的 `generationConfig`。

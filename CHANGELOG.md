@@ -2,6 +2,39 @@
 
 本文件记录用户可见的重要变化。版本号是网页/PWA 发布版本，不要求对应 Git tag。
 
+## [v29] - 2026-08-26
+
+### 新增
+
+- Temperature、Top P、Top K 和 Max Tokens 增加独立“发送/关闭”开关；关闭只停发对应字段，不清空原数值，重新开启可继续使用。
+
+### 修复
+
+- 请求体不再要求用空值或 `0` 模拟关闭生成参数，兼容经 New API 转换到 Responses API 后拒绝 `top_p`、`temperature` 等采样字段的推理模型。
+- 参数开关随当前连接配置和命名配置持久化；旧存储没有开关字段时继续按原行为发送，避免升级后静默改变已有请求。
+
+### 发布
+
+- 网页、Worker、本机桥接、manifest、静态资源查询参数和 Service Worker 缓存统一升级到 v29。
+- 新建并验证 `AI-Shakedown-Console-cf-pages-worker-v29.zip`。
+
+## [v28] - 2026-08-26
+
+### 修复
+
+- Windows 本机 CLI 下载不再生成依赖 `$HOME\Downloads` 的 `.ps1` 命令，改为可从浏览器下载列表或资源管理器直接打开的单文件 `.cmd`；自定义下载目录、其他磁盘、OneDrive、空格/中文路径和 `(1)` 重复文件名均不影响运行。
+- Windows 包装层通过 `%~f0` 读取自身明文 PowerShell 载荷，写入带 UTF-8 BOM 的唯一临时 `.ps1`，以一次性的 `-NoProfile -ExecutionPolicy Bypass` 子进程执行，保留失败信息并在结束后清理。
+- Windows 自检会刷新机器/用户 `PATH`，补充 Node.js 与 npm/pnpm/Volta/Scoop 常见目录，并为 Windows PowerShell 5.1 显式启用 TLS 1.2，减少双击启动时找不到已安装 CLI 或无法下载桥接的问题。
+
+### 改进
+
+- 设置页增加 Windows 专用安装与排错教程，不再显示不可用的固定路径复制命令；维护脚本增加 Windows 包装层、占位符、BOM、ASCII 执行区、命令长度和载荷 round-trip 校验。
+
+### 发布
+
+- 网页、Worker、本机桥接、manifest、静态资源查询参数和 Service Worker 缓存统一升级到 v28。
+- 新建并验证 `AI-Shakedown-Console-cf-pages-worker-v28.zip`。
+
 ## [v27] - 2026-08-14
 
 ### 新增

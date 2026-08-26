@@ -4,7 +4,7 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v27" src="https://img.shields.io/badge/version-v27-11795a?style=flat-square">
+    <img alt="Version v29" src="https://img.shields.io/badge/version-v29-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
     <img alt="No build step" src="https://img.shields.io/badge/build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
@@ -22,7 +22,7 @@
 
 AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode。
 
-`v27` 是当前版本：智能体库增加 120 个面向真实事务的项目预设，覆盖健康与就医准备、Linux、macOS、Windows、办公、行政、法务、财务、生活、研究、内容、技术与客户运营；和原有上游角色合计 388 个，并可从聊天区或角色库一键取消当前智能体。
+`v29` 是当前版本：Temperature、Top P、Top K 和 Max Tokens 可分别关闭，关闭后字段会从请求体完全省略，兼容拒绝采样参数的 Responses/推理模型；同时包含 v28 的 Windows 单文件启动器修复。
 
 ## 为什么使用它
 
@@ -52,7 +52,7 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 
 ## 核心能力
 
-- **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数。
+- **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数；生成参数可逐项决定是否发送。
 - **专注聊天**：连接成功后隐藏配置和检查器；对话超过 4 个后自动切换为持久化左侧列表。
 - **贴底输入区**：消息区随窗口弹性伸缩，输入框在浏览器和 PWA 窄窗口中都始终停在底部。
 - **完整消息操作**：单条复制、编辑并重发、自动分支、重新生成、继续生成、从此处删除；支持多选复制、导出和删除。
@@ -61,7 +61,7 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 - **智能体与 System**：268 个上游角色和 120 个事务型项目预设统一管理；聊天区可直接取消当前智能体，System 点击“编辑”后在弹窗中修改。
 - **本地记录导入**：支持 Codex、Gemini CLI、Claude Code 及通用 JSON/JSONL 文件，可继续使用当前模型对话。
 - **跨设备完整备份**：设置中可一次导出全部对话、System、智能体状态、草稿和附件，在另一台电脑追加恢复；同一备份重复导入不会生成副本。
-- **本机 CLI 桥接**：Edge/Chrome 启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；当前页面自动连接，不重复打开网页。
+- **本机 CLI 桥接**：Edge/Chrome 启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；Windows 单文件启动器支持自定义下载目录、空格/中文路径和重复文件名。
 - **安全 Markdown**：使用 Marked 解析 GitHub Flavored Markdown，再由 DOMPurify 清洗后显示。
 - **PWA 与离线外壳**：可安装到桌面或主屏幕；离线时仍能打开页面和查看浏览器本地数据。
 - **Cloudflare Pages Worker**：同域代理只允许访问 `ALLOWED_UPSTREAMS` 白名单，避免成为开放代理。
@@ -155,7 +155,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v27` 已完成计划中的网页版本：多协议与多模态连接、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、帮助、PWA、后台桥接、中文输入兼容和稳定的贴底编辑器均已落地。
+`v29` 已完成计划中的网页版本：多协议与多模态连接、可选生成参数、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、帮助、PWA、后台桥接、三系统启动器、中文输入兼容和稳定的贴底编辑器均已落地。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

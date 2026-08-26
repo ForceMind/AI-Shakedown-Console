@@ -75,18 +75,18 @@ bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
 以 Codex 为例，下载文件名为：
 
 ```text
-ai-shakedown-codex-windows.ps1
+ai-shakedown-codex-windows.cmd
 ```
 
-打开 PowerShell，执行：
+从 Edge 或 Chrome 的下载列表直接打开该文件，或在资源管理器中双击。Windows 启动器按自身实际位置读取内附的 PowerShell 自检逻辑，不依赖默认“下载”目录，因此以下情况都无需改命令：
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$HOME\Downloads\ai-shakedown-codex-windows.ps1"
-```
+- 浏览器下载目录改到其他磁盘、OneDrive 或企业管理目录；
+- 路径包含空格或中文；
+- 重复下载后文件名出现 `(1)`。
 
-`ExecutionPolicy Bypass` 只作用于这一次 PowerShell 进程，不会永久更改系统执行策略。
+`.cmd` 会调用系统自带的 `powershell.exe -NoProfile -ExecutionPolicy Bypass`，把文件末尾的明文 PowerShell 载荷写入唯一临时文件并执行，完成后立即清理。`ExecutionPolicy Bypass` 只作用于这一次 PowerShell 子进程，不会永久更改系统执行策略；PowerShell 5.1 使用的临时脚本带 UTF-8 BOM，中文错误信息不会因系统区域设置变成乱码。
 
-如果文件名被浏览器改动，可在 PowerShell 输入 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File `，再把实际文件拖入窗口并按回车。
+失败时窗口会保留完整错误并等待确认。若电脑由单位管理并被 AppLocker、WDAC 或安全软件拦截，不要关闭或降低安全策略；请右键“编辑”检查启动器内容，并把文件和错误交给管理员审核。
 
 ## Linux
 

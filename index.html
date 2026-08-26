@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=27">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=27">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=27">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=29">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=29">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=29">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=27">
+    <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
     <header class="app-header">
@@ -24,7 +24,7 @@
             <div>
                 <h1>AI Shakedown Console</h1>
                 <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v27</small>
+                <small class="build-version" title="当前部署版本">v29</small>
             </div>
         </div>
         <div class="runtime-context" aria-label="当前运行上下文">
@@ -185,6 +185,19 @@
                             <li><strong>停止或升级：</strong>网页点击“停止后台连接”即可停止；升级时直接运行新下载的脚本，旧桥接会自动退出并被新版替换。</li>
                         </ol>
                         <p>启动器只做检查和连接，不会静默安装软件。缺少环境时会显示具体缺少项和安装入口。</p>
+                    </details>
+                    <details class="local-codex-guide" id="local-codex-windows-guide" hidden>
+                        <summary>Windows 安装、运行与排错教程</summary>
+                        <ol>
+                            <li><strong>准备环境：</strong>先安装并登录所选 CLI。启动器会检查 Node.js 18+、CLI 命令和登录状态，不会静默安装软件。</li>
+                            <li><strong>下载启动器：</strong>点击“下载自检启动脚本”，浏览器会保存一个固定名称的 <code>.cmd</code> 文件。</li>
+                            <li><strong>直接打开：</strong>从 Edge 或 Chrome 的下载列表打开刚下载的文件，也可以在资源管理器中双击。启动器使用自身实际位置，因此下载目录改到其他磁盘、OneDrive、中文或带空格目录也能运行；文件名带 <code>(1)</code> 也不受影响。</li>
+                            <li><strong>PowerShell 范围：</strong><code>.cmd</code> 会用系统自带的 <code>powershell.exe -NoProfile -ExecutionPolicy Bypass</code> 运行内置自检逻辑。Bypass 只作用于这一次子进程，不会永久修改系统执行策略。</li>
+                            <li><strong>等待连接：</strong>自检通过后，本页会自动发现实际端口并连接。窗口会显示后台 PID、端口和日志位置，随后自动关闭。</li>
+                            <li><strong>失败处理：</strong>窗口会停留并显示错误。请保留完整错误文本；若电脑由单位管理并被 AppLocker、WDAC 或安全软件阻止，不要降低系统安全设置，应把文件和错误交给管理员审核。</li>
+                            <li><strong>停止或升级：</strong>网页点击“停止后台连接”即可停止；升级时直接运行新下载的启动器，旧桥接会由新版安全替换。</li>
+                        </ol>
+                        <p>启动器内附的 PowerShell 载荷是明文，可右键选择“编辑”后审查；它只监听 <code>127.0.0.1</code>，配对令牌只保存在当前浏览器会话中。</p>
                     </details>
                 </section>
 
@@ -354,22 +367,50 @@
             </div>
 
             <div class="form-stack parameter-grid">
-                <label class="field">
-                    <span>Temperature</span>
+                <div class="field parameter-field">
+                    <div class="parameter-field-heading">
+                        <label for="temperature">Temperature</label>
+                        <label class="parameter-toggle" title="关闭后请求体不发送 temperature">
+                            <span class="parameter-toggle-label">发送</span>
+                            <input id="temperature-enabled" type="checkbox" aria-label="发送 Temperature 参数" checked>
+                            <span class="toggle-control" aria-hidden="true"></span>
+                        </label>
+                    </div>
                     <input id="temperature" type="number" min="0" max="2" step="0.05" value="0.7">
-                </label>
-                <label class="field">
-                    <span>Top P</span>
+                </div>
+                <div class="field parameter-field">
+                    <div class="parameter-field-heading">
+                        <label for="top-p">Top P</label>
+                        <label class="parameter-toggle" title="关闭后请求体不发送 top_p / topP">
+                            <span class="parameter-toggle-label">发送</span>
+                            <input id="top-p-enabled" type="checkbox" aria-label="发送 Top P 参数" checked>
+                            <span class="toggle-control" aria-hidden="true"></span>
+                        </label>
+                    </div>
                     <input id="top-p" type="number" min="0" max="1" step="0.05" value="1">
-                </label>
-                <label class="field">
-                    <span>Top K</span>
-                    <input id="top-k" type="number" min="1" step="1" placeholder="不发送">
-                </label>
-                <label class="field">
-                    <span>Max Tokens</span>
+                </div>
+                <div class="field parameter-field">
+                    <div class="parameter-field-heading">
+                        <label for="top-k">Top K</label>
+                        <label class="parameter-toggle" title="关闭后请求体不发送 top_k / topK">
+                            <span class="parameter-toggle-label">发送</span>
+                            <input id="top-k-enabled" type="checkbox" aria-label="发送 Top K 参数" checked>
+                            <span class="toggle-control" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <input id="top-k" type="number" min="1" step="1" placeholder="留空不发送">
+                </div>
+                <div class="field parameter-field">
+                    <div class="parameter-field-heading">
+                        <label for="max-tokens">Max Tokens</label>
+                        <label class="parameter-toggle" title="关闭后请求体不发送最大输出 Token 参数">
+                            <span class="parameter-toggle-label">发送</span>
+                            <input id="max-tokens-enabled" type="checkbox" aria-label="发送 Max Tokens 参数" checked>
+                            <span class="toggle-control" aria-hidden="true"></span>
+                        </label>
+                    </div>
                     <input id="max-tokens" type="number" min="1" step="1" value="1024">
-                </label>
+                </div>
                 <label class="toggle-row span-two">
                     <span>流式响应</span>
                     <input id="stream-toggle" type="checkbox" checked>
@@ -843,6 +884,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=27"></script>
+    <script type="module" src="script.js?v=29"></script>
 </body>
 </html>

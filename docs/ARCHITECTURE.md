@@ -73,7 +73,7 @@ flowchart TB
 
 ### 智能体目录
 
-`agents/index.json` 是前端读取的统一目录，v27 共包含 388 个内置智能体：
+`agents/index.json` 是前端读取的统一目录，v29 共包含 388 个内置智能体：
 
 - 268 个来自 `agency-agents-zh`，正文保存在原有部门目录；
 - 120 个项目事务型预设由 `scripts/task-agent-presets.mjs` 定义并生成到 `agents/content/task-presets/`；
@@ -107,13 +107,15 @@ Codex 使用 App Server JSON-RPC 并保留线程。网页默认发送 `X-AI-Shak
 
 ### 三系统启动器
 
-`assets/launch-codex-macos.command`、`launch-codex-linux.sh` 和 `launch-codex-windows.ps1` 是参数化模板。下载时前端注入：
+`assets/launch-codex-macos.command`、`launch-codex-linux.sh` 和 `launch-codex-windows.ps1` 是参数化自检模板。Windows 另有 `launch-codex-windows.cmd` 单文件包装模板。下载时前端注入：
 
 - 当前版本和桥接 URL；
 - 返回页面 Origin；
 - 本机工具与 CLI 命令；
 - 随机端口起点；
 - 随机配对令牌。
+
+Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 PowerShell，写成带 UTF-8 BOM 的唯一临时 `.ps1`，通过一次性的 `-NoProfile -ExecutionPolicy Bypass` 子进程执行并在结束后清理。因此下载目录、空格/中文路径和浏览器追加的 `(1)` 文件名都不会改变运行契约；包装层执行区保持 ASCII，兼容传统 `cmd.exe` 代码页。
 
 启动器负责环境检查、下载桥接、识别旧进程、选择空闲端口和后台启动。页面在限定的 100 个候选端口中使用随机挑战寻找桥接；只有响应提供与候选端口绑定的正确 HMAC 证明后，页面才发送当前随机令牌，因此被无关服务占用的端口不会收到配对秘密。桥接等待现有客户端连接，只有没有客户端时才唤起已安装应用或回退到默认浏览器，从而避免重复窗口。
 
@@ -127,7 +129,7 @@ Codex 使用 App Server JSON-RPC 并保留线程。网页默认发送 `X-AI-Shak
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-公开版本仍为 `v27` 时，内部缓存可使用 `v27-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+公开版本仍为 `v29` 时，内部缓存可使用 `v29-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 #### macOS App Shim 与输入法边界
 
@@ -153,6 +155,8 @@ Edge/Chrome 在 macOS 安装 PWA 时，还会生成一个独立的原生 App Shi
 | 最大输出 | `max_tokens` | `max_tokens` | `generationConfig.maxOutputTokens` |
 | Top P/K | `top_p` / `top_k` | `top_p` / `top_k` | `topP` / `topK` |
 | 流式 | SSE chat chunks | Anthropic SSE events | Gemini SSE payloads |
+
+Temperature、Top P、Top K 和最大输出字段在各自开关开启且数值有效时才映射；关闭时字段不存在，而不是发送 `0` 或 `null`。附加请求参数仍在最后合并，因此高级用户可以显式覆盖或重新加入字段。
 
 响应在进入 UI 前归一化为文本增量、完整文本和 usage。流式期间按纯文本更新，结束后统一经过 Marked 与 DOMPurify 渲染。
 

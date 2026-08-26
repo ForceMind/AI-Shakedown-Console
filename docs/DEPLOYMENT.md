@@ -67,10 +67,10 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-正式 `v27` 包：
+正式 `v29` 包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v27.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v29.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -96,7 +96,7 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v27.zip \
 
 只改其中一处会导致页面、PWA 或本机启动器继续使用旧资源。
 
-若发布候选仍显示为同一个 `v27`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v27-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+若发布候选仍显示为同一个 `v29`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v29-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
 
 ## 正式发布清单
 
@@ -119,12 +119,14 @@ node --check scripts/task-agent-presets.mjs
 node --check scripts/build-task-agent-presets.mjs
 node --check scripts/validate-agent-catalog.mjs
 node scripts/validate-agent-catalog.mjs agents
+node scripts/validate-windows-launcher.mjs
+node scripts/validate-generation-parameters.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
 ```
 
-Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
+Windows 校验脚本会确认前端下载 `.cmd`、包装层保持 ASCII 且低于 `cmd.exe` 单行限制、marker 后明文载荷可无损提取、临时 `.ps1` 带 UTF-8 BOM、所有占位符已替换且清理路径存在。正式候选还应在 Windows PowerShell 5.1 和 PowerShell 7 中执行解析检查，并至少从一个非默认、含空格和中文的下载目录双击实测。
 
 ### 3. PWA
 
@@ -138,6 +140,7 @@ Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
 ### 4. 聊天与多模态回归
 
 - [ ] OpenAI Compatible、Anthropic 和 Gemini 的图片能力探测都发送正确协议结构。
+- [ ] Temperature、Top P、Top K、Max Tokens 各自关闭后不出现在普通请求或多模态探测请求中，重新开启后恢复已保存数值。
 - [ ] 支持图片的模型显示附件按钮，不支持或未知的配置不显示。
 - [ ] 图片、文本和 PDF 可选择、刷新恢复并发送；请求检查器不显示图片 base64。
 - [ ] 消息复制、编辑分支、搜索、选择、重试、继续和重新生成正常。
@@ -152,9 +155,9 @@ Windows 启动器应在可用的 PowerShell 环境中执行解析检查。
 ### 5. 发布包
 
 ```bash
-unzip -t AI-Shakedown-Console-cf-pages-worker-v27.zip
-zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v27.zip
-shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v27.zip
+unzip -t AI-Shakedown-Console-cf-pages-worker-v29.zip
+zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v29.zip
+shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v29.zip
 ```
 
 - [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`。
@@ -174,7 +177,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v27.zip
 
 ## 部署后检查
 
-1. 打开线上页面，确认左上角显示 `v27`。
+1. 打开线上页面，确认左上角显示 `v29`。
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
@@ -183,7 +186,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v27.zip
 
    ```json
    {
-     "appVersion": "v27",
+     "appVersion": "v29",
      "workerVersion": "proxy-6",
      "allowedUpstreamsConfigured": true,
      "assetsBindingConfigured": true
@@ -201,7 +204,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v27.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-原有浏览器存储键在 `v27` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。新增的项目预设与智能体取消入口沿用原有 `systemPrompt` / `activeAgent` 结构，不需要数据迁移；System 编辑弹窗、完整备份、附件数据库、多模态能力缓存和 Codex 保存开关均按原有规则保留。
+原有浏览器存储键在 `v29` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。旧配置没有生成参数开关时默认保持四项均发送；用户关闭后会保存独立布尔状态，原数值仍保留以便重新启用。Windows 桥接状态、完整备份、附件数据库、多模态能力缓存和 Codex 保存开关均无需迁移。
 
 ## 更新智能体库
 

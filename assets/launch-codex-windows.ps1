@@ -19,8 +19,17 @@ $BridgeProcess = $null
 function Stop-WithMessage([string]$Message) {
     Write-Host ""
     Write-Host "启动失败：$Message" -ForegroundColor Red
-    Read-Host "按回车键关闭窗口"
+    if (-not $env:AI_SHAKEDOWN_WRAPPED) { Read-Host "按回车键关闭窗口" }
     exit 1
+}
+
+function Refresh-ProcessPath {
+    $PathValues = @(
+        [Environment]::GetEnvironmentVariable("Path", "Machine"),
+        [Environment]::GetEnvironmentVariable("Path", "User"),
+        $env:Path
+    ) | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) }
+    $env:Path = $PathValues -join ";"
 }
 
 function Get-BridgeCommandLine([int]$CandidatePid) {
@@ -48,15 +57,6 @@ function Stop-OwnedBridge([int]$CandidatePid) {
     return $false
 }
 
-function Test-RegisteredBridgePid([int]$CandidatePid) {
-    if (-not (Test-Path $StateDirectory)) { return $false }
-    foreach ($StateFile in Get-ChildItem -Path $StateDirectory -Filter "*.pid" -File -ErrorAction SilentlyContinue) {
-        $RegisteredPid = (Get-Content $StateFile.FullName -TotalCount 1 -ErrorAction SilentlyContinue) -as [int]
-        if ($RegisteredPid -eq $CandidatePid) { return $true }
-    }
-    return $false
-}
-
 function Stop-PreviousBridges {
     if (Test-Path $PidFile) {
         $OldPid = (Get-Content $PidFile -TotalCount 1 -ErrorAction SilentlyContinue) -as [int]
@@ -64,20 +64,6 @@ function Stop-PreviousBridges {
             Stop-WithMessage "无法停止旧桥接（PID ${OldPid}）。请在网页点击“停止后台连接”后重试。"
         }
         Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
-    }
-
-    try {
-        $LegacyBridges = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction Stop | Where-Object {
-            $_.CommandLine -match 'ai-shakedown-local-ai-bridge.*\.mjs' -or $_.CommandLine -match 'AI-Shakedown-Console.*local-codex-bridge\.mjs'
-        }
-        foreach ($LegacyBridge in $LegacyBridges) {
-            if ($LegacyBridge.ProcessId -eq $PID -or (Test-RegisteredBridgePid $LegacyBridge.ProcessId)) { continue }
-            if (-not (Stop-OwnedBridge $LegacyBridge.ProcessId)) {
-                Stop-WithMessage "无法停止旧版桥接（PID $($LegacyBridge.ProcessId)）。请在网页点击“停止后台连接”后重试。"
-            }
-        }
-    } catch {
-        Write-Host "未能扫描旧版桥接，将继续检查目标端口。" -ForegroundColor Yellow
     }
 }
 
@@ -110,14 +96,19 @@ function Select-AvailablePort([int]$RequestedPort) {
 }
 
 try {
+    Refresh-ProcessPath
     $NodeCommand = Get-Command node -ErrorAction SilentlyContinue
     if (-not $NodeCommand) {
         $NodeCandidates = @(
             (Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\node.exe"),
-            (Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe")
+            (Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"),
+            $(if ($env:ProgramFiles) { Join-Path $env:ProgramFiles "nodejs\node.exe" }),
+            $(if (${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} "nodejs\node.exe" }),
+            $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "Programs\nodejs\node.exe" }),
+            $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "Volta\bin\node.exe" })
         )
         foreach ($BundledNode in $NodeCandidates) {
-            if (Test-Path $BundledNode) {
+            if ($BundledNode -and (Test-Path $BundledNode)) {
                 $NodeCommand = Get-Command $BundledNode -ErrorAction SilentlyContinue
                 if ($NodeCommand) { break }
             }
@@ -130,6 +121,21 @@ try {
     $LocalCliCommand = Get-Command "$CliCommand.cmd" -ErrorAction SilentlyContinue
     if (-not $LocalCliCommand) { $LocalCliCommand = Get-Command "$CliCommand.exe" -ErrorAction SilentlyContinue }
     if (-not $LocalCliCommand) { $LocalCliCommand = Get-Command $CliCommand -ErrorAction SilentlyContinue }
+    if (-not $LocalCliCommand) {
+        $LocalCliCandidates = @(
+            $(if ($env:APPDATA) { Join-Path $env:APPDATA "npm\$CliCommand.cmd" }),
+            $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "pnpm\$CliCommand.cmd" }),
+            $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "Volta\bin\$CliCommand.cmd" }),
+            (Join-Path $HOME ".local\bin\$CliCommand.exe"),
+            (Join-Path $HOME "scoop\shims\$CliCommand.cmd")
+        )
+        foreach ($CliCandidate in $LocalCliCandidates) {
+            if ($CliCandidate -and (Test-Path $CliCandidate)) {
+                $LocalCliCommand = Get-Command $CliCandidate -ErrorAction SilentlyContinue
+                if ($LocalCliCommand) { break }
+            }
+        }
+    }
     if (-not $LocalCliCommand -and $LocalProvider -eq "codex") { Stop-WithMessage "没有找到 Codex CLI。安装说明：https://developers.openai.com/codex/cli/；安装后运行 codex 完成登录。" }
     if (-not $LocalCliCommand) { Stop-WithMessage "没有找到 ${CliLabel}，请先按该工具的官方说明安装并完成登录。" }
     $LocalCliBin = $LocalCliCommand.Source
@@ -142,7 +148,10 @@ try {
     }
 
     New-Item -ItemType Directory -Path $StateDirectory -Force | Out-Null
-    Invoke-WebRequest -UseBasicParsing -Uri $BridgeUrl -OutFile $BridgeDownload
+    if ($PSVersionTable.PSEdition -eq "Desktop") {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    }
+    Invoke-WebRequest -UseBasicParsing -Uri $BridgeUrl -OutFile $BridgeDownload -TimeoutSec 30
     $Origin = ([Uri]$ReturnUrl).GetLeftPart([System.UriPartial]::Authority)
     Stop-PreviousBridges
     Move-Item -Path $BridgeDownload -Destination $BridgeFile -Force
@@ -165,7 +174,11 @@ try {
     Write-Host ""
     Write-Host "本地 $CliLabel 桥接已在后台启动（PID $($BridgeProcess.Id)，端口 $BridgePort）。" -ForegroundColor Green
     Write-Host "已打开的应用会自动连接且不会重复开窗；如果应用已关闭，桥接会尝试重新打开它。"
-    Write-Host "现在可以关闭 PowerShell。停止连接请回到应用设置，点击“停止后台连接”。"
+    if ($env:AI_SHAKEDOWN_WRAPPED) {
+        Write-Host "启动器窗口将自动关闭。停止连接请回到应用设置，点击“停止后台连接”。"
+    } else {
+        Write-Host "现在可以关闭 PowerShell。停止连接请回到应用设置，点击“停止后台连接”。"
+    }
     Write-Host "日志位置：$LogFile"
 } catch {
     Remove-Item $BridgeDownload -Force -ErrorAction SilentlyContinue

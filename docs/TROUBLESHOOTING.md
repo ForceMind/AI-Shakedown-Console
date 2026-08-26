@@ -75,6 +75,21 @@ bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
 
 打开“系统设置 → 隐私与安全性 → 文件与文件夹 → 终端”，允许访问“下载”。不需要开启完整磁盘访问。
 
+### Windows 改过下载目录后找不到脚本
+
+当前版本下载的是 `ai-shakedown-<工具>-windows.cmd`。请直接从 Edge/Chrome 下载列表打开，或在资源管理器中双击；启动器用 `%~f0` 获取自身实际路径，不依赖 `Downloads`，也不要求文件名保持不变。
+
+如果页面仍显示 `$HOME\Downloads\...ps1`，说明浏览器或 PWA 仍在使用旧资源。确认页面版本，刷新内容更新后重新下载，不要继续运行旧 `.ps1`。
+
+### Windows 双击后 PowerShell 无法运行
+
+新版 `.cmd` 会显式调用系统自带的 `powershell.exe -NoProfile -ExecutionPolicy Bypass`，把末尾的明文载荷写成带 UTF-8 BOM 的唯一临时 `.ps1`，执行完自动清理。失败时窗口不会立即消失：
+
+1. 记录最上方 PowerShell 错误和错误码；
+2. 检查是否缺少 Node.js 18+、CLI 或登录；
+3. 检查状态目录中的 `<tool>.error.log`；
+4. 单位电脑若被 AppLocker、WDAC 或安全软件拦截，不要降低系统安全策略，把启动器和错误交给管理员审核。
+
 ### 启动失败：没有找到 Node.js
 
 启动器要求 Node.js 18+，并会依次检查：
@@ -110,7 +125,7 @@ bash "$HOME/Downloads/ai-shakedown-codex-macos.command"
 
 ### 连接成功后还要一直开着终端吗
 
-不需要。脚本显示后台启动成功后即可关闭终端。需要停止时使用网页中的“停止后台连接”。
+不需要。macOS/Linux 显示后台启动成功后即可关闭终端；Windows `.cmd` 成功后会自动关闭窗口。需要停止时使用网页中的“停止后台连接”。
 
 ### 下载新版后仍连接旧代码
 
@@ -217,6 +232,14 @@ https://api.example.com,https://gateway.example.com:8443
 - Key 是否有模型或项目权限；
 - 自定义请求头 JSON 是否覆盖了认证头；
 - 同域代理请求检查器中显示的上游是否正确。
+
+### `Unsupported parameter: top_p` 或 `temperature`
+
+在“生成参数”中关闭对应字段。关闭后按钮显示“关闭”，输入框会禁用，请求检查器中不应再出现 `top_p`、`temperature`、`top_k` 或 `max_tokens`。把值改成 `0` 仍然是在发送该字段，不能替代关闭。
+
+经 New API 把 Chat Completions 转为 Responses 时，部分推理模型只接受 Responses 参数；优先关闭 Temperature、Top P 和 Top K，Max Tokens 是否关闭按上游兼容性决定。
+
+如果停发参数后出现 `bad_response_body` 或 `invalid character ... looking for beginning of value`，这是 New API 在解析上游 Responses 流时失败，不是参数开关或 API Key 错误。先关闭“流式响应”复测；非流式成功则应升级或修复 New API 的流式 Chat→Responses 转换。
 
 ## PWA 与缓存
 

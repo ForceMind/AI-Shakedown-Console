@@ -8,7 +8,7 @@ const DEFAULT_BUILT_IN_AGENT_COUNT = 388;
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v27';
+const APP_VERSION = 'v29';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
@@ -193,7 +193,9 @@ const elements = {
     proxy: $('proxy-toggle'), modelSelect: $('model-select'),
     customHeaders: $('custom-headers'), extraBody: $('extra-body'),
     endpointPreview: $('endpoint-preview'), stream: $('stream-toggle'), temperature: $('temperature'),
-    topP: $('top-p'), topK: $('top-k'), maxTokens: $('max-tokens'), reasoningEffort: $('reasoning-effort'),
+    temperatureEnabled: $('temperature-enabled'), topP: $('top-p'), topPEnabled: $('top-p-enabled'),
+    topK: $('top-k'), topKEnabled: $('top-k-enabled'), maxTokens: $('max-tokens'),
+    maxTokensEnabled: $('max-tokens-enabled'), reasoningEffort: $('reasoning-effort'),
     systemPrompt: $('system-prompt'), systemPromptSummary: $('system-prompt-summary'),
     systemPromptEdit: $('system-prompt-edit'), systemPromptModal: $('system-prompt-modal'),
     systemPromptClose: $('system-prompt-close'), systemPromptCancel: $('system-prompt-cancel'),
@@ -244,6 +246,7 @@ const elements = {
     localCodexStatus: $('local-codex-status'), localCodexDownload: $('local-codex-download'),
     localCodexCheck: $('local-codex-check'), localCodexStop: $('local-codex-stop'), localCodexCommand: $('local-codex-command'),
     localCodexCopyCommand: $('local-codex-copy-command'), localCodexGuide: $('local-codex-guide'),
+    localCodexWindowsGuide: $('local-codex-windows-guide'),
     localCodexCompatibility: $('local-codex-compatibility'),
     localCodexCopySupportedUrl: $('local-codex-copy-supported-url'),
     localCodexHistoryOption: $('local-codex-history-option'), localCodexHistoryToggle: $('local-codex-history-toggle'),
@@ -619,6 +622,7 @@ function initialize() {
     bindEvents();
     applyProvider(PROVIDERS[0]);
     restoreSettings();
+    syncGenerationParameterControls();
     restoreProfiles();
     restorePrompts();
     restoreConversations();
@@ -807,8 +811,9 @@ function bindEvents() {
     const persistentElements = [
         elements.provider, elements.protocol, elements.baseUrl, elements.chatPath, elements.modelsPath,
         elements.apiKey, elements.authMode, elements.model, elements.modelSelect, elements.proxy,
-        elements.customHeaders, elements.extraBody, elements.stream, elements.temperature, elements.topP,
-        elements.topK, elements.maxTokens, elements.reasoningEffort,
+        elements.customHeaders, elements.extraBody, elements.stream,
+        elements.temperature, elements.temperatureEnabled, elements.topP, elements.topPEnabled,
+        elements.topK, elements.topKEnabled, elements.maxTokens, elements.maxTokensEnabled, elements.reasoningEffort,
         elements.inputPrice, elements.outputPrice,
         elements.costLimit
     ];
@@ -816,6 +821,8 @@ function bindEvents() {
         element.addEventListener('input', persistSettings);
         element.addEventListener('change', persistSettings);
     });
+    [elements.temperatureEnabled, elements.topPEnabled, elements.topKEnabled, elements.maxTokensEnabled]
+        .forEach((toggle) => toggle.addEventListener('change', syncGenerationParameterControls));
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
         if (!elements.systemPromptModal.hidden) closeSystemPromptEditor(true);
@@ -1262,11 +1269,13 @@ function updateLocalCodexCommand() {
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     const commands = {
         macos: `bash "$HOME/Downloads/ai-shakedown-${slug}-macos.command"`,
-        windows: `powershell -ExecutionPolicy Bypass -File "$HOME\\Downloads\\ai-shakedown-${slug}-windows.ps1"`,
+        windows: `从浏览器下载列表打开 ai-shakedown-${slug}-windows.cmd（保存在哪个目录都可以）`,
         linux: `bash "$HOME/Downloads/ai-shakedown-${slug}-linux.sh"`
     };
     elements.localCodexCommand.textContent = commands[state.localCodex.platform] || commands.macos;
+    elements.localCodexCopyCommand.hidden = state.localCodex.platform === 'windows';
     elements.localCodexGuide.hidden = state.localCodex.platform !== 'macos';
+    elements.localCodexWindowsGuide.hidden = state.localCodex.platform !== 'windows';
 }
 
 async function copyLocalCodexCommand() {
@@ -1341,9 +1350,42 @@ function localCodexLauncherSpec(platform) {
     const slug = tool === 'antigravity' ? 'antigravity' : tool;
     return {
         macos: { template: 'assets/launch-codex-macos.command', fileName: `ai-shakedown-${slug}-macos.command` },
-        windows: { template: 'assets/launch-codex-windows.ps1', fileName: `ai-shakedown-${slug}-windows.ps1` },
+        windows: {
+            template: 'assets/launch-codex-windows.ps1',
+            wrapper: 'assets/launch-codex-windows.cmd',
+            fileName: `ai-shakedown-${slug}-windows.cmd`,
+            mimeType: 'application/octet-stream'
+        },
         linux: { template: 'assets/launch-codex-linux.sh', fileName: `ai-shakedown-${slug}-linux.sh` }
     }[platform];
+}
+
+async function fetchLocalLauncherAsset(path, assetVersion) {
+    const url = new URL(`${path}?v=${assetVersion}`, window.location.href);
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`启动脚本下载失败（HTTP ${response.status}）`);
+    return response.text();
+}
+
+function escapePowerShellDoubleQuotedValue(value) {
+    return String(value).replaceAll('`', '``').replaceAll('$', '`$').replaceAll('"', '`"');
+}
+
+function injectLocalLauncherValues(template, values, encodeValue = String) {
+    const launcher = Object.entries(values).reduce(
+        (result, [placeholder, value]) => result.replaceAll(`__${placeholder}__`, () => encodeValue(value)),
+        template
+    );
+    const unresolved = launcher.match(/__[A-Z][A-Z0-9_]+__/);
+    if (unresolved) throw new Error(`启动脚本模板不完整：${unresolved[0]}`);
+    return launcher;
+}
+
+function wrapWindowsPowerShellLauncher(wrapper, powershell) {
+    if (!wrapper.includes('__POWERSHELL_PAYLOAD__')) {
+        throw new Error('Windows 启动器模板缺少 PowerShell 载荷占位符');
+    }
+    return wrapper.replace('__POWERSHELL_PAYLOAD__', powershell).replace(/\r?\n/g, '\r\n');
 }
 
 function createLocalCodexToken() {
@@ -1366,25 +1408,34 @@ async function downloadLocalCodexLauncher() {
         const token = createLocalCodexToken();
         const port = LOCAL_CODEX_DEFAULT_PORT + crypto.getRandomValues(new Uint16Array(1))[0] % 90;
         const assetVersion = APP_VERSION.replace(/^v/, '');
-        const templateUrl = new URL(`${spec.template}?v=${assetVersion}`, window.location.href);
         const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${assetVersion}`, window.location.href);
         const returnUrl = new URL(window.location.href);
         returnUrl.search = '';
         returnUrl.searchParams.set('source', isStandalonePwa() ? 'pwa' : 'launcher');
         returnUrl.hash = '';
-        const response = await fetch(templateUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`启动脚本下载失败（HTTP ${response.status}）`);
-        const template = await response.text();
-        const launcher = template
-            .replaceAll('__BRIDGE_URL__', bridgeUrl.href)
-            .replaceAll('__RETURN_URL__', returnUrl.href)
-            .replaceAll('__APP_VERSION__', APP_VERSION)
-            .replaceAll('__BRIDGE_TOKEN__', token)
-            .replaceAll('__BRIDGE_PORT__', String(port))
-            .replaceAll('__LOCAL_PROVIDER__', tool.tool)
-            .replaceAll('__CLI_COMMAND__', tool.tool === 'antigravity' ? 'agy' : tool.tool)
-            .replaceAll('__CLI_LABEL__', tool.cli);
-        const blobUrl = URL.createObjectURL(new Blob([launcher], { type: 'text/plain;charset=utf-8' }));
+        const [template, wrapper] = await Promise.all([
+            fetchLocalLauncherAsset(spec.template, assetVersion),
+            spec.wrapper ? fetchLocalLauncherAsset(spec.wrapper, assetVersion) : Promise.resolve('')
+        ]);
+        const values = {
+            BRIDGE_URL: bridgeUrl.href,
+            RETURN_URL: returnUrl.href,
+            APP_VERSION,
+            BRIDGE_TOKEN: token,
+            BRIDGE_PORT: String(port),
+            LOCAL_PROVIDER: tool.tool,
+            CLI_COMMAND: tool.tool === 'antigravity' ? 'agy' : tool.tool,
+            CLI_LABEL: tool.cli
+        };
+        const powershell = injectLocalLauncherValues(
+            template,
+            values,
+            spec.wrapper ? escapePowerShellDoubleQuotedValue : String
+        );
+        const launcher = spec.wrapper ? wrapWindowsPowerShellLauncher(wrapper, powershell) : powershell;
+        const blobUrl = URL.createObjectURL(new Blob([launcher], {
+            type: spec.mimeType || 'text/plain;charset=utf-8'
+        }));
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = spec.fileName;
@@ -1401,7 +1452,9 @@ async function downloadLocalCodexLauncher() {
         startLocalBridgeDiscovery();
         setLocalCodexStatus('idle', '脚本已下载');
         updateEndpointPreview();
-        showToast('自检启动脚本已下载；运行后当前页面会自动连接，不会重复开窗');
+        showToast(state.localCodex.platform === 'windows'
+            ? 'Windows 启动器已下载；请从浏览器下载列表直接打开'
+            : '自检启动脚本已下载；运行后当前页面会自动连接，不会重复开窗');
         if (state.localCodex.platform === 'macos') openMacosLauncherHelp(spec.fileName);
     } catch (error) {
         setLocalCodexStatus('error', '下载失败');
@@ -1618,9 +1671,13 @@ function captureSettings() {
         extraBody: elements.extraBody.value,
         stream: elements.stream.checked,
         temperature: elements.temperature.value,
+        temperatureEnabled: elements.temperatureEnabled.checked,
         topP: elements.topP.value,
+        topPEnabled: elements.topPEnabled.checked,
         topK: elements.topK.value,
+        topKEnabled: elements.topKEnabled.checked,
         maxTokens: elements.maxTokens.value,
+        maxTokensEnabled: elements.maxTokensEnabled.checked,
         reasoningEffort: elements.reasoningEffort.value,
         codexPersistThreads: elements.localCodexHistoryToggle.checked,
         systemPrompt: activeConversation()?.systemPrompt ?? elements.systemPrompt.value,
@@ -1666,6 +1723,13 @@ function applySettings(settings) {
     }
     if (typeof settings.proxy === 'boolean') elements.proxy.checked = settings.proxy;
     if (typeof settings.stream === 'boolean') elements.stream.checked = settings.stream;
+    const parameterToggles = {
+        temperatureEnabled: 'temperatureEnabled', topPEnabled: 'topPEnabled',
+        topKEnabled: 'topKEnabled', maxTokensEnabled: 'maxTokensEnabled'
+    };
+    for (const [elementName, settingName] of Object.entries(parameterToggles)) {
+        elements[elementName].checked = typeof settings[settingName] === 'boolean' ? settings[settingName] : true;
+    }
     elements.localCodexHistoryToggle.checked = settings.codexPersistThreads === true;
 
     const selectedModel = typeof settings.model === 'string' ? settings.model : provider.model;
@@ -1674,6 +1738,7 @@ function applySettings(settings) {
         : provider.models;
     elements.model.value = selectedModel;
     populateModels(availableModels, selectedModel, Array.isArray(settings.availableModels));
+    syncGenerationParameterControls();
     syncLocalCodexMode(Boolean(LOCAL_TOOL_PROVIDERS[provider.id]));
     syncReasoningControl();
     updateEndpointPreview();
@@ -1717,6 +1782,8 @@ function clearSavedSettings() {
     applyProvider(PROVIDERS[0]);
     elements.apiKey.value = '';
     elements.systemPrompt.value = '';
+    for (const { toggle } of generationParameterControls()) toggle.checked = true;
+    syncGenerationParameterControls();
     renderProfileOptions();
     updateAgentCount();
     document.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
@@ -2484,6 +2551,29 @@ function numberValue(element) {
     return Number.isFinite(value) ? value : undefined;
 }
 
+function generationParameterControls() {
+    return [
+        { input: elements.temperature, toggle: elements.temperatureEnabled },
+        { input: elements.topP, toggle: elements.topPEnabled },
+        { input: elements.topK, toggle: elements.topKEnabled },
+        { input: elements.maxTokens, toggle: elements.maxTokensEnabled }
+    ];
+}
+
+function syncGenerationParameterControls() {
+    for (const { input, toggle } of generationParameterControls()) {
+        const enabled = toggle.checked;
+        input.disabled = !enabled;
+        toggle.closest('.parameter-field')?.classList.toggle('parameter-disabled', !enabled);
+        const label = toggle.closest('.parameter-toggle')?.querySelector('.parameter-toggle-label');
+        if (label) label.textContent = enabled ? '发送' : '关闭';
+    }
+}
+
+function enabledNumberValue(element, toggle) {
+    return toggle.checked ? numberValue(element) : undefined;
+}
+
 function openAiRequestMessage(message) {
     if (!message.images?.length || message.role !== 'user') return { role: message.role, content: message.content };
     return {
@@ -2522,11 +2612,13 @@ function geminiRequestParts(message) {
 function buildRequestBody(messages, stream, overrides = {}) {
     const protocol = elements.protocol.value;
     const model = elements.model.value.trim();
-    const temperature = numberValue(elements.temperature);
-    const topP = numberValue(elements.topP);
-    const topK = numberValue(elements.topK);
+    const temperature = enabledNumberValue(elements.temperature, elements.temperatureEnabled);
+    const topP = enabledNumberValue(elements.topP, elements.topPEnabled);
+    const topK = enabledNumberValue(elements.topK, elements.topKEnabled);
     const reasoningEffort = ['openai', 'codex'].includes(protocol) ? elements.reasoningEffort.value : '';
-    const maxTokens = overrides.maxTokens ?? numberValue(elements.maxTokens) ?? 1024;
+    const maxTokens = elements.maxTokensEnabled.checked
+        ? (overrides.maxTokens ?? numberValue(elements.maxTokens) ?? 1024)
+        : undefined;
     const extra = parseJsonObject(elements.extraBody.value, '附加请求参数');
 
     if (protocol === 'anthropic') {
@@ -2535,7 +2627,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
             model,
             messages: messages.filter((message) => message.role !== 'system').map(anthropicRequestMessage),
             ...(system ? { system } : {}),
-            max_tokens: maxTokens,
+            ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
             ...(temperature !== undefined ? { temperature } : {}),
             ...(topP !== undefined ? { top_p: topP } : {}),
             ...(topK !== undefined ? { top_k: topK } : {}),
@@ -2550,15 +2642,16 @@ function buildRequestBody(messages, stream, overrides = {}) {
             role: message.role === 'assistant' ? 'model' : 'user',
             parts: geminiRequestParts(message)
         }));
+        const generationConfig = {
+            ...(maxTokens !== undefined ? { maxOutputTokens: maxTokens } : {}),
+            ...(temperature !== undefined ? { temperature } : {}),
+            ...(topP !== undefined ? { topP } : {}),
+            ...(topK !== undefined ? { topK } : {})
+        };
         return {
             contents,
             ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-            generationConfig: {
-                maxOutputTokens: maxTokens,
-                ...(temperature !== undefined ? { temperature } : {}),
-                ...(topP !== undefined ? { topP } : {}),
-                ...(topK !== undefined ? { topK } : {})
-            },
+            ...(Object.keys(generationConfig).length ? { generationConfig } : {}),
             ...extra
         };
     }
@@ -2570,7 +2663,7 @@ function buildRequestBody(messages, stream, overrides = {}) {
         ...(topP !== undefined ? { top_p: topP } : {}),
         ...(topK !== undefined ? { top_k: topK } : {}),
         ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-        max_tokens: maxTokens,
+        ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
         stream,
         ...extra
     };
