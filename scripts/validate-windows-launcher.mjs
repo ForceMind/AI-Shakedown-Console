@@ -50,7 +50,7 @@ check(generated.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])), 'generat
 const values = {
     BRIDGE_URL: 'https://example.test/assets/local-codex-bridge.mjs?v=30',
     RETURN_URL: 'https://example.test/app/$channel/?source=launcher',
-    APP_VERSION: 'v31',
+    APP_VERSION: 'v32',
     BRIDGE_TOKEN: 'test-token-abcdefghijklmnopqrstuvwxyz-123456',
     BRIDGE_PORT: '4519',
     LOCAL_PROVIDER: 'codex',

@@ -38,15 +38,15 @@ assert.deepEqual([...new Uint8Array(await apkResponse.arrayBuffer())], [0x50, 0x
 const documentResponse = await worker.fetch(new Request('https://example.test/'), env);
 assert.equal(documentResponse.headers.get('Content-Type'), 'text/html; charset=utf-8');
 assert.equal(documentResponse.headers.get('Cache-Control'), 'no-cache, no-store, must-revalidate');
-assert.equal(documentResponse.headers.get('X-App-Version'), 'v31');
+assert.equal(documentResponse.headers.get('X-App-Version'), 'v32');
 
 const passthroughResponse = await worker.fetch(new Request('https://example.test/assets/icon-192.png'), env);
 assert.equal(passthroughResponse.headers.get('X-Passthrough'), 'yes');
 assert.equal(passthroughResponse.headers.get('Content-Disposition'), null);
 
 const serviceWorker = fs.readFileSync(path.join(root, 'assets', 'service-worker.js'), 'utf8');
-assert.match(serviceWorker, /shell-v31-r2/);
-assert.match(serviceWorker, /runtime-v31-r2/);
+assert.match(serviceWorker, /shell-v32/);
+assert.match(serviceWorker, /runtime-v32/);
 assert.match(serviceWorker, /cache\.put\('\/index\.html', response\.clone\(\)\)/);
 
 console.log('Worker asset header validation passed.');

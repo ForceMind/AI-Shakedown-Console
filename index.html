@@ -4,82 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#18201d">
+    <meta name="theme-color" content="#ffffff">
     <meta name="application-name" content="AI Shakedown Console">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=31">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=31">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=31">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=32">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=32">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=32">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=31-r1">
+    <link rel="stylesheet" href="style.css?v=32">
 </head>
-<body>
-    <header class="app-header">
-        <div class="brand-block">
-            <div class="brand-mark" aria-hidden="true">AI</div>
-            <div>
-                <h1>AI Shakedown Console</h1>
-                <p>模型连接与智能体工作台</p>
-                <small class="build-version" title="当前部署版本">v31</small>
-            </div>
-        </div>
-        <div class="runtime-context" aria-label="当前运行上下文">
-            <div class="context-item">
-                <span>服务</span>
-                <strong id="context-provider">OpenAI</strong>
-            </div>
-            <div class="context-item">
-                <span>协议</span>
-                <strong id="context-protocol">OpenAI</strong>
-            </div>
-            <div class="context-item context-model">
-                <span>模型</span>
-                <strong id="context-model">gpt-4.1-mini</strong>
-            </div>
-            <div class="context-item context-agent" id="context-agent-item" hidden>
-                <span>角色</span>
-                <strong id="context-agent">未启用</strong>
-            </div>
-        </div>
-        <div class="header-actions">
-            <div class="connection-state" id="connection-state" data-state="idle">
-                <span class="status-dot"></span>
-                <span id="connection-state-text">尚未检查</span>
-                <span id="latency-text"></span>
-            </div>
-            <button class="workspace-toggle-button" id="settings-toggle" type="button" title="切换工作区" aria-label="切换到专注聊天" aria-expanded="true">
-                <i class="bi bi-chat-left-text" id="settings-toggle-icon"></i>
-                <span id="settings-toggle-label">聊天</span>
-            </button>
-        </div>
-    </header>
-
+<body class="chat-focused conversation-sidebar-enabled sidebar-conversations">
     <main class="workspace">
         <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="侧边工作区">
+            <header class="sidebar-header">
+                <a class="brand-block" href="./" aria-label="AI Shakedown Console 首页">
+                    <span class="brand-mark" aria-hidden="true"><i class="bi bi-intersect"></i></span>
+                    <h1>AI Shakedown</h1>
+                </a>
+                <button class="icon-button" id="sidebar-close" type="button" title="收起侧栏" aria-label="收起侧栏"><i class="bi bi-layout-sidebar-inset"></i></button>
+            </header>
+            <div class="sidebar-shortcuts">
+                <button class="sidebar-new-button" id="sidebar-new-conversation" type="button"><i class="bi bi-pencil-square"></i><span>新对话</span></button>
+                <button class="agent-library-button" id="agent-library-open" type="button">
+                    <span class="agent-library-icon"><i class="bi bi-people"></i></span>
+                    <span class="agent-library-copy"><strong>智能体库</strong><small>内置角色与自定义智能体</small></span>
+                    <span class="agent-count" id="agent-count">388</span>
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
             <nav class="workspace-sidebar-switcher" aria-label="侧边区域切换">
-                <button id="sidebar-conversations-button" type="button"><i class="bi bi-chat-square-text"></i><span>对话</span></button>
-                <button id="sidebar-settings-button" type="button" class="active"><i class="bi bi-sliders"></i><span>设置</span></button>
+                <button id="sidebar-conversations-button" type="button" class="active"><i class="bi bi-chat-square-text"></i><span>对话</span></button>
+                <button id="sidebar-settings-button" type="button"><i class="bi bi-sliders"></i><span>连接设置</span></button>
             </nav>
             <section class="conversation-sidebar" id="conversation-sidebar" aria-label="对话列表">
                 <div class="conversation-sidebar-heading">
                     <div>
-                        <span class="eyebrow">CONVERSATIONS</span>
-                        <h2>全部对话</h2>
+                        <h2>对话记录</h2>
                     </div>
                     <span class="conversation-sidebar-count" id="conversation-sidebar-count">0</span>
                 </div>
-                <p class="conversation-sidebar-note"><i class="bi bi-pin-angle-fill"></i>对话超过 4 个后固定使用左侧列表，以后打开仍保持此布局。</p>
                 <div class="conversation-sidebar-list" id="conversation-sidebar-list" role="tablist" aria-label="左侧对话列表"></div>
                 <div class="conversation-sidebar-actions">
-                    <button class="secondary-button" id="sidebar-import-conversations" type="button"><i class="bi bi-folder2-open"></i><span>导入记录</span></button>
-                    <button class="primary-button" id="sidebar-new-conversation" type="button"><i class="bi bi-plus-lg"></i><span>新对话</span></button>
+                    <button class="secondary-button" id="local-session-import" type="button"><i class="bi bi-folder2-open"></i><span>导入记录</span></button>
                 </div>
             </section>
             <section class="settings-panel" id="settings-panel" aria-label="连接和模型设置">
+                <div class="runtime-context" aria-label="当前运行上下文">
+                    <div class="context-item">
+                        <span>服务</span>
+                        <strong id="context-provider">OpenAI</strong>
+                    </div>
+                    <div class="context-item">
+                        <span>协议</span>
+                        <strong id="context-protocol">OpenAI</strong>
+                    </div>
+                    <div class="context-item context-model">
+                        <span>模型</span>
+                        <strong id="context-model">gpt-4.1-mini</strong>
+                    </div>
+                    <div class="context-item context-agent" id="context-agent-item" hidden>
+                        <span>角色</span>
+                        <strong id="context-agent">未启用</strong>
+                    </div>
+                </div>
+
             <div class="panel-heading">
                 <div>
                     <span class="eyebrow">CONNECTION</span>
@@ -479,47 +471,38 @@
                 </div>
             </details>
             </section>
+            <footer class="sidebar-footer"><span><i class="bi bi-lock" aria-hidden="true"></i> 对话保存在此浏览器</span><small class="build-version" title="当前版本">v32</small></footer>
         </aside>
 
         <section class="chat-panel" aria-label="模型对话">
             <div class="chat-toolbar">
-                <div>
-                    <span class="eyebrow">ACTIVE MODEL</span>
-                    <h2 id="active-model-title">新会话</h2>
-                </div>
-                <div class="chat-toolbar-status" aria-hidden="true">
-                    <span><i class="bi bi-lightning-charge"></i> API PLAYGROUND</span>
-                </div>
-                <div class="toolbar-actions">
-                    <button class="icon-button" id="conversation-search-toggle" type="button" title="搜索当前对话" aria-label="搜索当前对话">
-                        <i class="bi bi-search"></i>
+                <button class="icon-button conversation-sidebar-toggle" id="conversation-sidebar-toggle" type="button" title="收起侧栏" aria-label="收起侧栏" aria-controls="workspace-sidebar" aria-expanded="true"><i class="bi bi-layout-sidebar-inset"></i></button>
+                <button class="model-picker-button" id="model-picker-open" type="button" title="打开模型与连接设置" aria-controls="settings-panel">
+                    <span id="active-model-title">选择模型</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="header-actions">
+                    <div class="connection-state" id="connection-state" data-state="idle">
+                        <span class="status-dot"></span>
+                        <span id="connection-state-text">尚未检查</span>
+                        <span id="latency-text"></span>
+                    </div>
+                    <button class="workspace-toggle-button" id="settings-toggle" type="button" title="打开设置" aria-label="打开设置" aria-controls="settings-panel" aria-expanded="false">
+                        <i class="bi bi-sliders" id="settings-toggle-icon"></i>
+                        <span id="settings-toggle-label">设置</span>
                     </button>
-                    <button class="icon-button" id="conversation-rename" type="button" title="重命名当前对话" aria-label="重命名当前对话">
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    <button class="icon-button" id="conversation-export" type="button" title="导出当前对话" aria-label="导出当前对话">
-                        <i class="bi bi-download"></i>
-                    </button>
-                    <button class="icon-button" id="stop-request" type="button" title="停止生成" aria-label="停止生成" disabled>
-                        <i class="bi bi-stop-fill"></i>
-                    </button>
-                    <button class="icon-button" id="clear-chat" type="button" title="清空对话" aria-label="清空对话">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </div>
-            </div>
 
-            <div class="conversation-bar">
-                <button class="secondary-button compact conversation-sidebar-toggle" id="conversation-sidebar-toggle" type="button" title="打开左侧对话列表">
-                    <i class="bi bi-list-ul"></i><span>对话</span>
-                </button>
-                <div class="conversation-tabs" id="conversation-tabs" role="tablist" aria-label="对话窗口"></div>
-                <button class="secondary-button compact conversation-import" id="local-session-import" type="button" title="导入本地 AI 工具的对话记录">
-                    <i class="bi bi-folder2-open"></i><span>导入记录</span>
-                </button>
-                <button class="secondary-button compact conversation-new" id="new-conversation" type="button" title="新建对话">
-                    <i class="bi bi-plus-lg"></i><span>新对话</span>
-                </button>
+                    <button class="icon-button" id="new-conversation" type="button" title="新对话" aria-label="新对话"><i class="bi bi-pencil-square"></i></button>
+                    <button class="icon-button" id="stop-request" type="button" title="停止生成" aria-label="停止生成" disabled><i class="bi bi-stop-fill"></i></button>
+                    <details class="conversation-menu" id="conversation-menu">
+                        <summary class="icon-button" aria-label="对话操作" title="对话操作"><i class="bi bi-three-dots"></i></summary>
+                        <div class="conversation-menu-items">
+                            <button id="conversation-search-toggle" type="button"><i class="bi bi-search"></i>搜索当前对话</button>
+                            <button id="conversation-rename" type="button"><i class="bi bi-pencil"></i>重命名当前对话</button>
+                            <button id="conversation-export" type="button"><i class="bi bi-download"></i>导出当前对话</button>
+                            <button id="clear-chat" type="button"><i class="bi bi-trash3"></i>清空对话</button>
+                        </div>
+                    </details>
+                </div>
             </div>
 
             <div class="conversation-search" id="conversation-search" hidden>
@@ -542,51 +525,46 @@
 
             <div class="chat-window" id="chat-window" aria-live="polite">
                 <div class="empty-state" id="empty-state">
-                    <div class="empty-icon"><i class="bi bi-terminal"></i></div>
-                    <strong>控制台已就绪</strong>
+                    <div class="empty-icon"><i class="bi bi-intersect"></i></div>
+                    <strong>今天有什么可以帮你？</strong>
                     <span id="empty-endpoint">选择服务商与模型后开始对话</span>
                 </div>
             </div>
 
             <form class="composer" id="message-form">
-                <div class="composer-tools">
-                    <button class="agent-library-button" id="agent-library-open" type="button">
-                        <span class="agent-library-icon"><i class="bi bi-people"></i></span>
-                        <span class="agent-library-copy"><strong>智能体库</strong><small>内置角色与自定义智能体</small></span>
-                        <span class="agent-count" id="agent-count">388</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="system-prompt-control">
-                    <div class="system-prompt-status">
-                        <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
-                        <span class="system-prompt-summary" id="system-prompt-summary">未设置，模型将使用默认行为</span>
-                    </div>
-                    <div class="active-agent-control" id="active-agent-control" hidden>
-                        <button class="active-agent" id="active-agent" type="button"></button>
-                        <button class="active-agent-clear" id="active-agent-clear" type="button" title="取消当前智能体" aria-label="取消当前智能体">
-                            <i class="bi bi-x" aria-hidden="true"></i>
+                <div class="composer-surface">
+                    <div class="system-prompt-control">
+                        <div class="system-prompt-status">
+                            <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
+                            <span class="system-prompt-summary" id="system-prompt-summary">未设置，模型将使用默认行为</span>
+                        </div>
+                        <div class="active-agent-control" id="active-agent-control" hidden>
+                            <button class="active-agent" id="active-agent" type="button"></button>
+                            <button class="active-agent-clear" id="active-agent-clear" type="button" title="取消当前智能体" aria-label="取消当前智能体">
+                                <i class="bi bi-x" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <button class="secondary-button compact system-prompt-edit" id="system-prompt-edit" type="button">
+                            <i class="bi bi-sliders" aria-hidden="true"></i><span>提示词</span>
                         </button>
                     </div>
-                    <button class="secondary-button compact system-prompt-edit" id="system-prompt-edit" type="button">
-                        <i class="bi bi-pencil-square" aria-hidden="true"></i><span>编辑</span>
-                    </button>
-                </div>
-                <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
-                <div class="message-compose-row">
-                    <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
-                        <i class="bi bi-paperclip"></i>
-                    </button>
-                    <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.jsonl,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sql,.sh,.ps1,.toml,.ini,.log,.pdf" multiple hidden>
-                    <div class="message-input-wrap">
-                        <textarea id="message-input" rows="2" placeholder="输入消息" autocomplete="off" inputmode="text" lang="zh-CN" spellcheck="true" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
-                        <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
+                    <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
+                    <div class="message-compose-row">
+                        <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
+                            <i class="bi bi-paperclip"></i>
+                        </button>
+                        <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.jsonl,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sql,.sh,.ps1,.toml,.ini,.log,.pdf" multiple hidden>
+                        <div class="message-input-wrap">
+                            <textarea id="message-input" rows="2" placeholder="发送消息，开始一个想法…" autocomplete="off" inputmode="text" lang="zh-CN" spellcheck="true" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
+                            <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
+                        </div>
+                        <button class="send-button" id="send-button" type="submit" title="发送消息" aria-label="发送消息">
+                            <i class="bi bi-arrow-up"></i>
+                            <span>发送</span>
+                        </button>
                     </div>
-                    <button class="send-button" id="send-button" type="submit" title="发送消息">
-                        <i class="bi bi-arrow-up"></i>
-                        <span>发送</span>
-                    </button>
                 </div>
+                <p class="composer-note">AI 的回答可能有误，请核实重要信息。<span id="composer-shortcut">⌘ / Ctrl + Enter 发送</span></p>
             </form>
         </section>
 
@@ -845,7 +823,7 @@
                         <i class="bi bi-window-stack" aria-hidden="true"></i>
                         <div>
                             <h3>对话与智能体</h3>
-                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。超过 4 个后固定改用左侧列表。智能体库包含 388 个内置角色；点击当前角色右侧的 × 可恢复普通对话。聊天区的 System 只显示状态，点击“编辑”后在弹窗中修改。</p>
+                            <p>“新对话”可并行保留多个会话；消息支持编辑分支、复制、多选、重试和重新生成。所有对话统一显示在左侧列表，可随时收起；手机点击左上角侧栏图标打开。智能体库包含 388 个内置角色；点击当前角色右侧的 × 可恢复普通对话。聊天区的 System 只显示状态，点击“提示词”后在弹窗中修改。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -859,7 +837,7 @@
                         <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
                         <div>
                             <h3>专注聊天</h3>
-                            <p>连接成功后设置会自动收起。消息区随窗口弹性伸缩，输入框始终贴在底部；点击页头“设置”可切换到连接、参数、用量和请求检查器。</p>
+                            <p>连接成功后设置会自动收起。左侧集中管理对话和智能体，输入框始终贴在底部；点击顶部模型名称或“设置”可打开连接、参数、用量和请求检查器。</p>
                         </div>
                     </section>
                     <section class="help-topic">
@@ -896,6 +874,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=31-r2"></script>
+    <script type="module" src="script.js?v=32"></script>
 </body>
 </html>

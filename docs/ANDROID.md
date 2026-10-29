@@ -1,6 +1,6 @@
 # Android APK 使用与构建
 
-Android APK 是线上 AI Shakedown Console 的轻量 WebView 容器，适合在手机桌面直接启动。网页仍由 Cloudflare Pages 提供，因此网页功能更新不要求每次重新安装 APK；只有原生壳权限、目标网址、Android API 或签名变化时才需要更新 APK。v31-r1 的网页缓存修订可直接随线上页面生效；v31 APK 已包含进度条延迟改动。
+Android APK 是线上 AI Shakedown Console 的轻量 WebView 容器，适合在手机桌面直接启动。网页仍由 Cloudflare Pages 提供，因此网页功能更新不要求每次重新安装 APK；只有原生壳权限、目标网址、Android API 或签名变化时才需要更新 APK。当前网页候选为 v32，尚未部署；本轮 APK 保持 v31 原文件、版本及签名。后续网页候选获批部署后，无需重装 APK 即可获取网页 UI；v31 APK 已包含进度条延迟改动。
 
 ## 安装
 

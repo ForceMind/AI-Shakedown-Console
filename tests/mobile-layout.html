@@ -95,13 +95,13 @@
             try {
                 const startChecks = checks;
                 assert(doc.documentElement.scrollWidth <= scenario.width, '页面横向溢出');
-                insideSafeArea(rect('.brand-block'), '标题');
+                insideSafeArea(rect('.model-picker-button'), '模型入口');
                 insideSafeArea(rect('.header-actions'), '顶部操作');
-                assert(rect('.brand-block').right <= rect('.header-actions').left, '标题与顶部操作重叠');
+                assert(rect('.model-picker-button').right <= rect('.header-actions').left + 1, '模型入口与顶部操作重叠');
                 near(rect('.workspace').bottom, scenario.height, '工作区底部');
                 near(rect('.composer').bottom, scenario.height, '输入区底部');
-                const inputBottom = scenario.height - bottom - (scenario.width <= 780 ? 10 : 14);
-                near(rect('#message-input').bottom, inputBottom, '输入框与底部安全区间距');
+                insideSafeArea(rect('.composer-surface'), '圆角输入区');
+                assert(rect('#message-input').bottom <= rect('.composer-surface').bottom, '输入框超出圆角容器');
                 insideSafeArea(rect('#send-button'), '发送按钮');
                 for (const control of doc.querySelectorAll('input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]), select, textarea')) {
                     const size = Number.parseFloat(win.getComputedStyle(control).fontSize);
@@ -110,7 +110,7 @@
                     }
                 }
                 if (scenario.width > 1024 && !win.matchMedia('(any-pointer: coarse)').matches) {
-                    near(Number.parseFloat(win.getComputedStyle(doc.querySelector('#message-input')).fontSize), 14, '桌面聊天字号');
+                    near(Number.parseFloat(win.getComputedStyle(doc.querySelector('#message-input')).fontSize), 16, '桌面聊天字号');
                     near(Number.parseFloat(win.getComputedStyle(doc.querySelector('#system-prompt')).fontSize), 12, '桌面 System 字号');
                 }
                 for (const selector of ['.conversation-search', '.message-selection-bar']) {
@@ -120,13 +120,15 @@
                 assert(rect('.chat-window').bottom <= rect('.composer').top + 1, '消息区与输入区重叠');
                 doc.querySelectorAll('.conversation-search, .message-selection-bar').forEach(bar => { bar.hidden = true; });
 
-                doc.body.classList.remove('chat-focused');
+                doc.body.classList.remove('chat-focused', 'sidebar-conversations');
+                doc.body.classList.add('sidebar-settings');
                 doc.querySelector('.workspace-sidebar').classList.add('is-open');
                 insideSafeArea(rect('.settings-panel'), '设置侧栏');
+                doc.body.classList.remove('sidebar-settings');
                 doc.body.classList.add('conversation-sidebar-enabled', 'sidebar-conversations');
                 insideSafeArea(rect('.workspace-sidebar-switcher'), '侧栏切换');
                 insideSafeArea(rect('.conversation-sidebar-actions'), '对话侧栏底部按钮');
-                doc.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
+                doc.body.classList.remove('sidebar-settings');
                 doc.querySelector('.workspace-sidebar').classList.remove('is-open');
                 doc.body.classList.add('chat-focused');
 

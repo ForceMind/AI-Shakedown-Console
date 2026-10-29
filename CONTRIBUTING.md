@@ -7,7 +7,7 @@
 1. 阅读 [架构说明](./docs/ARCHITECTURE.md)。
 2. 涉及凭据、代理、本机桥接或 Markdown 时阅读 [安全策略](./SECURITY.md)。
 3. 检查现有 Issue/PR，避免重复工作。
-4. 从最新 `main` 创建范围明确的分支。
+4. 稳定基线使用 `main`，集成基线使用 `dev`；从最新 `dev` 创建范围明确的功能分支。当前 UI 候选在 `ui-chatgpt`，合并与部署分别取得对应授权。
 
 ## 项目原则
 
@@ -57,6 +57,8 @@ node scripts/validate-windows-launcher.mjs
 node scripts/validate-generation-parameters.mjs
 node scripts/validate-android-project.mjs
 node scripts/validate-worker-assets.mjs
+node scripts/validate-chat-layout.mjs
+node scripts/validate-chat-compat.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
@@ -73,7 +75,7 @@ git diff --check
 - OpenAI/Anthropic/Gemini 图片请求映射，支持/不支持模型的附件按钮显隐；
 - 图片、文本和 PDF 附件选择、刷新恢复、发送与 IndexedDB 清理；
 - 完整备份在独立 Origin 追加恢复全部对话、System、草稿、分支、智能体标记和附件，重复导入不生成副本；
-- 第 5 个对话触发左侧列表；
+- 单个及多个对话均显示左侧列表，桌面收起/打开与手机抽屉、设置切换正常；
 - PWA 安装、更新提示和离线外壳；
 - `tests/mobile-layout.html` 的字号、安全区和贴底布局回归；iPhone 主屏幕应用还需实测首次聚焦、软键盘开合和横竖屏，不应禁止手动缩放；
 - Android APK 的可信 Origin、返回键、系统文件选择、外链、离线错误、SSL 失败和权限清单；

@@ -4,7 +4,7 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v31" src="https://img.shields.io/badge/version-v31-11795a?style=flat-square">
+    <img alt="Version v32" src="https://img.shields.io/badge/version-v32-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
     <img alt="Web build none" src="https://img.shields.io/badge/web_build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
@@ -24,7 +24,7 @@
 
 AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode；`android/` 另提供需要 Android 工具链的轻量 APK 壳。
 
-`v31` 是当前版本：提供 Android 7+ 轻量 WebView APK、PWA 启动缓存优化、iPhone 输入字号与底部安全区、可选生成参数和 Windows 启动器。 当前内容修订 `v31-r2` 修复生成期间上滑查看前文时被强制拉回底部的问题。
+当前 `ui-chatgpt` 分支是 `v32` 界面候选：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。`main` / `dev` 保留已整理的 v31 基线；本候选未部署，在线入口仍指向已有站点，Android APK 保持 v31。
 
 ## 为什么使用它
 
@@ -43,7 +43,7 @@ AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作�
 ## 三分钟开始
 
 1. 打开 [在线版本](https://ai-shakedown-console.pages.dev/)。
-2. 在左侧选择服务商，填写 API Key 和模型；本机工具则选择对应的“本机登录”预设。
+2. 点击顶部模型名称或“设置”，选择服务商，填写 API Key 和模型；本机工具则选择对应的“本机登录”预设。
 3. 点击“检查连接”。成功后页面自动收起设置，进入专注聊天。
 4. 输入消息，macOS 使用 `⌘ + Enter` 发送，Windows/Linux 使用 `Ctrl + Enter` 发送；普通 `Enter` 保留换行。
 
@@ -56,12 +56,12 @@ AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作�
 ## 核心能力
 
 - **多协议连接**：内置主流服务商预设，也支持自定义 Base URL、路径、认证、请求头和附加 JSON 参数；生成参数可逐项决定是否发送。
-- **专注聊天**：连接成功后隐藏配置和检查器；对话超过 4 个后自动切换为持久化左侧列表。
+- **专注聊天**：默认显示左侧会话列表，支持收起；顶部模型名称或“设置”打开连接配置和检查器，手机使用抽屉。
 - **贴底输入区**：消息区随窗口弹性伸缩，输入框在浏览器和 PWA 窄窗口中都始终停在底部。
 - **完整消息操作**：单条复制、编辑并重发、自动分支、重新生成、继续生成、从此处删除；支持多选复制、导出和删除。
 - **按能力显示附件**：检查连接时发送 16×16 测试图片；只有当前协议、地址和模型实际接受图片时才显示附件按钮，避免给纯文本模型展示无效入口。
 - **本地附件处理**：图片按三种协议映射为多模态输入；文本/代码直接读取；PDF 使用自托管 PDF.js 在浏览器本地提取文字。附件草稿和历史文件保存在 IndexedDB。
-- **智能体与 System**：268 个上游角色和 120 个事务型项目预设统一管理；聊天区可直接取消当前智能体，System 点击“编辑”后在弹窗中修改。
+- **智能体与 System**：268 个上游角色和 120 个事务型项目预设统一管理；聊天区可直接取消当前智能体，System 点击“提示词”后在弹窗中修改。
 - **本地记录导入**：支持 Codex、Gemini CLI、Claude Code 及通用 JSON/JSONL 文件，可继续使用当前模型对话。
 - **跨设备完整备份**：设置中可一次导出全部对话、System、智能体状态、草稿和附件，在另一台电脑追加恢复；同一备份重复导入不会生成副本。
 - **本机 CLI 桥接**：Edge/Chrome 启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；Windows 单文件启动器支持自定义下载目录、空格/中文路径和重复文件名。
@@ -160,7 +160,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v31` 已完成计划中的网页与 Android 测试版：多协议与多模态连接、可选生成参数、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、PWA 启动缓存优化、三系统启动器和 Android WebView 壳均已落地。
+`v32` 是网页 UI 候选，保留 v31 的协议、桥接、附件、备份与智能体能力。本轮仅完成非浏览器检查和部署 ZIP，不部署；浏览器、移动设备与真实服务验收仍待进行。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

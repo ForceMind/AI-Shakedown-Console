@@ -8,12 +8,11 @@ const DEFAULT_BUILT_IN_AGENT_COUNT = 388;
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v32';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
 const CONVERSATION_SIDEBAR_STORAGE_KEY = 'ai-shakedown-console.conversation-sidebar.v1';
-const CONVERSATION_SIDEBAR_THRESHOLD = 4;
 const MULTIMODAL_CAPABILITIES_STORAGE_KEY = 'ai-shakedown-console.multimodal-capabilities.v1';
 const ATTACHMENT_DATABASE_NAME = 'ai-shakedown-console.attachments.v1';
 const ATTACHMENT_STORE_NAME = 'files';
@@ -229,13 +228,14 @@ const elements = {
     sidebarConversationsButton: $('sidebar-conversations-button'), sidebarSettingsButton: $('sidebar-settings-button'),
     conversationSidebar: $('conversation-sidebar'), conversationSidebarList: $('conversation-sidebar-list'),
     conversationSidebarCount: $('conversation-sidebar-count'), conversationSidebarToggle: $('conversation-sidebar-toggle'),
-    sidebarNewConversation: $('sidebar-new-conversation'), sidebarImportConversations: $('sidebar-import-conversations'),
+    sidebarNewConversation: $('sidebar-new-conversation'), sidebarClose: $('sidebar-close'),
+    modelPickerOpen: $('model-picker-open'), conversationMenu: $('conversation-menu'), composerShortcut: $('composer-shortcut'),
     clearSavedSettings: $('clear-saved-settings'),
     pwaInstallCard: $('pwa-install-card'), pwaInstallButton: $('pwa-install-button'),
     pwaImeCard: $('pwa-ime-card'), pwaImeCopyUrl: $('pwa-ime-copy-url'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileNew: $('profile-new'),
     profileSave: $('profile-save'), profileLoad: $('profile-load'), profileDelete: $('profile-delete'),
-    conversationTabs: $('conversation-tabs'), newConversation: $('new-conversation'),
+    newConversation: $('new-conversation'),
     conversationSearchToggle: $('conversation-search-toggle'), conversationSearch: $('conversation-search'),
     conversationSearchInput: $('conversation-search-input'), conversationSearchCount: $('conversation-search-count'),
     conversationSearchPrevious: $('conversation-search-previous'), conversationSearchNext: $('conversation-search-next'),
@@ -634,7 +634,6 @@ function initialize() {
     restoreConversations();
     elements.newConversation.addEventListener('click', () => createConversation());
     elements.sidebarNewConversation.addEventListener('click', () => createConversation());
-    elements.sidebarImportConversations.addEventListener('click', openLocalSessionImport);
     updateUsageDisplay();
     renderHelpEnvironment();
     maybeShowHelpIntro();
@@ -807,7 +806,15 @@ function bindEvents() {
     $('settings-close').addEventListener('click', closeSettings);
     elements.sidebarConversationsButton.addEventListener('click', openConversationSidebar);
     elements.sidebarSettingsButton.addEventListener('click', openSettings);
-    elements.conversationSidebarToggle.addEventListener('click', openConversationSidebar);
+    elements.conversationSidebarToggle.addEventListener('click', toggleConversationSidebar);
+    elements.sidebarClose.addEventListener('click', collapseWorkspaceSidebar);
+    elements.modelPickerOpen.addEventListener('click', openSettings);
+    elements.conversationMenu.addEventListener('click', (event) => {
+        if (event.target.closest('button')) elements.conversationMenu.open = false;
+    });
+    document.addEventListener('click', (event) => {
+        if (!elements.conversationMenu.contains(event.target)) elements.conversationMenu.open = false;
+    });
     elements.drawerOverlay.addEventListener('click', closeWorkspaceSidebar);
     window.addEventListener('resize', syncWorkspaceMode);
     window.addEventListener('focus', resumeLocalBridgeDiscovery);
@@ -831,6 +838,7 @@ function bindEvents() {
         .forEach((toggle) => toggle.addEventListener('change', syncGenerationParameterControls));
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
+        elements.conversationMenu.open = false;
         if (!elements.systemPromptModal.hidden) closeSystemPromptEditor(true);
         else if (!elements.macosLaunchHelpModal.hidden) closeMacosLauncherHelp();
         else if (!elements.helpModal.hidden) closeHelp();
@@ -838,6 +846,7 @@ function bindEvents() {
         else if (!elements.agentLibraryModal.hidden) closeAgentLibrary();
         else if (!elements.conversationSearch.hidden) closeConversationSearch();
         else if (state.selectionMode) exitMessageSelection();
+        else if (isMobileWorkspace() && elements.workspaceSidebar.classList.contains('is-open')) closeWorkspaceSidebar();
         else closeSettings();
     });
 }
@@ -1009,6 +1018,7 @@ function renderHelpEnvironment() {
     elements.helpOpen.title = `使用帮助：${environment.send} 发送，${environment.newline} 换行`;
     elements.helpOpen.setAttribute('aria-label', `打开使用帮助；${environment.send} 发送，${environment.newline} 换行`);
     elements.sendButton.title = `发送消息（${environment.send}）`;
+    elements.composerShortcut.textContent = `${environment.send} 发送`;
 }
 
 function markHelpIntroSeen() {
@@ -2968,7 +2978,6 @@ async function handleLocalSessionImport(event) {
         return;
     }
 
-    const sidebarWasEnabled = conversationSidebarEnabled();
     const previousConversations = state.conversations;
     const previousActiveId = state.activeConversationId;
     imported.sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
@@ -2983,34 +2992,16 @@ async function handleLocalSessionImport(event) {
     renderActiveConversation();
     const skipped = unreadable + (parsed.length - imported.length);
     showToast(`已导入 ${imported.length} 个本地对话${skipped ? `，跳过 ${skipped} 个文件` : ''}`);
-    if (!sidebarWasEnabled && conversationSidebarEnabled()) {
-        if (!isMobileWorkspace()) openConversationSidebar();
-        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
-    }
 }
 
 function activeConversation() {
     return state.conversations.find((item) => item.id === state.activeConversationId) || null;
 }
 
-function conversationSidebarPreference() {
-    try { return localStorage.getItem(CONVERSATION_SIDEBAR_STORAGE_KEY) === '1'; } catch (_) { return false; }
-}
-
-function conversationSidebarEnabled() {
-    return conversationSidebarPreference() || state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD;
-}
-
 function syncConversationSidebarMode() {
-    if (state.conversations.length > CONVERSATION_SIDEBAR_THRESHOLD && !conversationSidebarPreference()) {
-        try { localStorage.setItem(CONVERSATION_SIDEBAR_STORAGE_KEY, '1'); } catch (_) { /* Storage can be unavailable. */ }
-    }
-    const enabled = conversationSidebarEnabled();
-    document.body.classList.toggle('conversation-sidebar-enabled', enabled);
-    if (!enabled) document.body.classList.remove('sidebar-conversations');
-    else if (document.body.classList.contains('chat-focused') && !isMobileWorkspace()) {
-        document.body.classList.add('sidebar-conversations');
-    }
+    // v32 always uses the conversation list. The old preference key is retained
+    // only in local-data cleanup; stored conversations are never migrated.
+    document.body.classList.add('conversation-sidebar-enabled');
 }
 
 function restoreConversations() {
@@ -3088,17 +3079,15 @@ function createConversation(options = {}) {
         draftAttachments: [],
         createdAt: new Date().toISOString()
     };
-    const sidebarWasEnabled = conversationSidebarEnabled();
     state.conversations.push(conversation);
     state.activeConversationId = conversation.id;
     persistConversations();
     renderConversationTabs();
     renderActiveConversation();
-    if (!sidebarWasEnabled && conversationSidebarEnabled() && !options.silent) {
-        if (!isMobileWorkspace()) openConversationSidebar();
-        showToast('对话已超过 4 个，已切换为左侧列表；以后打开仍保持此布局');
+    if (!options.silent) {
+        if (isMobileWorkspace()) closeWorkspaceSidebar();
+        showToast('已新建对话');
     }
-    if (!options.silent) showToast('已新建对话窗口');
 }
 
 function switchConversation(id) {
@@ -3146,41 +3135,18 @@ function closeConversation(id) {
 
 function renderConversationTabs() {
     syncConversationSidebarMode();
-    elements.conversationTabs.replaceChildren();
     elements.conversationSidebarList.replaceChildren();
     elements.conversationSidebarCount.textContent = String(state.conversations.length);
     for (const conversation of state.conversations) {
-        const tab = document.createElement('div');
-        tab.className = `conversation-tab${conversation.id === state.activeConversationId ? ' active' : ''}`;
-        const selectButton = document.createElement('button');
-        selectButton.className = 'conversation-tab-title';
-        selectButton.type = 'button';
-        selectButton.role = 'tab';
-        selectButton.ariaSelected = String(conversation.id === state.activeConversationId);
-        selectButton.title = conversation.importedFrom
-            ? `${conversation.title}\n导入自 ${conversation.importedFrom.fileName}`
-            : conversation.title;
-        selectButton.textContent = conversation.title;
-        selectButton.addEventListener('click', () => switchConversation(conversation.id));
-        const closeButton = document.createElement('button');
-        closeButton.className = 'conversation-tab-close';
-        closeButton.type = 'button';
-        closeButton.title = '关闭对话';
-        closeButton.setAttribute('aria-label', `关闭${conversation.title}`);
-        const closeIcon = document.createElement('i');
-        closeIcon.className = 'bi bi-x';
-        closeButton.appendChild(closeIcon);
-        closeButton.addEventListener('click', () => closeConversation(conversation.id));
-        tab.append(selectButton, closeButton);
-        elements.conversationTabs.appendChild(tab);
-
         const sidebarItem = document.createElement('div');
         sidebarItem.className = `conversation-sidebar-item${conversation.id === state.activeConversationId ? ' active' : ''}`;
         const sidebarSelect = document.createElement('button');
         sidebarSelect.type = 'button';
         sidebarSelect.role = 'tab';
         sidebarSelect.ariaSelected = String(conversation.id === state.activeConversationId);
-        sidebarSelect.title = selectButton.title;
+        sidebarSelect.title = conversation.importedFrom
+            ? `${conversation.title}\n导入自 ${conversation.importedFrom.fileName}`
+            : conversation.title;
         const sidebarTitle = document.createElement('strong');
         sidebarTitle.textContent = conversation.title;
         const sidebarMeta = document.createElement('small');
@@ -3200,7 +3166,6 @@ function renderConversationTabs() {
         sidebarItem.append(sidebarSelect, sidebarClose);
         elements.conversationSidebarList.appendChild(sidebarItem);
     }
-    elements.conversationTabs.querySelector('.conversation-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     elements.conversationSidebarList.querySelector('.conversation-sidebar-item.active')?.scrollIntoView({ block: 'nearest' });
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
@@ -4473,10 +4438,10 @@ function renderEmptyState() {
     const icon = document.createElement('div');
     icon.className = 'empty-icon';
     const iconElement = document.createElement('i');
-    iconElement.className = 'bi bi-terminal';
+    iconElement.className = 'bi bi-intersect';
     icon.appendChild(iconElement);
     const title = document.createElement('strong');
-    title.textContent = '控制台已就绪';
+    title.textContent = '今天有什么可以帮你？';
     const endpoint = document.createElement('span');
     endpoint.id = 'empty-endpoint';
     endpoint.textContent = safeOrigin();
@@ -4548,6 +4513,7 @@ function syncControls() {
     elements.messageInput.disabled = state.busy || locked;
     elements.attachmentButton.disabled = state.busy || state.multimodalStatus !== 'supported';
     elements.sendButton.querySelector('span').textContent = locked ? '已达上限' : state.busy ? '请求中' : '发送';
+    elements.sendButton.setAttribute('aria-label', locked ? '已达费用上限' : state.busy ? '正在生成回复' : '发送消息');
 }
 
 function setConnectionState(status, text, latency) {
@@ -4555,6 +4521,7 @@ function setConnectionState(status, text, latency) {
     elements.connectionState.dataset.state = status;
     elements.connectionStateText.textContent = text;
     elements.latencyText.textContent = latency;
+    elements.connectionState.title = [text, latency].filter(Boolean).join(' · ');
     if (status === 'success' && previousStatus !== 'success') {
         closeSettings();
     } else if (status === 'error') {
@@ -4652,17 +4619,10 @@ function isMobileWorkspace() {
 
 function initializeWorkspaceLayout() {
     syncConversationSidebarMode();
-    if (conversationSidebarEnabled()) {
-        document.body.classList.add('chat-focused', 'sidebar-conversations');
-        document.body.classList.remove('sidebar-settings');
-    } else if (isMobileWorkspace()) {
-        document.body.classList.add('chat-focused');
-        document.body.classList.remove('sidebar-settings', 'sidebar-conversations');
-        elements.workspaceSidebar.classList.remove('is-open');
-    } else {
-        document.body.classList.add('sidebar-settings');
-        document.body.classList.remove('chat-focused', 'sidebar-conversations');
-    }
+    document.body.classList.add('chat-focused', 'sidebar-conversations');
+    document.body.classList.remove('sidebar-settings', 'sidebar-collapsed');
+    elements.workspaceSidebar.classList.remove('is-open');
+    elements.drawerOverlay.classList.remove('is-open');
     syncWorkspaceMode();
 }
 
@@ -4673,13 +4633,26 @@ function settingsAreVisible() {
 
 function syncWorkspaceMode() {
     const settingsVisible = settingsAreVisible();
+    const sidebarVisible = isMobileWorkspace()
+        ? elements.workspaceSidebar.classList.contains('is-open')
+        : !document.body.classList.contains('sidebar-collapsed');
     elements.settingsToggle.setAttribute('aria-expanded', String(settingsVisible));
-    elements.settingsToggle.setAttribute('aria-label', settingsVisible ? '切换到专注聊天' : '打开设置');
-    elements.settingsToggle.title = settingsVisible ? '切换到专注聊天' : '打开设置';
-    elements.settingsToggleLabel.textContent = settingsVisible ? '聊天' : '设置';
+    elements.settingsToggle.setAttribute('aria-label', settingsVisible ? '返回对话' : '打开设置');
+    elements.settingsToggle.title = settingsVisible ? '返回对话' : '打开设置';
+    elements.settingsToggleLabel.textContent = settingsVisible ? '返回对话' : '设置';
     elements.settingsToggleIcon.className = settingsVisible ? 'bi bi-chat-left-text' : 'bi bi-sliders';
     elements.sidebarSettingsButton.classList.toggle('active', settingsVisible);
     elements.sidebarConversationsButton.classList.toggle('active', !settingsVisible);
+    elements.conversationSidebarToggle.setAttribute('aria-expanded', String(sidebarVisible));
+    elements.conversationSidebarToggle.setAttribute('aria-label', sidebarVisible ? '收起侧栏' : '打开对话侧栏');
+    elements.conversationSidebarToggle.title = sidebarVisible ? '收起侧栏' : '打开对话侧栏';
+    if (!sidebarVisible && elements.workspaceSidebar.contains(document.activeElement)) {
+        elements.conversationSidebarToggle.focus({ preventScroll: true });
+    }
+    elements.workspaceSidebar.inert = !sidebarVisible;
+    // Off-canvas controls must not remain keyboard/screen-reader targets.
+    elements.workspaceSidebar.setAttribute('aria-hidden', String(!sidebarVisible));
+    elements.drawerOverlay.classList.toggle('is-open', isMobileWorkspace() && sidebarVisible);
 }
 
 function toggleSettings() {
@@ -4688,46 +4661,46 @@ function toggleSettings() {
 }
 
 function openSettings() {
-    document.body.classList.remove('chat-focused');
+    document.body.classList.remove('chat-focused', 'sidebar-collapsed', 'sidebar-conversations');
     document.body.classList.add('sidebar-settings');
-    document.body.classList.remove('sidebar-conversations');
     elements.workspaceSidebar.classList.add('is-open');
-    elements.drawerOverlay.classList.add('is-open');
     syncWorkspaceMode();
 }
 
 function closeSettings() {
-    document.body.classList.add('chat-focused');
+    document.body.classList.add('chat-focused', 'sidebar-conversations');
     document.body.classList.remove('sidebar-settings');
-    if (conversationSidebarEnabled()) document.body.classList.add('sidebar-conversations');
-    else document.body.classList.remove('sidebar-conversations');
     if (isMobileWorkspace()) elements.workspaceSidebar.classList.remove('is-open');
-    elements.drawerOverlay.classList.remove('is-open');
     syncWorkspaceMode();
 }
 
 function openConversationSidebar() {
-    if (!conversationSidebarEnabled()) {
-        closeSettings();
-        return;
-    }
+    document.body.classList.add('chat-focused', 'sidebar-conversations');
+    document.body.classList.remove('sidebar-settings', 'sidebar-collapsed');
+    if (isMobileWorkspace()) elements.workspaceSidebar.classList.add('is-open');
+    syncWorkspaceMode();
+}
+
+function toggleConversationSidebar() {
+    const visible = isMobileWorkspace()
+        ? elements.workspaceSidebar.classList.contains('is-open')
+        : !document.body.classList.contains('sidebar-collapsed');
+    if (visible) collapseWorkspaceSidebar();
+    else openConversationSidebar();
+}
+
+function collapseWorkspaceSidebar() {
     document.body.classList.add('chat-focused', 'sidebar-conversations');
     document.body.classList.remove('sidebar-settings');
-    if (isMobileWorkspace()) {
-        elements.workspaceSidebar.classList.add('is-open');
-        elements.drawerOverlay.classList.add('is-open');
-    } else {
-        elements.drawerOverlay.classList.remove('is-open');
-    }
+    if (isMobileWorkspace()) elements.workspaceSidebar.classList.remove('is-open');
+    else document.body.classList.add('sidebar-collapsed');
     syncWorkspaceMode();
+    elements.conversationSidebarToggle.focus({ preventScroll: true });
 }
 
 function closeWorkspaceSidebar() {
     if (!isMobileWorkspace()) return;
-    elements.workspaceSidebar.classList.remove('is-open');
-    elements.drawerOverlay.classList.remove('is-open');
-    document.body.classList.add('chat-focused');
-    syncWorkspaceMode();
+    collapseWorkspaceSidebar();
 }
 
 try {

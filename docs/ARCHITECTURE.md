@@ -44,15 +44,15 @@ flowchart TB
 
 单页应用结构，包括：
 
-- 页头运行上下文；
-- 设置/对话左侧区域；
+- 顶部模型入口、连接状态和对话操作菜单；
+- 会话与智能体左侧区域，以及可切换的连接设置和运行上下文；
 - 聊天、System Prompt 与消息输入；
 - 智能体、自定义智能体、本地导入和帮助弹窗；
 - PWA 元数据和固定版本资源入口。
 
 ### `style.css`
 
-完整响应式布局，无预处理器。桌面端使用可收缩双栏，移动端把左侧区域变成抽屉。聊天面板为六个显式网格行，消息区固定占用弹性行、输入区固定占用最后一行；搜索或多选工具条隐藏时不会改变它们的位置。
+完整响应式布局，无预处理器。桌面端默认使用 272px 会话侧栏，连接设置展开为 344px，支持收起；移动端把左侧区域变成抽屉。隐藏侧栏通过 `inert` 和 `aria-hidden` 退出键盘与辅助技术访问范围。聊天面板为五个显式网格行，消息区固定占用弹性行、输入区固定占用最后一行；搜索或多选工具条隐藏时不会改变它们的位置。
 
 ### `script.js`
 
@@ -73,7 +73,7 @@ flowchart TB
 
 ### 智能体目录
 
-`agents/index.json` 是前端读取的统一目录，v31 共包含 388 个内置智能体：
+`agents/index.json` 是前端读取的统一目录，v32 共包含 388 个内置智能体：
 
 - 268 个来自 `agency-agents-zh`，正文保存在原有部门目录；
 - 120 个项目事务型预设由 `scripts/task-agent-presets.mjs` 定义并生成到 `agents/content/task-presets/`；
@@ -130,7 +130,7 @@ Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 Pow
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-公开版本为 `v31` 时，内部缓存可使用 `v31-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+当前网页候选为 `v32`，shell/runtime 缓存和网页自有资源查询参数使用 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 ### Android WebView 壳
 
@@ -197,7 +197,7 @@ Temperature、Top P、Top K 和最大输出字段在各自开关开启且数值�
 | `ai-shakedown-console.profiles.v1` | localStorage | 命名配置 |
 | `ai-shakedown-console.prompts.v1` | localStorage | 自定义智能体/旧提示词 |
 | `ai-shakedown-console.conversations.v1` | localStorage | 对话、消息、System 和激活项 |
-| `ai-shakedown-console.conversation-sidebar.v1` | localStorage | 左侧列表偏好 |
+| `ai-shakedown-console.conversation-sidebar.v1` | localStorage | 旧版左侧列表偏好，v32 不再读取或写入 |
 | `ai-shakedown-console.help-intro.v1` | localStorage | 首次帮助状态 |
 | `ai-shakedown-console.pwa-ime-notice.v1` | localStorage | Edge PWA 输入法长期方案提示版本 |
 | `ai-shakedown-console.multimodal-capabilities.v1` | localStorage | 按配置签名缓存的多模态检查结果 |

@@ -18,6 +18,7 @@
 | Safari Web App 无法检测本机 Codex | [故障排查：页面无法访问 127.0.0.1](./TROUBLESHOOTING.md#页面无法访问-127001) |
 | 部署到 Cloudflare Pages | [部署与发布](./DEPLOYMENT.md) |
 | 理解代码、数据流和安全设计 | [架构说明](./ARCHITECTURE.md) |
+| 查看 v32 UI 范围与验收状态 | [UI 改版记录](./UI-REDESIGN.md) |
 | 提交修改 | [贡献指南](../CONTRIBUTING.md) |
 | 查看版本变化 | [版本记录](../CHANGELOG.md) |
 | 了解凭据和本机权限边界 | [安全策略](../SECURITY.md) |
@@ -53,7 +54,7 @@
 ## 文档约定
 
 - 命令默认在项目根目录运行，除非文中另有说明。
-- `v31` 表示网页、PWA 与 Android 壳版本；`proxy-6` 表示 Worker 接口版本，两者独立。
+- 当前分支网页/PWA 候选为 `v32`，Android 壳与 APK 保持 `v31`；`main` / `dev` 为 v31 基线，`proxy-6` 表示 Worker 接口版本。
 - 页面显示文字以当前发布版为准；文档中的目录和按钮名称与中文版界面一致。
 - 本机桥接统称“本机 AI”，实际支持 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode。
 
