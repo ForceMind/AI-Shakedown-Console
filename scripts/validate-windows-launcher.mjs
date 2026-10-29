@@ -48,9 +48,9 @@ assert.deepEqual(generated.subarray(3), expected, 'plain payload extraction must
 check(generated.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])), 'generated .ps1 must have UTF-8 BOM');
 
 const values = {
-    BRIDGE_URL: 'https://example.test/assets/local-codex-bridge.mjs?v=29',
+    BRIDGE_URL: 'https://example.test/assets/local-codex-bridge.mjs?v=30',
     RETURN_URL: 'https://example.test/app/$channel/?source=launcher',
-    APP_VERSION: 'v29',
+    APP_VERSION: 'v31',
     BRIDGE_TOKEN: 'test-token-abcdefghijklmnopqrstuvwxyz-123456',
     BRIDGE_PORT: '4519',
     LOCAL_PROVIDER: 'codex',

@@ -1,4 +1,9 @@
 :root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --app-header-height: 72px;
     --ink: #17211d;
     --muted: #64716b;
     --line: #dce3df;
@@ -66,8 +71,8 @@ button:disabled {
 }
 
 .app-header {
-    height: 72px;
-    padding: 0 20px;
+    height: calc(var(--app-header-height) + var(--safe-area-top));
+    padding: var(--safe-area-top) calc(20px + var(--safe-area-right)) 0 calc(20px + var(--safe-area-left));
     border-bottom: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.98);
     display: flex;
@@ -263,8 +268,9 @@ h2 {
 }
 
 .workspace {
-    height: calc(100vh - 72px);
-    height: calc(100dvh - 72px);
+    height: calc(100vh - var(--app-header-height) - var(--safe-area-top));
+    height: calc(100dvh - var(--app-header-height) - var(--safe-area-top));
+    padding-inline: var(--safe-area-left) var(--safe-area-right);
     min-height: 0;
     display: grid;
     grid-template-columns: 330px minmax(0, 1fr);
@@ -280,6 +286,7 @@ h2 {
 
 .workspace-sidebar {
     min-height: 0;
+    padding-bottom: var(--safe-area-bottom);
     border-right: 1px solid var(--line);
     display: flex;
     flex-direction: column;
@@ -1018,6 +1025,7 @@ textarea:focus {
     color: #4f5a55;
     font-size: 12px;
     font-weight: 700;
+    line-height: 17px;
 }
 
 .details-content {
@@ -1039,8 +1047,7 @@ textarea:focus {
 }
 
 .pwa-install-card,
-.pwa-ime-card,
-.chat-backup-card {
+.pwa-ime-card {
     padding: 10px;
     border: 1px solid #b8dacd;
     border-radius: 7px;
@@ -1052,25 +1059,42 @@ textarea:focus {
 }
 
 .pwa-install-card[hidden],
-.pwa-ime-card[hidden],
-.chat-backup-card[hidden] {
+.pwa-ime-card[hidden] {
     display: none;
+}
+
+.advanced-settings + .advanced-settings {
+    border-top: 0;
+}
+
+.utility-settings-content {
+    gap: 8px;
+}
+
+.utility-settings-content .field-hint {
+    margin: 0;
+}
+
+.utility-settings-content .secondary-button {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.utility-settings-content .chat-backup-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.android-apk-download {
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
 }
 
 .pwa-ime-card {
     border-color: #dfc98f;
     background: #fff9e9;
     align-items: start;
-}
-
-.chat-backup-card {
-    border-color: #c8d3cf;
-    background: #f6f8f7;
-    align-items: start;
-}
-
-.chat-backup-card .pwa-install-icon {
-    background: #42554d;
 }
 
 .pwa-ime-card .pwa-install-icon {
@@ -1089,22 +1113,19 @@ textarea:focus {
 }
 
 .pwa-install-card > div,
-.pwa-ime-card > div,
-.chat-backup-card > div {
+.pwa-ime-card > div {
     min-width: 0;
     display: grid;
     gap: 2px;
 }
 
 .pwa-install-card strong,
-.pwa-ime-card strong,
-.chat-backup-card strong {
+.pwa-ime-card strong {
     font-size: 11px;
 }
 
 .pwa-install-card small,
-.pwa-ime-card small,
-.chat-backup-card small {
+.pwa-ime-card small {
     color: #4e7566;
     font-size: 9px;
     line-height: 1.45;
@@ -1924,7 +1945,7 @@ textarea:focus {
 }
 
 .composer {
-    padding: 12px 16px 14px;
+    padding: 12px 16px calc(14px + var(--safe-area-bottom));
     border-top: 1px solid var(--line);
     background: var(--surface);
 }
@@ -2161,7 +2182,7 @@ textarea:focus {
 
 .system-prompt-modal {
     width: min(720px, 100%);
-    max-height: min(760px, calc(100dvh - 48px));
+    max-height: min(760px, calc(100dvh - 48px - var(--safe-area-top) - var(--safe-area-bottom)));
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: var(--surface);
@@ -2205,6 +2226,10 @@ textarea:focus {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.system-prompt-modal-footer button {
+    white-space: nowrap;
 }
 
 .message-input-wrap {
@@ -2272,7 +2297,7 @@ textarea:focus {
 }
 
 .modal-backdrop {
-    padding: 24px;
+    padding: calc(24px + var(--safe-area-top)) calc(24px + var(--safe-area-right)) calc(24px + var(--safe-area-bottom)) calc(24px + var(--safe-area-left));
     background: rgba(24, 32, 29, 0.58);
     display: grid;
     place-items: center;
@@ -2287,7 +2312,7 @@ textarea:focus {
 
 .agent-library-modal {
     width: min(1080px, 100%);
-    height: min(760px, calc(100dvh - 48px));
+    height: min(760px, calc(100dvh - 48px - var(--safe-area-top) - var(--safe-area-bottom)));
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: var(--surface);
@@ -2299,16 +2324,18 @@ textarea:focus {
 
 .local-session-modal {
     width: min(620px, 100%);
+    min-height: 0;
+    max-height: 100%;
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: var(--surface);
     box-shadow: 0 24px 70px rgba(24, 32, 29, 0.28);
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .help-modal {
     width: min(760px, 100%);
-    max-height: min(780px, calc(100dvh - 48px));
+    max-height: min(780px, calc(100dvh - 48px - var(--safe-area-top) - var(--safe-area-bottom)));
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: var(--surface);
@@ -2320,7 +2347,7 @@ textarea:focus {
 
 .macos-launch-help-modal {
     width: min(700px, 100%);
-    max-height: min(820px, calc(100dvh - 48px));
+    max-height: min(820px, calc(100dvh - 48px - var(--safe-area-top) - var(--safe-area-bottom)));
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     background: var(--surface);
@@ -3088,15 +3115,15 @@ textarea:focus {
 
 .toast-region {
     position: fixed;
-    right: 18px;
-    bottom: 36px;
+    right: calc(18px + var(--safe-area-right));
+    bottom: calc(36px + var(--safe-area-bottom));
     z-index: 100;
     display: grid;
     gap: 8px;
 }
 
 .toast {
-    width: min(360px, calc(100vw - 36px));
+    width: min(360px, calc(100vw - 36px - var(--safe-area-left) - var(--safe-area-right)));
     padding: 11px 13px;
     border: 1px solid var(--line-strong);
     border-radius: 7px;
@@ -3160,9 +3187,12 @@ textarea:focus {
 }
 
 @media (max-width: 780px) {
+    :root {
+        --app-header-height: 60px;
+    }
+
     .app-header {
-        height: 60px;
-        padding: 0 12px;
+        padding: var(--safe-area-top) calc(12px + var(--safe-area-right)) 0 calc(12px + var(--safe-area-left));
     }
 
     .brand-block p,
@@ -3191,13 +3221,11 @@ textarea:focus {
     }
 
     .workspace {
-        height: calc(100dvh - 60px);
         display: block;
     }
 
     .pwa-install-card,
     .pwa-ime-card,
-    .chat-backup-card,
     .local-codex-compatibility {
         grid-template-columns: 34px minmax(0, 1fr);
     }
@@ -3218,6 +3246,8 @@ textarea:focus {
     .workspace-sidebar {
         width: min(90vw, 360px);
         height: 100dvh;
+        padding-top: var(--safe-area-top);
+        padding-inline: var(--safe-area-left) var(--safe-area-right);
         border-right: 1px solid var(--line);
         background: var(--surface);
         box-shadow: var(--shadow);
@@ -3286,7 +3316,7 @@ textarea:focus {
     }
 
     .composer {
-        padding: 9px 10px 10px;
+        padding: 9px 10px calc(10px + var(--safe-area-bottom));
     }
 
     .composer-tools {
@@ -3312,7 +3342,7 @@ textarea:focus {
 
     .system-prompt-modal {
         width: 100%;
-        height: 100dvh;
+        height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
         max-height: none;
         border: 0;
         border-radius: 0;
@@ -3362,12 +3392,12 @@ textarea:focus {
     }
 
     .modal-backdrop {
-        padding: 0;
+        padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
     }
 
     .agent-library-modal {
         width: 100%;
-        height: 100dvh;
+        height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
         border: 0;
         border-radius: 0;
     }
@@ -3378,7 +3408,7 @@ textarea:focus {
 
     .help-modal {
         width: 100%;
-        height: 100dvh;
+        height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
         max-height: none;
         border: 0;
         border-radius: 0;
@@ -3386,7 +3416,7 @@ textarea:focus {
 
     .macos-launch-help-modal {
         width: 100%;
-        height: 100dvh;
+        height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
         max-height: none;
         border: 0;
         border-radius: 0;
@@ -3518,6 +3548,88 @@ textarea:focus {
 
     .agent-library-footer .primary-button {
         width: 100%;
+    }
+}
+
+/* iOS zooms focused form controls when their text is smaller than 16px.
+   Cover narrow windows and touch devices in landscape without blocking pinch zoom. */
+@media (max-width: 1024px), (any-pointer: coarse) {
+    input,
+    select,
+    textarea,
+    #system-prompt {
+        font-size: max(16px, 1rem);
+    }
+}
+
+/* Keep the composer reachable in short landscape windows, including when
+   search and selection controls are visible above the conversation. */
+@media (max-width: 1024px) and (max-height: 500px) {
+    :root {
+        --app-header-height: 48px;
+    }
+
+    .brand-block p,
+    .runtime-context {
+        display: none;
+    }
+
+    .chat-toolbar {
+        min-height: 44px;
+        padding: 6px 12px;
+    }
+
+    .conversation-bar {
+        min-height: 38px;
+        padding-block: 2px;
+    }
+
+    .chat-window {
+        padding-block: 0;
+    }
+
+    .message-selection-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .message-selection-bar strong {
+        width: auto;
+        flex-shrink: 0;
+    }
+
+    .composer {
+        padding-top: 6px;
+    }
+
+    .composer-tools {
+        margin-bottom: 6px;
+    }
+
+    .agent-library-button {
+        min-height: 32px;
+        padding-block: 4px;
+        grid-template-columns: 22px minmax(0, 1fr) auto auto;
+    }
+
+    .agent-library-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .agent-library-copy small {
+        display: none;
+    }
+
+    .system-prompt-control {
+        min-height: 32px;
+        margin-top: 4px;
+        padding-block: 3px;
+    }
+
+    .message-compose-row textarea {
+        height: 44px;
+        min-height: 44px;
     }
 }
 

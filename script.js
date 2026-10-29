@@ -8,7 +8,7 @@ const DEFAULT_BUILT_IN_AGENT_COUNT = 388;
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v29';
+const APP_VERSION = 'v31';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
@@ -32,6 +32,12 @@ const MULTIMODAL_TEST_IMAGE_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkW
 const LOCAL_CODEX_DEFAULT_PORT = 4510;
 const LOCAL_BRIDGE_PORT_SCAN_LIMIT = 100;
 const LOCAL_BRIDGE_DISCOVERY_MS = 10 * 60 * 1000;
+const GENERATION_PARAMETER_DEFAULTS = Object.freeze({
+    temperatureEnabled: false,
+    topPEnabled: false,
+    topKEnabled: true,
+    maxTokensEnabled: true
+});
 
 const LOCAL_TOOL_PROVIDERS = {
     'codex-local': {
@@ -1728,7 +1734,9 @@ function applySettings(settings) {
         topKEnabled: 'topKEnabled', maxTokensEnabled: 'maxTokensEnabled'
     };
     for (const [elementName, settingName] of Object.entries(parameterToggles)) {
-        elements[elementName].checked = typeof settings[settingName] === 'boolean' ? settings[settingName] : true;
+        elements[elementName].checked = typeof settings[settingName] === 'boolean'
+            ? settings[settingName]
+            : GENERATION_PARAMETER_DEFAULTS[elementName];
     }
     elements.localCodexHistoryToggle.checked = settings.codexPersistThreads === true;
 
@@ -1782,7 +1790,10 @@ function clearSavedSettings() {
     applyProvider(PROVIDERS[0]);
     elements.apiKey.value = '';
     elements.systemPrompt.value = '';
-    for (const { toggle } of generationParameterControls()) toggle.checked = true;
+    elements.temperatureEnabled.checked = GENERATION_PARAMETER_DEFAULTS.temperatureEnabled;
+    elements.topPEnabled.checked = GENERATION_PARAMETER_DEFAULTS.topPEnabled;
+    elements.topKEnabled.checked = GENERATION_PARAMETER_DEFAULTS.topKEnabled;
+    elements.maxTokensEnabled.checked = GENERATION_PARAMETER_DEFAULTS.maxTokensEnabled;
     syncGenerationParameterControls();
     renderProfileOptions();
     updateAgentCount();
@@ -3194,9 +3205,10 @@ function renderConversationTabs() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
 
-function renderActiveConversation() {
+function renderActiveConversation({ preserveScroll = false } = {}) {
     const conversation = activeConversation();
     if (!conversation) return;
+    const scrollPosition = preserveScroll ? captureChatScrollPosition() : null;
     elements.systemPrompt.value = conversation.systemPrompt;
     elements.messageInput.value = conversation.draft || '';
     state.composerAttachments = (conversation.draftAttachments || []).map((item) => ({ ...item }));
@@ -3213,6 +3225,7 @@ function renderActiveConversation() {
     for (const message of conversation.history) addMessage(message);
     closeConversationSearch();
     exitMessageSelection();
+    if (scrollPosition) restoreChatScrollPosition(scrollPosition);
 }
 
 function renderMarkdown(element, text) {
@@ -3262,8 +3275,11 @@ function createStreamingMarkdownRenderer(message) {
 
     const flush = () => {
         frameId = 0;
+        // Measure before Markdown changes the height, including a large first
+        // chunk. Native wheel/touch/keyboard scrolling away pauses following.
+        const scrollPosition = captureChatScrollPosition();
         setMessageContent(message, latestText, Boolean(latestText));
-        scrollChatToBottom();
+        restoreChatScrollPosition(scrollPosition);
     };
 
     return {
@@ -3616,7 +3632,7 @@ async function sendMessage(event) {
         if (!priorHistory.length && !conversation.parentConversationId) conversation.title = deriveConversationTitle(userText);
         persistConversations();
         renderConversationTabs();
-        renderActiveConversation();
+        renderActiveConversation({ preserveScroll: true });
         applyUsage(result.usage);
         setConnectionState('success', '请求成功', `${result.duration} ms`);
     } catch (error) {
@@ -3629,7 +3645,7 @@ async function sendMessage(event) {
                 if (!priorHistory.length && !conversation.parentConversationId) conversation.title = deriveConversationTitle(userText);
                 persistConversations();
                 renderConversationTabs();
-                renderActiveConversation();
+                renderActiveConversation({ preserveScroll: true });
             }
             showToast('已停止生成');
         } else {
@@ -3640,13 +3656,13 @@ async function sendMessage(event) {
             if (!priorHistory.length && !conversation.parentConversationId) conversation.title = deriveConversationTitle(userText);
             persistConversations();
             renderConversationTabs();
-            renderActiveConversation();
+            renderActiveConversation({ preserveScroll: true });
             setConnectionState('error', '请求失败', '');
             showToast(message, true);
         }
     } finally {
         setBusy(false);
-        elements.messageInput.focus();
+        elements.messageInput.focus({ preventScroll: true });
     }
 }
 
@@ -4609,6 +4625,21 @@ function showActionToast(message, actionLabel, action, options = {}) {
             options.onExpire?.();
         }, options.timeout);
     }
+}
+
+function captureChatScrollPosition() {
+    const { scrollTop, scrollHeight, clientHeight } = elements.chatWindow;
+    return {
+        top: Math.max(0, scrollTop),
+        // scrollTop can be fractional; tolerate rounding only, so even a small
+        // upward scroll stops following. Scrolling back to the end resumes it.
+        atBottom: scrollHeight - clientHeight - scrollTop <= 1
+    };
+}
+
+function restoreChatScrollPosition(position) {
+    if (position.atBottom) scrollChatToBottom();
+    else elements.chatWindow.scrollTop = position.top;
 }
 
 function scrollChatToBottom() {

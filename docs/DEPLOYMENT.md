@@ -67,10 +67,10 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-正式 `v29` 包：
+正式 `v31` 包：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v29.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v31.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -96,7 +96,42 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v29.zip \
 
 只改其中一处会导致页面、PWA 或本机启动器继续使用旧资源。
 
-若发布候选仍显示为同一个 `v29`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v29-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+若发布候选仍显示为同一个 `v31`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v31-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+
+当前内容修订为 `v31-r2`，公开版本仍为 `v31`：Service Worker shell/runtime 缓存与 `script.js` 查询参数推进到 `v31-r2`，修复生成期间强制滚动；CSS 和 APK 下载/预缓存 URL 保持 `v31-r1`。本次无需重建 APK，旧发布包和 APK 保留。
+
+## Android APK 构建
+
+Android 壳位于 `android/`，要求 JDK 17、Android SDK Platform 35 和 Build Tools 35.0.0。发布构建还必须存在被 Git 忽略的固定密钥 `.android-signing/debug.keystore`；缺失时构建会直接失败，必须从安全备份恢复，禁止生成另一把密钥后继续发布。Gradle Wrapper 已锁定到 8.9 并校验发行包 SHA-256：
+
+```bash
+cd android
+./gradlew lintDebug assembleDebug
+cd ..
+cp android/app/build/outputs/apk/debug/app-debug.apk \
+  AI-Shakedown-Console-v31-debug.apk
+cp android/app/build/outputs/apk/debug/app-debug.apk \
+  assets/AI-Shakedown-Console-v31-debug.apk
+```
+
+验证命令：
+
+```bash
+node scripts/validate-android-project.mjs
+node scripts/validate-worker-assets.mjs
+aapt dump badging AI-Shakedown-Console-v31-debug.apk
+zipalign -c -v 4 AI-Shakedown-Console-v31-debug.apk
+apksigner verify --verbose --print-certs AI-Shakedown-Console-v31-debug.apk
+shasum -a 256 AI-Shakedown-Console-v31-debug.apk
+```
+
+`apksigner` 输出的签名证书 SHA-256 必须为：
+
+```text
+09:DF:BD:43:4D:09:74:0A:B6:39:C3:0E:B9:87:03:D0:96:5B:8F:D6:C1:8D:F2:5A:03:66:30:78:67:56:D6:2A
+```
+
+根目录 APK 是独立构建产物；同一字节内容会复制到 `assets/AI-Shakedown-Console-v31-debug.apk`，随 Cloudflare Pages ZIP 发布供网页下载。Debug 包只用于侧载测试；长期分发必须另行建立受保护的发布签名流程，签名私钥和密码不得进入仓库、ZIP 或 APK。
 
 ## 正式发布清单
 
@@ -121,6 +156,8 @@ node --check scripts/validate-agent-catalog.mjs
 node scripts/validate-agent-catalog.mjs agents
 node scripts/validate-windows-launcher.mjs
 node scripts/validate-generation-parameters.mjs
+node scripts/validate-android-project.mjs
+node scripts/validate-worker-assets.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
@@ -133,9 +170,22 @@ Windows 校验脚本会确认前端下载 `.cmd`、包装层保持 ASCII 且低�
 - [ ] `assets/manifest.webmanifest` 是有效 JSON。
 - [ ] 192、512、maskable 512 和 Apple 180 图标尺寸正确。
 - [ ] Service Worker 缓存名与版本一致。
+- [ ] v31-r2 预缓存包含 `AI-Shakedown-Console-v31-debug.apk`，网页设置区下载链接与 APK 文件名、版本和 SHA-256 一致。
+- [ ] Worker 对 APK 返回 `application/vnd.android.package-archive`、附件文件名、`nosniff` 和不可变缓存，不因导航请求带 `Accept: text/html` 而按网页处理。
 - [ ] 预缓存 URL 查询参数与 `index.html` 一致。
 - [ ] 新 Service Worker 能删除旧的 `ai-shakedown-console-*` 缓存。
 - [ ] 已安装 PWA 能发现同版本内部缓存修订并显示“发现内容更新”。
+- [ ] PWA/Android warm launch 先显示已缓存 shell，后台刷新 HTML；没有 shell 且断网时显示既有错误页/重试。
+
+### 3A. Android APK
+
+- [ ] `lintDebug` 与 `assembleDebug` 通过，且静态校验只允许 `INTERNET` 权限、HTTPS 正式 Origin 和系统文件选择器。
+- [ ] APK 包名为 `com.forcemind.aishakedownconsole`，版本为 v31，最低 API 24、目标 API 35。
+- [ ] Android 15+ 状态栏/刘海/横屏切口/手势导航安全区正确，Android 7–14 不出现双重 padding，软键盘不会覆盖输入区。
+- [ ] IME 弹出时 WebView 可视视口收缩并保持当前输入框可见，关闭键盘后无 ghost padding；原生 Insets listener 不返回 `CONSUMED`。
+- [ ] APK 通过 ZIP 对齐与签名验证，不包含 API Key、配对令牌、签名私钥或 `local.properties`。
+- [ ] APK 证书 SHA-256 与项目固定指纹一致；密钥缺失时停止发布，不生成替代密钥。
+- [ ] 真机验证首次加载、返回键、附件选择、外部链接、离线错误/重试和独立站点存储。
 
 ### 4. 聊天与多模态回归
 
@@ -149,18 +199,21 @@ Windows 校验脚本会确认前端下载 `.cmd`、包装层保持 ASCII 且低�
 - [ ] “导出全部”包含全部对话和 IndexedDB 附件；在独立 Origin 导入后，System、智能体标记、草稿、分支和附件均恢复，同一文件二次导入不重复。
 - [ ] 本机 Codex 默认发起 `thread/start` 时为 `ephemeral: true`；打开“同时保存到 Codex”后为 `false`，切换模式会创建不同线程。
 - [ ] 630×980 PWA 尺寸和桌面宽度下，输入区与聊天面板底部间隙均为 `0`；显示搜索/多选工具条后仍贴底。
+- [ ] 打开 `http://127.0.0.1:4173/tests/mobile-layout.html`，7 个布局场景全部通过；该页只测试隔离的真实页面/CSS，不运行应用脚本或读取存储。
+- [ ] 运行 `node scripts/validate-pwa-cache.mjs`，确认缓存 shell 立即返回、刷新由 `waitUntil` 执行、首次联网写入 shell、无缓存断网返回 503。
+- [ ] iPhone Safari 与主屏幕应用实机验证首次聚焦聊天/System/设置输入框不自动放大；键盘开合后输入区正常，横竖屏下标题、发送区、侧栏、弹窗和提示消息避开系统安全区，手动缩放仍可用。
 
 仓库内 `tests/mock-server.mjs` 提供无真实凭据的三协议回归上游；使用 `?no-sw=1` 打开本地页面可避免旧 Service Worker 干扰当前源文件测试。该参数仅用于本地回归，不改变正式 PWA 行为。
 
 ### 5. 发布包
 
 ```bash
-unzip -t AI-Shakedown-Console-cf-pages-worker-v29.zip
-zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v29.zip
-shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v29.zip
+unzip -t AI-Shakedown-Console-cf-pages-worker-v31.zip
+zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v31.zip
+shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v31.zip
 ```
 
-- [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`。
+- [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`，且 `assets/` 内包含已验证的 Android APK。
 - [ ] ZIP 文件数与这些源目录文件数一致。
 - [ ] 从 ZIP 内读取 `index.html` 和 Service Worker，确认版本正确。
 - [ ] 不删除历史发布包，除非维护者明确要求。
@@ -177,7 +230,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v29.zip
 
 ## 部署后检查
 
-1. 打开线上页面，确认左上角显示 `v29`。
+1. 打开线上页面，确认左上角显示 `v31`。
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
@@ -186,7 +239,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v29.zip
 
    ```json
    {
-     "appVersion": "v29",
+     "appVersion": "v31",
      "workerVersion": "proxy-6",
      "allowedUpstreamsConfigured": true,
      "assetsBindingConfigured": true
@@ -204,7 +257,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v29.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-原有浏览器存储键在 `v29` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。旧配置没有生成参数开关时默认保持四项均发送；用户关闭后会保存独立布尔状态，原数值仍保留以便重新启用。Windows 桥接状态、完整备份、附件数据库、多模态能力缓存和 Codex 保存开关均无需迁移。
+原有浏览器存储键在 `v31` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。Android APK 使用独立 WebView 存储，不会自动读取浏览器/PWA 数据；通过“导出全部 / 导入备份”迁移对话和附件，API Key 与连接配置仍需在 APK 中重新填写。Windows 桥接状态、生成参数开关、附件数据库和 Codex 保存开关无需迁移。
 
 ## 更新智能体库
 

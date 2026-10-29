@@ -2,6 +2,88 @@
 
 本文件记录用户可见的重要变化。版本号是网页/PWA 发布版本，不要求对应 Git tag。
 
+## [v31-r2] - 2026-09-03
+
+本次为公开版本仍显示 `v31` 的内容修订，Android APK 保持原文件和签名。
+
+### 修复
+
+- 回复生成时仅在阅读位置位于底部时自动跟随；向上滚动后保留位置，滑回底部后恢复跟随。
+- 正常结束、停止生成或请求失败后的消息重绘保留当前阅读位置；发送新消息和切换对话仍显示最新内容。
+- Service Worker shell/runtime 缓存与 `script.js` 查询参数推进到 `v31-r2`，让已安装的 PWA 获取修复；聊天和配置存储保持兼容。
+
+### 验证
+
+- `tests/chat-scroll.mjs` 使用隔离浏览器与模拟流式响应，覆盖桌面滚轮、触摸滑动、细微上滑、恢复跟随、完成、停止和失败；触摸模拟不能替代手机真机验证。
+
+## [v31] - 2026-08-28
+
+### 改进
+
+- PWA 和 Android WebView 启动时优先返回已缓存的应用外壳，网络更新在后台完成；首次没有缓存时仍等待网络，断网显示现有错误页和重试按钮。
+- Android WebView 进度条延迟 180ms 显示，快速缓存命中不再闪出加载条；保留现有加载失败、HTTPS 证书失败和重试行为。
+- 将网页、Worker、本机桥接、Manifest、Service Worker 和 Android APK 统一升级为 v31，Android `versionCode` 提升为 31 并继续使用固定签名。
+
+### 验证与迁移
+
+- `scripts/validate-pwa-cache.mjs` 验证缓存优先、后台刷新、首次联网和无缓存断网回退。
+- Android `lintDebug assembleDebug` 已通过；APK 证书 SHA-256 保持项目固定指纹，v30 固定签名安装可直接覆盖升级。
+- 旧 v30 发布 ZIP 和 APK 保留；网页更新无需重新安装 APK，原生壳改动需安装 v31 APK。
+
+## [v30-r7] - 2026-08-28
+
+本次为公开版本仍显示 `v30` 的内容修订；APK 文件和签名保持 v30-r5 不变。
+
+### 改进
+
+- PWA 和 APK 加载线上页面时，已有应用外壳立即从 Service Worker 缓存返回，网络更新在后台完成；首次没有缓存时仍等待网络，断网则进入现有错误页/重试流程。
+- Android WebView 进度条延迟 180ms 显示，快速缓存命中不再闪出加载条；慢速或失败请求仍显示进度和错误状态。
+
+### 验证
+
+- `scripts/validate-pwa-cache.mjs` 验证 warm shell、后台刷新、首次联网和无缓存断网返回；构建 APK 还需 JDK 17 环境。
+
+## [v30-r6] - 2026-08-28
+
+本次为公开版本仍显示 `v30` 的内容修订，Android APK 保持原文件和签名。
+
+### 修复
+
+- 手机、平板及触摸设备的输入框、下拉框和 System 编辑器使用至少 16px 字号，避免 iPhone 首次点击小字号输入框时自动放大；保留用户手动缩放。
+- 增加 `viewport-fit=cover` 与四边系统安全区：输入框和发送按钮避开底部 Home 指示条，标题、侧栏、弹窗和提示消息也避开状态栏及横屏刘海。
+- 横屏高度不足时压缩工具栏和输入框的占用，避免搜索/多选工具条把发送区挤出屏幕。
+- Service Worker shell/runtime 缓存推进到 `v30-r6`，CSS 使用独立 `v=30-r6` 查询参数，避免复用旧样式；不更改聊天与配置存储。
+
+### 验证
+
+- 增加隔离的移动布局回归页，覆盖有/无安全区、横竖屏、窄 PWA、桌面、搜索/多选工具条、侧栏和弹窗；模拟结果不替代 iPhone 真机键盘与主屏幕应用测试。
+- 桌面浏览器的 7 组布局模拟、456 项检查通过；iPhone 真机的首次聚焦、键盘开合与主屏幕应用测试仍需部署后确认。
+
+## [v30] - 2026-08-26
+
+### 新增
+
+- 增加 Android 7+ 轻量 WebView APK：固定加载正式 HTTPS 站点，支持返回键、加载进度、离线/HTTP/SSL 失败页、重试和系统文件选择器。
+- 网页设置区增加“下载 Android APK”入口，APK 作为同源静态资源进入 Cloudflare Pages ZIP，并加入 PWA v30-r5 预缓存。
+- “完整备份与恢复”和“Android APK”改为与“高级连接设置”一致的单行标题折叠项，默认收起且不再显示独立卡片图标/副标题；修复窄侧栏中 APK 下载链接未按按钮布局，导致图标和文字错位的问题。
+- 修复 Cloudflare 静态资源把 APK 返回为 `Content-Type: null` 且没有附件头，导致部分手机把二进制显示成乱码网页；Worker 现在强制 Android MIME、`Content-Disposition: attachment` 和 `nosniff`。
+- 修复目标 API 35 在 Android 15+ 强制 edge-to-edge 后，WebView 内容进入状态栏/刘海/底部导航栏并造成文字重叠；原生根容器现在消费 `systemBars + displayCutout` Insets，键盘使用 `adjustResize`。
+- Temperature 与 Top P 现在默认关闭，避免 New API 把 Chat Completions 转为 Responses 时向推理模型发送不支持的采样字段；Top K 和 Max Tokens 保持原默认。
+- WebView Insets 改用官方 zeroing 方式：原生层处理系统栏/刘海后只把这些类型清零，IME Insets 继续传入 WebView，使可视视口随软键盘收缩且键盘隐藏后不会残留空白。
+- Android 构建强制使用工作区保留的固定签名密钥；密钥缺失时立即失败，避免无提示换签导致后续 APK 无法覆盖安装。
+- 新增完整 Android Gradle 项目、五档启动图标、锁定校验和的 Gradle Wrapper、APK 静态边界检查，以及安装、数据迁移、限制、构建和真机测试文档。
+
+### 安全与边界
+
+- APK 只申请 `INTERNET` 权限，不申请相机、麦克风、定位或广泛存储权限；禁止明文流量、混合内容、第三方 Cookie、网页权限请求和 JavaScript 原生接口。
+- WebView 只保留正式站点 Origin，外部 HTTP(S) 链接交给系统浏览器；SSL 错误直接取消，Android 云备份和设备迁移排除全部应用数据。
+- APK、Chrome 和 PWA 使用独立站点存储；本机 CLI 桥接不在 Android 中开放，手机端只使用远程 HTTPS API。
+
+### 发布
+
+- 网页、Worker、本机桥接、manifest、静态资源查询参数、Service Worker 缓存和 Android 壳统一升级到 v30。
+- 新建并验证 `AI-Shakedown-Console-cf-pages-worker-v30.zip` 与侧载测试包 `AI-Shakedown-Console-v30-debug.apk`。
+
 ## [v29] - 2026-08-26
 
 ### 新增

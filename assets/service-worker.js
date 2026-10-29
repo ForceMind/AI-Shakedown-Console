@@ -1,17 +1,18 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v29`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v29`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v31-r2`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v31-r2`;
 const APP_SHELL = [
     '/',
     '/index.html',
-    '/style.css?v=29',
-    '/script.js?v=29',
-    '/assets/manifest.webmanifest?v=29',
-    '/assets/favicon.svg?v=29',
-    '/assets/apple-touch-icon.png?v=29',
-    '/assets/icon-192.png?v=29',
-    '/assets/icon-512.png?v=29',
-    '/assets/icon-maskable-512.png?v=29',
+    '/style.css?v=31-r1',
+    '/script.js?v=31-r2',
+    '/assets/manifest.webmanifest?v=31',
+    '/assets/favicon.svg?v=31',
+    '/assets/apple-touch-icon.png?v=31',
+    '/assets/icon-192.png?v=31',
+    '/assets/icon-512.png?v=31',
+    '/assets/icon-maskable-512.png?v=31',
+    '/assets/AI-Shakedown-Console-v31-debug.apk?v=31-r1',
     '/vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff',
@@ -43,12 +44,27 @@ function cacheable(response) {
     return response?.ok && ['basic', 'cors'].includes(response.type);
 }
 
-async function networkFirstNavigation(request) {
-    try {
-        return await fetch(request);
-    } catch (_) {
-        return await caches.match('/index.html') || await caches.match('/');
-    }
+async function staleWhileRevalidateNavigation(request, event) {
+    // A cached shell makes a warm/cold launch render immediately. The network
+    // request still runs under waitUntil so a newer HTML shell is ready next time.
+    const refresh = fetch(request).then(async (response) => {
+        if (cacheable(response) && response.headers.get('Content-Type')?.includes('text/html')) {
+            try {
+                const cache = await caches.open(SHELL_CACHE);
+                await cache.put('/index.html', response.clone());
+                await cache.put('/', response.clone());
+            } catch (_) { /* Cache storage failure must not discard a working network response. */ }
+        }
+        return response;
+    }).catch(() => null);
+    event.waitUntil(refresh);
+    const cached = await caches.match('/index.html') || await caches.match('/');
+    if (cached && !new URL(request.url).searchParams.has('refresh')) return cached;
+    return await refresh || cached || await caches.match('/index.html') || await caches.match('/')
+        || new Response('离线：应用外壳尚未缓存。', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
 }
 
 async function cacheFirst(request) {
@@ -67,8 +83,8 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
     const url = new URL(request.url);
     if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-    if (request.mode === 'navigate') {
-        event.respondWith(networkFirstNavigation(request));
+    if (request.mode === 'navigate' && ['/', '/index.html'].includes(url.pathname)) {
+        event.respondWith(staleWhileRevalidateNavigation(request, event));
         return;
     }
     event.respondWith(cacheFirst(request));

@@ -61,6 +61,13 @@
 
 - If the user explicitly keeps the public version unchanged, do not silently raise it. Advance an internal Service Worker cache revision such as `v25-r2`, retain `updateViaCache: "none"`, regenerate and verify the v25 ZIP, and document that this is a same-version content revision.
 
+## Android APK signing continuity
+
+- All APKs intended to upgrade the current Android installation must use the preserved local key `.android-signing/debug.keystore`. It is intentionally Git-ignored and must never be copied into the repository, deployment ZIP, APK, documentation, or chat output.
+- The current certificate SHA-256 is `09:DF:BD:43:4D:09:74:0A:B6:39:C3:0E:B9:87:03:D0:96:5B:8F:D6:C1:8D:F2:5A:03:66:30:78:67:56:D6:2A`. Verify every distributed APK against this fingerprint before replacing the root and `assets/` artifacts.
+- If the preserved key is missing, stop the Android build and restore it from a secure external backup. Never silently generate, select, or publish a replacement key under the same application ID, because Android will reject it as an in-place update and uninstalling would remove WebView app data.
+- The APK built before this fixed key was introduced used a discarded one-time debug key. Moving from that specific APK to the fixed-signature line requires one final backup and uninstall; APKs on the fixed-signature line must remain directly upgradeable thereafter.
+
 ## Built-in task presets
 
 - The built-in library contains 268 `agency-agents-zh` roles plus 120 project-owned task presets, for 388 total. Define project presets in `scripts/task-agent-presets.mjs`; never hand-edit generated files under `agents/content/task-presets/`.

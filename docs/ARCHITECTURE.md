@@ -73,7 +73,7 @@ flowchart TB
 
 ### 智能体目录
 
-`agents/index.json` 是前端读取的统一目录，v29 共包含 388 个内置智能体：
+`agents/index.json` 是前端读取的统一目录，v31 共包含 388 个内置智能体：
 
 - 268 个来自 `agency-agents-zh`，正文保存在原有部门目录；
 - 120 个项目事务型预设由 `scripts/task-agent-presets.mjs` 定义并生成到 `agents/content/task-presets/`；
@@ -89,6 +89,7 @@ Cloudflare Pages Advanced Mode Worker：
 - `GET /api/status`：返回应用/Worker 版本与绑定状态；
 - `GET|POST /api/proxy`：校验目标上游、过滤请求/响应头并流式转发；
 - 其他路径：交给 `env.ASSETS`，并按资源类型设置缓存头。
+- Android APK 路径优先于导航请求的 `Accept: text/html` 判定，强制返回 Android MIME、附件文件名和 `nosniff`，避免移动浏览器呈现二进制。
 
 代理限制包括 HTTPS-only、Origin 白名单、20 MiB 完整请求上限、禁止 URL 凭据、禁止自动重定向和受控查询 Key 转发。Worker 会读取请求体复核实际字节数；前端也会在发送前检查序列化 JSON，避免 base64 和历史附件累积超过同一上限。
 
@@ -124,12 +125,26 @@ Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 Pow
 `assets/manifest.webmanifest` 定义安装信息与图标。`assets/service-worker.js`：
 
 - 安装时缓存应用外壳；
-- 导航使用 network-first，离线回退到入口；
+- 导航使用 stale-while-revalidate：已有入口先返回，网络在后台刷新；无缓存时等待网络并在断网返回明确失败；
 - 同源静态资源使用 cache-first；
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-公开版本仍为 `v29` 时，内部缓存可使用 `v29-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+公开版本为 `v31` 时，内部缓存可使用 `v31-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+
+### Android WebView 壳
+
+`android/` 是独立的原生构建模块，不进入 Cloudflare Pages ZIP。`MainActivity` 只负责承载正式站点、生命周期、返回键、加载进度、失败重试和系统文件选择器；网页协议、对话和存储逻辑仍由同一线上前端负责。
+
+信任边界：
+
+- WebView 内只保留 `https://ai-shakedown-console.pages.dev`，其他 HTTP(S) 导航交给系统浏览器；
+- 禁止明文流量、混合内容、第三方 Cookie、弹窗、网页权限请求和 JavaScript 原生接口；
+- SSL 错误直接取消，主文档或 HTTP 错误显示原生失败页与重试动作；
+- APK 只声明 `INTERNET`，文件通过系统选择器的 URI 返回；
+- Android 15+ 根容器把 `WindowInsets.Type.systemBars() | displayCutout()` 应用为四边 padding，再用 `WindowInsets.Builder` 只把已处理类型设为 `Insets.NONE`；IME Insets 不被消费，继续交给 WebView 触发可视视口收缩。API 24–34 保持系统原有布局，软键盘统一使用 `adjustResize`；
+- Android 系统备份和设备迁移规则排除全部应用数据，Chrome/PWA 与 APK WebView 存储彼此独立；
+- Android 不运行桌面启动器或本机 CLI 桥接，手机端只使用远程 HTTPS API。
 
 #### macOS App Shim 与输入法边界
 

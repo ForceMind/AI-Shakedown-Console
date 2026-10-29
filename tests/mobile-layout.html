@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>移动端布局回归</title>
+<style>
+    body { margin: 24px; font: 16px/1.5 system-ui, sans-serif; color: #17211d; }
+    h1 { font-size: 22px; }
+    details { margin: 12px 0; }
+    summary { cursor: pointer; }
+    .preview { overflow: auto; max-height: 960px; margin-top: 8px; }
+    iframe { display: block; border: 1px solid #64716b; }
+    .pass { color: #11795a; }
+    .fail { color: #b83b3b; white-space: pre-wrap; }
+</style>
+<h1>移动端布局回归</h1>
+<p>使用当前 index.html 和 style.css 的隔离副本，禁用应用脚本，不读取或修改聊天、配置和凭据。
+    安全区值由测试模拟；本页不能验证 iOS 的真实键盘、自动放大或系统 Insets。</p>
+<p id="status" role="status">正在检查…</p>
+<div id="results"></div>
+<script type="module">
+    const cases = [
+        { name: 'iPhone 竖屏', width: 390, height: 844, insets: [47, 0, 34, 0] },
+        { name: 'iPhone 大屏', width: 430, height: 932, insets: [59, 0, 34, 0] },
+        { name: 'iPhone 横屏', width: 844, height: 390, insets: [0, 47, 21, 47] },
+        { name: '窄横屏', width: 740, height: 375, insets: [0, 44, 21, 44] },
+        { name: '无安全区手机', width: 375, height: 667, insets: [0, 0, 0, 0] },
+        { name: '窄 PWA 窗口', width: 630, height: 980, insets: [0, 0, 0, 0] },
+        { name: '桌面', width: 1280, height: 900, insets: [0, 0, 0, 0] }
+    ];
+    const results = document.querySelector('#results');
+    let passed = 0;
+    let checks = 0;
+    const assert = (condition, message) => {
+        checks++;
+        if (!condition) throw new Error(message);
+    };
+    const near = (actual, expected, label) => assert(Math.abs(actual - expected) < 1, `${label}: ${actual}，预期 ${expected}`);
+    const settled = (win) => new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve)));
+
+    try {
+        // A previous local PWA may still control this origin despite ?no-sw=1.
+        // Use a fresh URL as well as no-store so its CacheStorage cannot mask changes.
+        const sourceUrl = new URL('../index.html', location.href);
+        sourceUrl.searchParams.set('layout-test', Date.now());
+        const response = await fetch(sourceUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`读取 index.html 失败：${response.status}`);
+        const source = await response.text();
+        for (const scenario of cases) {
+            const details = document.createElement('details');
+            details.open = true;
+            const summary = document.createElement('summary');
+            summary.textContent = `${scenario.name} ${scenario.width}×${scenario.height}：检查中`;
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            const frame = document.createElement('iframe');
+            frame.title = scenario.name;
+            frame.width = scenario.width;
+            frame.height = scenario.height;
+            frame.setAttribute('sandbox', 'allow-same-origin');
+            preview.append(frame);
+            details.append(summary, preview);
+            results.append(details);
+
+            const fixture = new DOMParser().parseFromString(source, 'text/html');
+            fixture.querySelectorAll('script, link[rel="manifest"]').forEach(node => node.remove());
+            const base = fixture.createElement('base');
+            base.href = new URL('../', location.href).href;
+            fixture.head.prepend(base);
+            for (const link of fixture.querySelectorAll('link[rel="stylesheet"]')) {
+                const url = new URL(link.getAttribute('href'), base.href);
+                url.searchParams.set('layout-test', sourceUrl.searchParams.get('layout-test'));
+                link.href = url.href;
+            }
+            const stable = fixture.createElement('style');
+            stable.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+            fixture.head.append(stable);
+            ['top', 'right', 'bottom', 'left'].forEach((side, index) => {
+                fixture.documentElement.style.setProperty(`--safe-area-${side}`, `${scenario.insets[index]}px`);
+            });
+            fixture.body.classList.add('chat-focused');
+            const loaded = new Promise(resolve => frame.addEventListener('load', resolve, { once: true }));
+            frame.srcdoc = `<!doctype html>${fixture.documentElement.outerHTML}`;
+            await loaded;
+            const win = frame.contentWindow;
+            const doc = frame.contentDocument;
+            await doc.fonts.ready;
+            await settled(win);
+            const rect = selector => doc.querySelector(selector).getBoundingClientRect();
+            const [top, right, bottom, left] = scenario.insets;
+            const insideSafeArea = (box, label) => {
+                assert(box.top >= top - 1 && box.bottom <= scenario.height - bottom + 1, `${label} 进入上下安全区：${box.top}…${box.bottom}`);
+                assert(box.left >= left - 1 && box.right <= scenario.width - right + 1, `${label} 进入左右安全区：${box.left}…${box.right}`);
+            };
+            try {
+                const startChecks = checks;
+                assert(doc.documentElement.scrollWidth <= scenario.width, '页面横向溢出');
+                insideSafeArea(rect('.brand-block'), '标题');
+                insideSafeArea(rect('.header-actions'), '顶部操作');
+                assert(rect('.brand-block').right <= rect('.header-actions').left, '标题与顶部操作重叠');
+                near(rect('.workspace').bottom, scenario.height, '工作区底部');
+                near(rect('.composer').bottom, scenario.height, '输入区底部');
+                const inputBottom = scenario.height - bottom - (scenario.width <= 780 ? 10 : 14);
+                near(rect('#message-input').bottom, inputBottom, '输入框与底部安全区间距');
+                insideSafeArea(rect('#send-button'), '发送按钮');
+                for (const control of doc.querySelectorAll('input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]), select, textarea')) {
+                    const size = Number.parseFloat(win.getComputedStyle(control).fontSize);
+                    if (scenario.width <= 1024 || win.matchMedia('(any-pointer: coarse)').matches) {
+                        assert(size >= 16, `${control.id || control.tagName} 字号只有 ${size}px`);
+                    }
+                }
+                if (scenario.width > 1024 && !win.matchMedia('(any-pointer: coarse)').matches) {
+                    near(Number.parseFloat(win.getComputedStyle(doc.querySelector('#message-input')).fontSize), 14, '桌面聊天字号');
+                    near(Number.parseFloat(win.getComputedStyle(doc.querySelector('#system-prompt')).fontSize), 12, '桌面 System 字号');
+                }
+                for (const selector of ['.conversation-search', '.message-selection-bar']) {
+                    doc.querySelector(selector).hidden = false;
+                    near(rect('.composer').bottom, scenario.height, `${selector} 显示后输入区仍贴底`);
+                }
+                assert(rect('.chat-window').bottom <= rect('.composer').top + 1, '消息区与输入区重叠');
+                doc.querySelectorAll('.conversation-search, .message-selection-bar').forEach(bar => { bar.hidden = true; });
+
+                doc.body.classList.remove('chat-focused');
+                doc.querySelector('.workspace-sidebar').classList.add('is-open');
+                insideSafeArea(rect('.settings-panel'), '设置侧栏');
+                doc.body.classList.add('conversation-sidebar-enabled', 'sidebar-conversations');
+                insideSafeArea(rect('.workspace-sidebar-switcher'), '侧栏切换');
+                insideSafeArea(rect('.conversation-sidebar-actions'), '对话侧栏底部按钮');
+                doc.body.classList.remove('conversation-sidebar-enabled', 'sidebar-conversations');
+                doc.querySelector('.workspace-sidebar').classList.remove('is-open');
+                doc.body.classList.add('chat-focused');
+
+                for (const backdrop of doc.querySelectorAll('.modal-backdrop')) {
+                    backdrop.hidden = false;
+                    const dialog = backdrop.querySelector('[role="dialog"]');
+                    insideSafeArea(dialog.getBoundingClientRect(), backdrop.id);
+                    for (const footer of dialog.querySelectorAll('.help-footer, .agent-library-footer')) {
+                        insideSafeArea(footer.getBoundingClientRect(), `${backdrop.id} 底部操作`);
+                    }
+                    backdrop.hidden = true;
+                }
+                const toast = doc.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = '安全区回归测试';
+                doc.querySelector('.toast-region').append(toast);
+                insideSafeArea(toast.getBoundingClientRect(), '提示消息');
+                toast.remove();
+                summary.textContent = `PASS ${scenario.name} ${scenario.width}×${scenario.height}：${checks - startChecks} 项检查`;
+                summary.className = 'pass';
+                passed++;
+                details.open = passed === 1;
+            } catch (error) {
+                summary.textContent = `FAIL ${scenario.name}：${error.message}`;
+                summary.className = 'fail';
+                details.open = true;
+            }
+        }
+        const status = document.querySelector('#status');
+        status.textContent = `${passed === cases.length ? 'PASS' : 'FAIL'} ${passed}/${cases.length} 个布局场景，${checks} 项检查。iPhone 真机验证仍需单独执行。`;
+        status.className = passed === cases.length ? 'pass' : 'fail';
+    } catch (error) {
+        document.querySelector('#status').textContent = `FAIL ${error.message}`;
+    }
+</script>
+</html>

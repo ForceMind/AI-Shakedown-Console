@@ -31,6 +31,7 @@
 | 本机 CLI 适配 | `assets/local-codex-bridge.mjs` |
 | 启动器 | `assets/launch-codex-*` |
 | PWA | `assets/manifest.webmanifest`、`assets/service-worker.js` |
+| Android APK | `android/`、`scripts/validate-android-project.mjs` |
 | 附件与 PDF | `script.js`、`vendor/pdf*.mjs`、`vendor/pdfjs.LICENSE` |
 | 浏览器回归模拟服务 | `tests/mock-server.mjs`、`tests/fixtures/` |
 | 智能体目录 | `agents/`、`scripts/import-agency-agents.mjs` |
@@ -54,6 +55,8 @@ node --check assets/local-codex-bridge.mjs
 node --check scripts/import-agency-agents.mjs
 node scripts/validate-windows-launcher.mjs
 node scripts/validate-generation-parameters.mjs
+node scripts/validate-android-project.mjs
+node scripts/validate-worker-assets.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check
@@ -72,6 +75,9 @@ git diff --check
 - 完整备份在独立 Origin 追加恢复全部对话、System、草稿、分支、智能体标记和附件，重复导入不生成副本；
 - 第 5 个对话触发左侧列表；
 - PWA 安装、更新提示和离线外壳；
+- `tests/mobile-layout.html` 的字号、安全区和贴底布局回归；iPhone 主屏幕应用还需实测首次聚焦、软键盘开合和横竖屏，不应禁止手动缩放；
+- Android APK 的可信 Origin、返回键、系统文件选择、外链、离线错误、SSL 失败和权限清单；
+- Android 发布 APK 必须使用维护者保留的固定签名并核对证书指纹；没有密钥的贡献者可以修改和静态检查代码，但不得用临时签名替换发布产物；
 - 三系统启动器的解析与错误提示；Windows 还需验证任意下载目录、空格/中文路径、重复文件名和双击运行；
 - 本机桥接的 status/models/chat/shutdown，以及 Codex 默认 `ephemeral: true`、主动保存时为 `false`。
 - Safari 用户代理下，本机工具应显示 WebKit 回环连接限制，下载和检测按钮应禁用；Edge/Chrome 路径仍应正常下载、自动发现并连接。

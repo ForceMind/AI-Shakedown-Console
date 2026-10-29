@@ -26,6 +26,18 @@ node tests/mock-server.mjs
 
 这个服务只监听 `127.0.0.1`，不应部署到公网，也不属于正式发布 ZIP。
 
+## 生成期间滚动回归
+
+启动上述服务后，在另一个终端执行（需要已有 Playwright 与 Chromium）：
+
+```bash
+node tests/chat-scroll.mjs
+```
+
+可通过 `PLAYWRIGHT_MODULE_PATH` 指定已安装的 `playwright/index.mjs` 绝对路径，通过 `CHROMIUM_PATH` 指定浏览器可执行文件；`TEST_BASE_URL` 默认 `http://127.0.0.1:4173`，`TEST_OUTPUT_DIR` 默认 `/tmp/ai-shakedown-chat-scroll`。
+
+测试打开全新的隔离浏览器上下文，使用模拟 SSE 响应驱动真实页面，不读取已有浏览器数据、不调用真实模型。覆盖大块内容自动跟随、桌面滚轮上滑、Chromium 触摸手势、细微上滑、回到底部恢复跟随、新消息、正常完成、部分回复停止、流式失败和浏览器异常，并保存桌面/窄屏截图。触摸手势是 Chromium 模拟，手机 Safari、PWA 和 Android WebView 仍需真机补验。
+
 ## 智能体目录回归
 
 运行以下命令验证 388 个目录项、268/120 来源拆分、正文路径、必备事务型角色、项目正文修订和医疗安全边界：
@@ -53,3 +65,38 @@ node scripts/validate-generation-parameters.mjs
 ```
 
 该检查直接执行 `script.js` 中的请求体组装函数，确认四个开关关闭时即使输入框仍有数值、内部能力检查传入最大 Token 覆盖值，也不会发送 Temperature、Top P、Top K 或 Max Tokens；重新开启后恢复协议对应字段，Gemini 在全部关闭时不发送空的 `generationConfig`。
+
+## Android APK 回归
+
+```bash
+node scripts/validate-android-project.mjs
+cd android && ./gradlew lintDebug assembleDebug
+```
+
+静态检查确认 APK 只申请联网权限、固定正式 HTTPS Origin、禁止明文/混合内容/第三方 Cookie/网页权限/JavaScript 原生接口，SSL 错误必须取消，系统备份关闭，并包含 5 档启动图标。构建后继续执行 `aapt dump badging`、`zipalign -c`、`apksigner verify` 和敏感字符串扫描；`apksigner` 报告的证书 SHA-256 必须是 `09:DF:BD:43:4D:09:74:0A:B6:39:C3:0E:B9:87:03:D0:96:5B:8F:D6:C1:8D:F2:5A:03:66:30:78:67:56:D6:2A`。
+
+真机测试矩阵：Android 7/当前稳定版至少各一台，覆盖首次联网加载、返回键、横竖屏恢复、状态栏/刘海/底部导航栏 Insets、软键盘 `adjustResize`、焦点输入框自动上移、键盘关闭后无 ghost padding、系统文件选择器多选、外链切出、离线失败页/重试、证书错误拒绝、WebView 数据独立，以及卸载前完整备份提示。Debug 签名不作为应用商店发布验证。
+
+## Worker 静态资源头回归
+
+```bash
+node scripts/validate-worker-assets.mjs
+```
+
+该检查用带 `Accept: text/html` 的 APK 导航请求验证 Worker 仍返回 Android MIME、附件文件名、不可变缓存和 `nosniff`，同时确保文档和普通静态资源的既有缓存/透传行为不变，并确认 Service Worker 已推进到 v31-r2。下载 URL 为 `v=31-r1`。
+
+## PWA 启动缓存回归
+
+```bash
+node scripts/validate-pwa-cache.mjs
+```
+
+该检查使用 Service Worker 的最小隔离运行环境验证：已有 shell 时先返回缓存页面、联网刷新通过 `waitUntil` 在后台完成；首次打开等待网络并写入 shell；无缓存且断网时返回 503，让 APK 显示现有错误页和重试按钮。
+
+## iPhone 字号与安全区回归
+
+启动上述服务后打开 `http://127.0.0.1:4173/tests/mobile-layout.html`，应显示 `PASS 7/7`。该页复制当前 HTML、加载真实 CSS，移除所有应用脚本并在不允许脚本的 iframe 中渲染；不读取或修改配置、聊天和凭据。
+
+测试注入四边安全区尺寸，覆盖 390×844、430×932、844×390、740×375、375×667、630×980 和 1280×900。实际测量输入字号、横向溢出、输入区贴底、发送区安全距离、搜索/多选工具条、设置/对话侧栏、全部弹窗与提示消息；同时确认无安全区时不多留白，桌面原字号不变。
+
+这是布局模拟，不是 iOS WebKit 实机测试。发布前还需在 iPhone Safari 和主屏幕应用中验证首次点击输入框、软键盘弹出/收起、横竖屏、后台恢复及手动缩放；不能把桌面浏览器的字号或几何检查当作自动缩放已经实机通过。

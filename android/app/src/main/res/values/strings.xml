@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI Shakedown Console</string>
+    <string name="load_failed">暂时无法打开页面</string>
+    <string name="load_failed_detail">请检查网络连接，然后重试。应用不会绕过证书或系统安全检查。</string>
+    <string name="retry">重新加载</string>
+    <string name="file_picker_unavailable">手机上没有可用的文件选择器</string>
+</resources>

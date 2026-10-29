@@ -1,7 +1,7 @@
 const PROXY_PATH = '/api/proxy';
 const STATUS_PATH = '/api/status';
 const WORKER_VERSION = 'proxy-6';
-const APP_VERSION = 'v29';
+const APP_VERSION = 'v31';
 const MAX_REQUEST_BYTES = 20 * 1024 * 1024;
 
 const BLOCKED_REQUEST_HEADERS = new Set([
@@ -133,17 +133,23 @@ async function assetResponse(request, env) {
     const response = await env.ASSETS.fetch(request);
     const url = new URL(request.url);
     const acceptsHtml = request.headers.get('Accept')?.includes('text/html');
-    const isDocument = url.pathname === '/' || url.pathname.endsWith('.html') || acceptsHtml;
+    const isAndroidApk = url.pathname === '/assets/AI-Shakedown-Console-v31-debug.apk';
+    const isDocument = !isAndroidApk && (url.pathname === '/' || url.pathname.endsWith('.html') || acceptsHtml);
     const isAgentIndex = url.pathname === '/agents/index.json';
     const isAgentContent = url.pathname.startsWith('/agents/content/');
     const isServiceWorker = url.pathname === '/assets/service-worker.js';
     const isManifest = url.pathname === '/assets/manifest.webmanifest';
-    if (!isDocument && !isAgentIndex && !isAgentContent && !isServiceWorker && !isManifest) return response;
+    if (!isDocument && !isAgentIndex && !isAgentContent && !isServiceWorker && !isManifest && !isAndroidApk) return response;
 
     const headers = new Headers(response.headers);
     if (isDocument) {
         headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         headers.set('X-App-Version', APP_VERSION);
+    } else if (isAndroidApk) {
+        headers.set('Content-Type', 'application/vnd.android.package-archive');
+        headers.set('Content-Disposition', 'attachment; filename="AI-Shakedown-Console-v31-debug.apk"');
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('X-Content-Type-Options', 'nosniff');
     } else if (isAgentIndex) {
         headers.set('Cache-Control', 'no-cache, must-revalidate');
     } else if (isServiceWorker || isManifest) {

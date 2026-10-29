@@ -1,2 +1,10 @@
 .DS_Store
 *.zip
+*.apk
+!assets/AI-Shakedown-Console-v30-debug.apk
+!assets/AI-Shakedown-Console-v31-debug.apk
+android/.gradle/
+android/local.properties
+android/**/build/
+.android-signing/
+.android-toolchain/

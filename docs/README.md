@@ -10,8 +10,10 @@
 | 编辑 System、复制、搜索、导出消息或使用附件 | [使用指南：System 提示词](./USER_GUIDE.md#system-提示词) |
 | 把全部对话和附件迁移到另一台电脑 | [使用指南：完整备份与跨设备恢复](./USER_GUIDE.md#完整备份与跨设备恢复) |
 | 使用本机登录的 Codex、Gemini 等工具 | [本机 AI 指南](./LOCAL_AI.md) |
+| 把应用安装到 Android 手机 | [Android APK](./ANDROID.md) |
 | `.command` 没权限、Node 未找到或端口冲突 | [故障排查](./TROUBLESHOOTING.md) |
 | 安装 PWA 或理解离线范围 | [使用指南：PWA](./USER_GUIDE.md#安装-pwa) |
+| iPhone 点输入框放大或底部小横条遮挡 | [故障排查：iPhone 显示](./TROUBLESHOOTING.md#iphone-输入框自动放大或底部小横条遮挡) |
 | Edge PWA 输入拼音但没有候选窗 | [故障排查：Edge PWA 中文输入](./TROUBLESHOOTING.md#edge-pwa-输入拼音但没有候选窗) |
 | Safari Web App 无法检测本机 Codex | [故障排查：页面无法访问 127.0.0.1](./TROUBLESHOOTING.md#页面无法访问-127001) |
 | 部署到 Cloudflare Pages | [部署与发布](./DEPLOYMENT.md) |
@@ -27,8 +29,9 @@
 建议依次阅读：
 
 1. [使用指南](./USER_GUIDE.md)
-2. 如需复用本机登录，再读 [本机 AI 指南](./LOCAL_AI.md)
-3. 出现错误时按提示前往 [故障排查](./TROUBLESHOOTING.md)
+2. 如需安装手机壳应用，阅读 [Android APK](./ANDROID.md)
+3. 如需复用本机登录，再读 [本机 AI 指南](./LOCAL_AI.md)
+4. 出现错误时按提示前往 [故障排查](./TROUBLESHOOTING.md)
 
 ### 部署者
 
@@ -50,7 +53,7 @@
 ## 文档约定
 
 - 命令默认在项目根目录运行，除非文中另有说明。
-- `v29` 表示网页与 PWA 资源版本；`proxy-6` 表示 Worker 接口版本，两者独立。
+- `v31` 表示网页、PWA 与 Android 壳版本；`proxy-6` 表示 Worker 接口版本，两者独立。
 - 页面显示文字以当前发布版为准；文档中的目录和按钮名称与中文版界面一致。
 - 本机桥接统称“本机 AI”，实际支持 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode。
 

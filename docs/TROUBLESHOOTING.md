@@ -243,6 +243,23 @@ https://api.example.com,https://gateway.example.com:8443
 
 ## PWA 与缓存
 
+### iPhone 输入框自动放大或底部小横条遮挡
+
+旧样式的聊天输入框为 14px，System 编辑器为 12px；iOS 可能在聚焦时自动放大这类小字号控件。这与 PWA 是否安装成功无关。`v31` 把窄屏及触摸设备输入控件改为至少 16px，保留手动缩放，不使用禁止缩放或拦截手势来掩盖问题。
+
+同一修订启用 `viewport-fit=cover`，按 `safe-area-inset-*` 为底部 Home 指示条、顶部状态栏和横屏刘海预留空间。聊天区的安全区在输入区内部消化，侧栏与弹窗单独处理，不应出现双重留白。设备不报告安全区时回退为 0；键盘高度不由安全区值推算。
+
+1. 部署最新 `AI-Shakedown-Console-cf-pages-worker-v31.zip`，已安装应用看到“发现内容更新”后点击“立即刷新”。公开版本显示 v31，样式 URL 应为 `style.css?v=31-r1`，shell/runtime 缓存为 `v31-r2`。
+2. 从主屏幕重新打开，第一次点击聊天框，再测试 System、搜索和设置输入框；观察是否仍自动放大。
+3. 关闭键盘后检查输入框、发送按钮和弹窗底部按钮是否避开小横条，并横屏复测。再单独检查键盘弹出、切换输入框和收起后的布局恢复。
+4. 仍异常时记录 iOS 版本、机型、横竖屏、是否显示键盘和截图，并比较同网址的 Safari 标签页。桌面尺寸模拟不能确认 iOS 实机的缩放与键盘行为。
+
+不要先删除主屏幕应用或清除站点数据，这可能丢失本地聊天和凭据。技术背景见 [WebKit 安全区说明](https://webkit.org/blog/7929/designing-websites-for-iphone-x/)。
+
+### 手机点击“下载 APK”却打开乱码页面
+
+APK 本质是 ZIP 二进制。若服务器没有返回 Android MIME 和附件下载头，部分移动浏览器会把它当页面显示为乱码。部署 v31-r1 后确认线上 APK 响应包含 `Content-Type: application/vnd.android.package-archive` 和 `Content-Disposition: attachment`；不要把乱码内容复制或另存为文本。
+
 ### 部署后仍显示旧版本
 
 1. 确认部署包内 `index.html`、`script.js` 和 Service Worker 都是同一版本。

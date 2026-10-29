@@ -4,15 +4,17 @@
   <p><strong>在一个干净的网页里，连接、检查并使用你的 AI 模型。</strong></p>
   <p>多协议 API 调试 · 本机 CLI 登录复用 · 智能体库 · 多对话 · PWA</p>
   <p>
-    <img alt="Version v29" src="https://img.shields.io/badge/version-v29-11795a?style=flat-square">
+    <img alt="Version v31" src="https://img.shields.io/badge/version-v31-11795a?style=flat-square">
     <img alt="PWA ready" src="https://img.shields.io/badge/PWA-ready-2f6f9f?style=flat-square">
-    <img alt="No build step" src="https://img.shields.io/badge/build-none-64716b?style=flat-square">
+    <img alt="Web build none" src="https://img.shields.io/badge/web_build-none-64716b?style=flat-square">
     <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17211d?style=flat-square"></a>
   </p>
   <p>
     <a href="https://ai-shakedown-console.pages.dev/"><strong>在线使用</strong></a>
     · <a href="./docs/USER_GUIDE.md">使用指南</a>
     · <a href="./docs/LOCAL_AI.md">本机 AI</a>
+    · <a href="./docs/ANDROID.md">Android APK</a>
+    · <a href="./assets/AI-Shakedown-Console-v31-debug.apk"><strong>下载 APK</strong></a>
     · <a href="./docs/DEPLOYMENT.md">部署</a>
     · <a href="./docs/TROUBLESHOOTING.md">排查问题</a>
   </p>
@@ -20,9 +22,9 @@
 
 ---
 
-AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode。
+AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode；`android/` 另提供需要 Android 工具链的轻量 APK 壳。
 
-`v29` 是当前版本：Temperature、Top P、Top K 和 Max Tokens 可分别关闭，关闭后字段会从请求体完全省略，兼容拒绝采样参数的 Responses/推理模型；同时包含 v28 的 Windows 单文件启动器修复。
+`v31` 是当前版本：提供 Android 7+ 轻量 WebView APK、PWA 启动缓存优化、iPhone 输入字号与底部安全区、可选生成参数和 Windows 启动器。 当前内容修订 `v31-r2` 修复生成期间上滑查看前文时被强制拉回底部的问题。
 
 ## 为什么使用它
 
@@ -35,6 +37,7 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 | 发送本地文件 | 支持图片、文本/代码和可提取文字的 PDF；仅在模型通过图片探测后显示入口 |
 | 使用专业角色 | 388 个内置中文智能体、明确取消入口，并支持自建 System 智能体 |
 | 像桌面应用运行 | 可安装 PWA，独立窗口启动并离线打开应用外壳 |
+| 安装到 Android | 提供只访问正式 HTTPS 站点的轻量 WebView APK，支持系统文件选择器 |
 | 排查连接问题 | 脱敏请求检查器、连接测试、模型列表和清晰的错误提示 |
 
 ## 三分钟开始
@@ -64,6 +67,7 @@ AI Shakedown Console 是一个无需构建步骤的多协议 AI 工作台。它�
 - **本机 CLI 桥接**：Edge/Chrome 启动器自动检查环境、停止同工具旧桥接、避开被占端口并转入后台；Windows 单文件启动器支持自定义下载目录、空格/中文路径和重复文件名。
 - **安全 Markdown**：使用 Marked 解析 GitHub Flavored Markdown，再由 DOMPurify 清洗后显示。
 - **PWA 与离线外壳**：可安装到桌面或主屏幕；离线时仍能打开页面和查看浏览器本地数据。
+- **Android APK**：Android 7+ 可侧载轻量 WebView 壳；只申请联网权限，APK 数据与浏览器/PWA 独立。
 - **Cloudflare Pages Worker**：同域代理只允许访问 `ALLOWED_UPSTREAMS` 白名单，避免成为开放代理。
 
 ## 支持范围
@@ -107,6 +111,7 @@ flowchart LR
 | [文档首页](./docs/README.md) | 所有人 | 按任务选择正确文档 |
 | [使用指南](./docs/USER_GUIDE.md) | 普通用户 | 连接、聊天、智能体、导入、PWA、快捷键 |
 | [本机 AI 指南](./docs/LOCAL_AI.md) | 本机 CLI 用户 | 三系统启动、权限、后台、更新与安全边界 |
+| [Android APK](./docs/ANDROID.md) | Android 用户 | 侧载安装、数据边界、限制与维护者构建流程 |
 | [故障排查](./docs/TROUBLESHOOTING.md) | 遇到错误的用户 | 中文输入、Node、端口、权限、CORS、缓存等 |
 | [部署与发布](./docs/DEPLOYMENT.md) | 部署者 | Cloudflare Pages、环境变量、ZIP 和发布检查 |
 | [架构说明](./docs/ARCHITECTURE.md) | 维护者 | 模块、数据流、协议适配、存储与缓存 |
@@ -155,7 +160,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v29` 已完成计划中的网页版本：多协议与多模态连接、可选生成参数、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、帮助、PWA、后台桥接、三系统启动器、中文输入兼容和稳定的贴底编辑器均已落地。
+`v31` 已完成计划中的网页与 Android 测试版：多协议与多模态连接、可选生成参数、本机登录工具、完整聊天操作、多对话、388 个内置智能体、附件、跨设备备份、PWA 启动缓存优化、三系统启动器和 Android WebView 壳均已落地。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

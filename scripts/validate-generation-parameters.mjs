@@ -6,11 +6,18 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(root, 'script.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const parameterNames = ['temperature', 'top-p', 'top-k', 'max-tokens'];
-
-for (const name of parameterNames) {
-    assert.match(html, new RegExp(`id="${name}-enabled"[^>]*type="checkbox"[^>]*checked`), `${name} must have a default-enabled toggle`);
+for (const name of ['temperature', 'top-p']) {
+    const toggle = html.match(new RegExp(`<input id="${name}-enabled"[^>]*>`))?.[0] || '';
+    assert.ok(toggle, `${name} toggle is missing`);
+    assert.doesNotMatch(toggle, /\schecked(?:\s|>|=)/, `${name} must default to disabled`);
 }
+for (const name of ['top-k', 'max-tokens']) {
+    assert.match(html, new RegExp(`id="${name}-enabled"[^>]*type="checkbox"[^>]*checked`), `${name} must default to enabled`);
+}
+assert.match(source, /temperatureEnabled:\s*false/);
+assert.match(source, /topPEnabled:\s*false/);
+assert.match(source, /topKEnabled:\s*true/);
+assert.match(source, /maxTokensEnabled:\s*true/);
 
 const functionSource = (name, nextName) => {
     const start = source.indexOf(`function ${name}(`);

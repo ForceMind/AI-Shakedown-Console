@@ -8,8 +8,8 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 
 | 版本 | 状态 |
 | --- | --- |
-| v27 / `main` | 支持 |
-| v26 及更早 | 仅历史存档，建议升级 |
+| v31 / `main` | 支持 |
+| v29 及更早 | 仅历史存档，建议升级 |
 
 ## 凭据与浏览器存储
 
@@ -67,6 +67,19 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 - Antigravity：当前没有等价的已文档化禁用工具参数，应视为 Beta。
 
 任何模型都可能受提示注入影响。本机模式不应被当作通用安全隔离层，尤其不要把不可信网页内容、未知仓库文本或机密环境交给 Antigravity 路径处理。
+
+## Android APK 边界
+
+- Android 壳只申请 `INTERNET` 权限，不申请相机、麦克风、定位或广泛文件权限；附件由系统文件选择器提供临时 URI。
+- WebView 固定信任 `https://ai-shakedown-console.pages.dev`，其他 HTTP(S) 导航交给系统浏览器；禁止明文流量、混合内容、第三方 Cookie 和网页权限请求。
+- SSL 错误必须取消，不能提供“继续访问”；原生代码不得注入 JavaScript 接口或把 Android 系统对象暴露给网页。
+- `android:allowBackup="false"`，避免 WebView 内的 API Key、对话和附件引用进入 Android 云备份。
+- Debug APK 只用于侧载测试。长期分发必须使用受保护、可备份的发布密钥；私钥、密码和 `local.properties` 不得提交仓库或打入 APK。
+- 本地 `.android-signing/` 必须保持 Git 忽略并单独安全备份；Debug 密钥只用于同一签名线后续覆盖安装，不得当作应用商店发布密钥或通过网页分发。
+- 固定密钥缺失时必须停止构建，禁止无提示生成或选用替代密钥；每个发布 APK 都必须核对证书 SHA-256，避免签名漂移迫使用户卸载并丢失 WebView 数据。
+- 网页提供的 APK 必须来自当前发布构建，并在 Android 文档中公布 SHA-256；Cloudflare Pages ZIP 中的 APK、根目录交付 APK和文档哈希必须一致。
+- Worker 必须把 APK 标记为 `application/vnd.android.package-archive` 并使用附件下载头与 `nosniff`，避免浏览器把签名二进制当作可呈现页面解释。
+- Android 15+ 必须按系统栏与显示切口 Insets 移动可交互内容，不得硬编码状态栏高度；底部导航栏和软键盘不得覆盖输入框、发送按钮或安全提示。
 
 ## 对话与导入
 
