@@ -130,7 +130,7 @@ Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 Pow
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-当前网页候选为 `v32`，shell/runtime 缓存和网页自有资源查询参数使用 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+当前网页候选为 `v32`，shell/runtime 缓存与样式查询参数为 v32-r2，脚本、manifest 与图标仍为 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 ### Android WebView 壳
 

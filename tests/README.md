@@ -112,4 +112,4 @@ node scripts/validate-chat-compat.mjs
 
 `validate-chat-compat.mjs` 另用 Node VM 验证健康/Linux/macOS/Windows 角色搜索、应用和两个取消入口保留历史，并以 App Server RPC stub 核对临时/持久线程的精确载荷、模式隔离及旧 CLI 拒绝 `ephemeral` 时停止请求；不会启动真实 CLI 或调用模型。
 
-v32 本轮未运行 `chat-scroll.mjs` 或移动布局回归页，也没有真实设备验收。需要明确授权后再执行相应浏览器测试。
+v32-r2 已获授权并运行移动布局回归页：7 组场景、547 项检查通过，使用模拟消息覆盖气泡、正文、按钮和贴底布局。实际页面复查桌面/手机视口、提示词弹窗与侧栏抽屉。`chat-scroll.mjs` 本轮未运行，真实设备仍未验收。

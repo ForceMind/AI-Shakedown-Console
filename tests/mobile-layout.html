@@ -79,6 +79,10 @@
                 fixture.documentElement.style.setProperty(`--safe-area-${side}`, `${scenario.insets[index]}px`);
             });
             fixture.body.classList.add('chat-focused');
+            // Synthetic messages exercise real message selectors without a model call.
+            fixture.querySelector('#chat-window').innerHTML = `
+                <div class="message-row user"><div class="message-avatar">你</div><div class="message-main"><div class="message-content">布局测试：帮我整理一下今天的计划。</div></div></div>
+                <div class="message-row assistant"><div class="message-avatar">AI</div><div class="message-main"><div class="message-content markdown-content"><p>这是用于检查消息样式的模拟回复。</p><p>用户消息应显示浅灰气泡，模型回复使用无框正文。</p></div></div></div>`;
             const loaded = new Promise(resolve => frame.addEventListener('load', resolve, { once: true }));
             frame.srcdoc = `<!doctype html>${fixture.documentElement.outerHTML}`;
             await loaded;
@@ -103,6 +107,16 @@
                 insideSafeArea(rect('.composer-surface'), '圆角输入区');
                 assert(rect('#message-input').bottom <= rect('.composer-surface').bottom, '输入框超出圆角容器');
                 insideSafeArea(rect('#send-button'), '发送按钮');
+                assert(rect('.composer').bottom - rect('.composer-surface').bottom <= bottom + 60, '输入容器没有贴近底部');
+                near(rect('#send-button').width, rect('#send-button').height, '发送按钮应为正圆');
+                const promptButton = doc.querySelector('#system-prompt-edit');
+                assert(promptButton.scrollWidth <= promptButton.clientWidth + 1, '提示词按钮文字溢出');
+                const userStyle = win.getComputedStyle(doc.querySelector('.message-row.user .message-content'));
+                assert(userStyle.backgroundColor === 'rgb(243, 243, 243)', '用户消息缺少浅灰气泡');
+                assert(parseFloat(userStyle.borderRadius) >= 20, '用户气泡圆角丢失');
+                const replyStyle = win.getComputedStyle(doc.querySelector('.message-row.assistant .message-content'));
+                near(parseFloat(replyStyle.borderTopWidth), 0, '模型回复不应有边框');
+                assert(win.getComputedStyle(doc.querySelector('.message-row.assistant .message-avatar')).display === 'none', '模型头像应隐藏');
                 for (const control of doc.querySelectorAll('input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]), select, textarea')) {
                     const size = Number.parseFloat(win.getComputedStyle(control).fontSize);
                     if (scenario.width <= 1024 || win.matchMedia('(any-pointer: coarse)').matches) {
@@ -136,6 +150,14 @@
                     backdrop.hidden = false;
                     const dialog = backdrop.querySelector('[role="dialog"]');
                     insideSafeArea(dialog.getBoundingClientRect(), backdrop.id);
+                    if (backdrop.id === 'system-prompt-modal') {
+                        for (const id of ['system-prompt-save', 'system-prompt-cancel']) {
+                            const button = doc.getElementById(id);
+                            assert(button.scrollWidth <= button.clientWidth + 1, `${id} 按钮文字溢出`);
+                            const style = win.getComputedStyle(button);
+                            assert(style.color !== style.backgroundColor, `${id} 按钮文字不可读`);
+                        }
+                    }
                     for (const footer of dialog.querySelectorAll('.help-footer, .agent-library-footer')) {
                         insideSafeArea(footer.getBoundingClientRect(), `${backdrop.id} 底部操作`);
                     }
