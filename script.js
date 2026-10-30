@@ -3604,14 +3604,15 @@ async function sendMessage(event) {
         assistant.row.classList.remove('pending');
         if (error.name === 'AbortError') {
             streamRenderer.finish(assistantText || '已停止生成');
-            if (assistantText) {
-                conversation.history = [...priorHistory, userMessage, createStoredMessage('assistant', assistantText)];
-                conversation.systemPrompt = elements.systemPrompt.value;
-                if (!priorHistory.length && !conversation.parentConversationId) conversation.title = deriveConversationTitle(userText);
-                persistConversations();
-                renderConversationTabs();
-                renderActiveConversation({ preserveScroll: true });
-            }
+            // Cancellation still submits a user turn, even before the first delta.
+            // Keep its attachment references without inventing an assistant reply.
+            conversation.history = [...priorHistory, userMessage,
+                ...(assistantText ? [createStoredMessage('assistant', assistantText)] : [])];
+            conversation.systemPrompt = elements.systemPrompt.value;
+            if (!priorHistory.length && !conversation.parentConversationId) conversation.title = deriveConversationTitle(userText);
+            persistConversations();
+            renderConversationTabs();
+            renderActiveConversation({ preserveScroll: true });
             showToast('已停止生成');
         } else {
             streamRenderer.cancel();

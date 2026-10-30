@@ -59,6 +59,7 @@ node scripts/validate-android-project.mjs
 node scripts/validate-worker-assets.mjs
 node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
+node scripts/validate-chat-cancellation.mjs
 bash -n assets/launch-codex-macos.command
 bash -n assets/launch-codex-linux.sh
 git diff --check

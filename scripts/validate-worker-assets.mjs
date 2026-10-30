@@ -45,8 +45,8 @@ assert.equal(passthroughResponse.headers.get('X-Passthrough'), 'yes');
 assert.equal(passthroughResponse.headers.get('Content-Disposition'), null);
 
 const serviceWorker = fs.readFileSync(path.join(root, 'assets', 'service-worker.js'), 'utf8');
-assert.match(serviceWorker, /shell-v32-r2/);
-assert.match(serviceWorker, /runtime-v32-r2/);
+assert.match(serviceWorker, /shell-v32-r3/);
+assert.match(serviceWorker, /runtime-v32-r3/);
 assert.match(serviceWorker, /cache\.put\('\/index\.html', response\.clone\(\)\)/);
 
 console.log('Worker asset header validation passed.');

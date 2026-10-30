@@ -106,6 +106,7 @@ node scripts/validate-pwa-cache.mjs
 ```bash
 node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
+node scripts/validate-chat-cancellation.mjs
 ```
 
 检查页面 ID 与脚本引用、桌面侧栏开合、手机抽屉、连接设置切换、跨断点状态、隐藏侧栏的 `inert` / 焦点恢复，以及 v31 流式阅读位置保持。使用 Node VM 与控件替身，不渲染页面，不读取浏览器数据，也不调用模型；通过此检查不能视为视觉或浏览器交互验收通过。
@@ -113,3 +114,5 @@ node scripts/validate-chat-compat.mjs
 `validate-chat-compat.mjs` 另用 Node VM 验证健康/Linux/macOS/Windows 角色搜索、应用和两个取消入口保留历史，并以 App Server RPC stub 核对临时/持久线程的精确载荷、模式隔离及旧 CLI 拒绝 `ephemeral` 时停止请求；不会启动真实 CLI 或调用模型。
 
 v32-r2 已获授权并运行移动布局回归页：7 组场景、547 项检查通过，使用模拟消息覆盖气泡、正文、按钮和贴底布局。实际页面复查桌面/手机视口、提示词弹窗与侧栏抽屉。`chat-scroll.mjs` 本轮未运行，真实设备仍未验收。
+
+`validate-chat-cancellation.mjs` 验证主动停止始终保存用户消息及附件引用，覆盖首段前停止、已有历史、部分回复和正常完成；不启动浏览器或真实模型。

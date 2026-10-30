@@ -249,7 +249,7 @@ https://api.example.com,https://gateway.example.com:8443
 
 同一修订启用 `viewport-fit=cover`，按 `safe-area-inset-*` 为底部 Home 指示条、顶部状态栏和横屏刘海预留空间。聊天区的安全区在输入区内部消化，侧栏与弹窗单独处理，不应出现双重留白。设备不报告安全区时回退为 0；键盘高度不由安全区值推算。
 
-1. 若维护者批准部署 v32 候选，再使用 `AI-Shakedown-Console-cf-pages-worker-v32.zip`；已安装应用看到“发现内容更新”后点击“立即刷新”。候选样式 URL 为 `style.css?v=32-r2`，shell/runtime 缓存为 `v32-r2`。本轮尚未部署，线上状态需另行核对。
+1. 若维护者批准部署 v32 候选，再使用 `AI-Shakedown-Console-cf-pages-worker-v32.zip`；已安装应用看到“发现内容更新”后点击“立即刷新”。候选样式 URL 为 `style.css?v=32-r2`，shell/runtime 缓存为 `v32-r3`。本轮尚未部署，线上状态需另行核对。
 2. 从主屏幕重新打开，第一次点击聊天框，再测试 System、搜索和设置输入框；观察是否仍自动放大。
 3. 关闭键盘后检查输入框、发送按钮和弹窗底部按钮是否避开小横条，并横屏复测。再单独检查键盘弹出、切换输入框和收起后的布局恢复。
 4. 仍异常时记录 iOS 版本、机型、横竖屏、是否显示键盘和截图，并比较同网址的 Safari 标签页。桌面尺寸模拟不能确认 iOS 实机的缩放与键盘行为。

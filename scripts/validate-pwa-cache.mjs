@@ -95,7 +95,7 @@ async function runNavigation(fetchValue, navigationRequest = request) {
 
 // A warm launch returns the shell before the network refresh completes.
 cacheStores.clear();
-const shell = cacheFor('ai-shakedown-console-shell-v32-r2');
+const shell = cacheFor('ai-shakedown-console-shell-v32-r3');
 await shell.put('/index.html', new FakeResponse('cached-shell'));
 let resolveNetwork;
 const refresh = new Promise(resolve => { resolveNetwork = resolve; });
@@ -112,7 +112,7 @@ assert.equal((await shell.match('/')).body, 'new-shell');
 cacheStores.clear();
 const cold = await runNavigation(Promise.resolve(new FakeResponse('first-shell')));
 assert.equal(cold.response.body, 'first-shell');
-assert.equal((await cacheFor('ai-shakedown-console-shell-v32-r2').match('/index.html')).body, 'first-shell');
+assert.equal((await cacheFor('ai-shakedown-console-shell-v32-r3').match('/index.html')).body, 'first-shell');
 
 cacheStores.clear();
 const offline = await runNavigation(Promise.reject(new Error('offline')));
@@ -120,7 +120,7 @@ assert.equal(offline.response.status, 503);
 assert.match(offline.response.body, /尚未缓存/);
 
 // Network errors and HTTP errors never replace a working shell.
-const activeShell = cacheFor('ai-shakedown-console-shell-v32-r2');
+const activeShell = cacheFor('ai-shakedown-console-shell-v32-r3');
 await activeShell.put('/index.html', new FakeResponse('working-shell'));
 const offlineWarm = await runNavigation(Promise.reject(new Error('offline')));
 assert.equal(offlineWarm.response.body, 'working-shell');
@@ -149,7 +149,7 @@ assert.equal(apk.response.headers.get('Content-Type'), 'application/vnd.android.
 
 // Cache quota/write failures must not turn a successful first launch into a 503.
 cacheStores.clear();
-cacheFor('ai-shakedown-console-shell-v32-r2').put = async () => { throw new Error('quota'); };
+cacheFor('ai-shakedown-console-shell-v32-r3').put = async () => { throw new Error('quota'); };
 const quota = await runNavigation(Promise.resolve(new FakeResponse('network-without-cache')));
 assert.equal(quota.response.body, 'network-without-cache');
 

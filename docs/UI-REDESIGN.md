@@ -52,3 +52,13 @@
 - 当前 ZIP：`AI-Shakedown-Console-cf-pages-worker-v32.zip`，419 文件，2,739,592 字节（2.61 MiB）；逐文件核对工作区，manifest 与图标尺寸检查通过。首轮 ZIP 保留为 `AI-Shakedown-Console-cf-pages-worker-v32-r1.zip`。
 - 当前 ZIP SHA-256：`de7fdcea812668cf245c7c59e3223e467562daf6f1702a1595a3aa5ae47e8ae2`。
 - 浏览器检查属于本机视口模拟；iPhone/Android 真机键盘、PWA 安装更新、真实 API 与线上部署仍未验证。
+
+## v32-r3 首段前停止修复（2026-10-30）
+
+- 用户授权修复早停消息丢失、浏览器回归、更新 ZIP 并推送 `ui-chatgpt`，暂不部署。
+- 主动停止时始终保存用户消息与附件引用；有模型内容才保存模型回复。保留已有历史、标题与 System，维持原 schema。
+- 单元检查 5 组通过，涵盖无首段、附件、已有历史、部分回复及正常完成；原有必要检查通过。
+- 新 Origin `127.0.0.1:42921` 使用本地模拟 SSE。浏览器确认首段前停止后只保留用户消息、切换对话和刷新后仍存在；已有历史停止、部分内容停止和停止后续发正常；控制台未见警告或错误。未使用真实凭据或模型。
+- 网页仍为 v32；脚本 URL 和 shell/runtime 缓存为 v32-r3，CSS 保持 v32-r2。
+- 当前 ZIP `AI-Shakedown-Console-cf-pages-worker-v32.zip`：419 文件，2,739,685 字节。文件逐一匹配工作区，图标尺寸通过；保留上一份 v32-r2 ZIP。SHA-256：`3c08e5937e81dc2c4176be51d1e5d6b34b0094160a2f6d95df73ef1d17c9af6a`。
+- 真实 API、手机真机和线上部署未验证。本轮未改连接与备份格式，也未部署。

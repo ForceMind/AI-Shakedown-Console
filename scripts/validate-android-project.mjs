@@ -77,7 +77,7 @@ assert.match(page, /<details class="advanced-settings utility-settings backup-di
 assert.match(page, /<details class="advanced-settings utility-settings android-apk-disclosure"/);
 assert.doesNotMatch(page, /<details class="advanced-settings utility-settings (?:backup|android-apk)-disclosure"[^>]*\sopen(?:\s|>|=)/);
 assert.match(styles, /\.utility-settings-content \.secondary-button\s*\{[^}]*width:\s*100%/s);
-assert.match(serviceWorker, /shell-v32-r2/);
+assert.match(serviceWorker, /shell-v32-r3/);
 assert.match(serviceWorker, /AI-Shakedown-Console-v31-debug\.apk\?v=31-r1/);
 
 for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
