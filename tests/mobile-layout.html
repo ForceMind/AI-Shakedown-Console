@@ -81,7 +81,7 @@
             fixture.body.classList.add('chat-focused');
             // Synthetic messages exercise real message selectors without a model call.
             fixture.querySelector('#chat-window').innerHTML = `
-                <div class="message-row user"><div class="message-avatar">你</div><div class="message-main"><div class="message-content">布局测试：帮我整理一下今天的计划。</div></div></div>
+                <div class="message-row user"><div class="message-avatar">你</div><div class="message-main"><div class="message-attachments"><div class="message-attachment"><span class="message-attachment-copy"><strong>附件文件名.txt</strong><small>145 B</small></span></div></div><div class="message-content">布局测试：帮我整理一下今天的计划。</div></div></div>
                 <div class="message-row assistant"><div class="message-avatar">AI</div><div class="message-main"><div class="message-content markdown-content"><p>这是用于检查消息样式的模拟回复。</p><p>用户消息应显示浅灰气泡，模型回复使用无框正文。</p></div></div></div>`;
             const loaded = new Promise(resolve => frame.addEventListener('load', resolve, { once: true }));
             frame.srcdoc = `<!doctype html>${fixture.documentElement.outerHTML}`;
@@ -111,6 +111,9 @@
                 near(rect('#send-button').width, rect('#send-button').height, '发送按钮应为正圆');
                 const promptButton = doc.querySelector('#system-prompt-edit');
                 assert(promptButton.scrollWidth <= promptButton.clientWidth + 1, '提示词按钮文字溢出');
+                const cardStyle = win.getComputedStyle(doc.querySelector('.message-attachment'));
+                assert(cardStyle.color === 'rgb(32, 32, 32)', '附件文字应为深色');
+                assert(cardStyle.backgroundColor === 'rgb(245, 245, 245)', '附件背景应为浅灰色');
                 const userStyle = win.getComputedStyle(doc.querySelector('.message-row.user .message-content'));
                 assert(userStyle.backgroundColor === 'rgb(243, 243, 243)', '用户消息缺少浅灰气泡');
                 assert(parseFloat(userStyle.borderRadius) >= 20, '用户气泡圆角丢失');
@@ -156,6 +159,24 @@
                             assert(button.scrollWidth <= button.clientWidth + 1, `${id} 按钮文字溢出`);
                             const style = win.getComputedStyle(button);
                             assert(style.color !== style.backgroundColor, `${id} 按钮文字不可读`);
+                        }
+                    }
+                    if (backdrop.id === 'agent-library-modal') {
+                        const list = doc.querySelector('#agent-list');
+                        list.innerHTML = '<button class="agent-list-item" type="button">布局测试角色</button>';
+                        const listBox = rect('#agent-list');
+                        const detailBox = rect('#agent-detail');
+                        if (scenario.width <= 780) {
+                            near(listBox.left, detailBox.left, '手机列表与详情应在同一列');
+                            near(listBox.width, detailBox.width, '手机列表与详情应同宽');
+                            assert(detailBox.top >= listBox.bottom - 1, '手机详情应位于列表下方');
+                            doc.querySelector('#agent-detail-empty').hidden = true;
+                            doc.querySelector('#custom-agent-editor').hidden = false;
+                            assert(rect('#custom-agent-name').width >= detailBox.width - 30, '手机自定义编辑区应占满单栏');
+                            doc.querySelector('#custom-agent-editor').hidden = true;
+                            doc.querySelector('#agent-detail-empty').hidden = false;
+                        } else {
+                            assert(detailBox.left >= listBox.right - 1, '桌面智能体库应保留双栏');
                         }
                     }
                     for (const footer of dialog.querySelectorAll('.help-footer, .agent-library-footer')) {

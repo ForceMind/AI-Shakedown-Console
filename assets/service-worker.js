@@ -1,10 +1,10 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v32-r3`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v32-r3`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v32-r4`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v32-r4`;
 const APP_SHELL = [
     '/',
     '/index.html',
-    '/style.css?v=32-r2',
+    '/style.css?v=32-r4',
     '/script.js?v=32-r3',
     '/assets/manifest.webmanifest?v=32',
     '/assets/favicon.svg?v=32',

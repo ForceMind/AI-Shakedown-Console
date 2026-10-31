@@ -1738,9 +1738,9 @@ textarea:focus {
 }
 
 .message-row.user .message-attachment {
-    border-color: rgba(255, 255, 255, 0.28);
-    background: rgba(255, 255, 255, 0.12);
-    color: white;
+    border-color: var(--line);
+    background: var(--surface-soft);
+    color: var(--ink);
 }
 
 .message-attachment img {
@@ -3480,11 +3480,19 @@ textarea:focus {
     }
 
     .agent-library-body {
-        grid-template-columns: minmax(128px, 42%) minmax(0, 1fr);
+        display: block;
+        overflow-y: auto;
     }
 
     .agent-list {
+        max-height: clamp(96px, 25dvh, 200px);
         padding: 5px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .agent-detail {
+        overflow-y: visible;
     }
 
     .agent-list-item {
