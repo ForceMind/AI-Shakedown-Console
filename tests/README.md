@@ -107,6 +107,7 @@ node scripts/validate-pwa-cache.mjs
 node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
 node scripts/validate-chat-cancellation.mjs
+node scripts/validate-backup-branches.mjs
 ```
 
 检查页面 ID 与脚本引用、桌面侧栏开合、手机抽屉、连接设置切换、跨断点状态、隐藏侧栏的 `inert` / 焦点恢复，以及 v31 流式阅读位置保持。使用 Node VM 与控件替身，不渲染页面，不读取浏览器数据，也不调用模型；通过此检查不能视为视觉或浏览器交互验收通过。
@@ -118,3 +119,5 @@ v32-r2 已获授权并运行移动布局回归页：7 组场景、547 项检查�
 `validate-chat-cancellation.mjs` 验证主动停止始终保存用户消息及附件引用，覆盖首段前停止、已有历史、部分回复和正常完成；不启动浏览器或真实模型。
 
 v32-r4 的 `tests/mobile-layout.html` 回归通过 7 组尺寸、583 项检查，增加附件文字与背景对比、手机单栏上下布局和全宽编辑区、桌面双栏保留检查。实际页面另检查已恢复的图片/文本/PDF 卡片及角色详情、自定义编辑区；未调用真实模型。
+
+`validate-backup-branches.mjs` 使用实际完整备份导入函数，覆盖被编辑掉的父消息、嵌套分支、父/子导入顺序、复制的旧消息 ID、旧引用回退、原记录和附件保留、重复导入、无效附件与持久化失败回滚。用 Node VM 和内存存储替身执行，不能替代跨 Origin、文件选择器和真实 IndexedDB 的浏览器测试。v32-r5 本轮的浏览器补验因工具禁用尚未完成。

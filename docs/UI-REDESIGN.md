@@ -73,3 +73,14 @@
 - 更新 ZIP：`AI-Shakedown-Console-cf-pages-worker-v32.zip`，419 文件，2,739,716 字节。逐文件匹配源文件，manifest 与图标尺寸正确，未含私钥或本地配置。原 v32-r3 ZIP 保留。
 - SHA-256：`6546a3e79b4ab7e33f3ab42419b18cc17d080d0cf399682ef6ab38caaee339a5`。
 - 未进行手机真机、真实模型或线上部署验证；本轮未部署。
+
+## v32-r5 备份分支起点修复（2026-11-01）
+
+- 用户授权修复分支起点丢失，补测试、继续跨 Origin/重复导入回归，更新 ZIP 并推送 `ui-chatgpt`，暂不部署。
+- 导入先建立每个对话的消息 ID 映射，第二遍从父对话解析起点，保留旧备份的本地引用回退；不改备份格式和存储 schema。
+- `scripts/validate-backup-branches.mjs` 通过父先/子先、嵌套分支、复制的旧 ID、草稿/System/角色/附件、重复导入、持久化失败及无效附件回滚检查。反向验证：同一组测试对修复前代码会因父起点丢失而失败。
+- 既有辅助数据回归曾把分支起点断言为分支自身的消息；按实际父引用契约修正该临时脚本后，序列化、恢复、去重和回滚检查通过。
+- 必要语法、参数、布局状态、角色/桥接、主动停止、启动器、Android、Worker、PWA、角色目录和差异检查通过。
+- 浏览器能力检查明确返回“Local browser use is disabled in Work settings”。本轮跨 Origin 恢复和重复导入的浏览器补验未完成，待工具恢复；不以 Node VM/内存存储测试替代真实浏览器和 IndexedDB 验收。
+- 缓存与脚本 URL 为 v32-r5，样式仍为 v32-r4；当前 ZIP 为 `AI-Shakedown-Console-cf-pages-worker-v32.zip`，419 文件，2,739,926 字节，逐一匹配源文件并检查 manifest/图标尺寸；上一份 v32-r4 ZIP 保留。
+- SHA-256：`486a03bf1b040db40fe805dd28f1073ed508911a3cadee70fd273d7e819ffbf1`。候选同步目标 `origin/ui-chatgpt`，未部署，未合入 main/dev。

@@ -1,11 +1,11 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v32-r4`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v32-r4`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v32-r5`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v32-r5`;
 const APP_SHELL = [
     '/',
     '/index.html',
     '/style.css?v=32-r4',
-    '/script.js?v=32-r3',
+    '/script.js?v=32-r5',
     '/assets/manifest.webmanifest?v=32',
     '/assets/favicon.svg?v=32',
     '/assets/apple-touch-icon.png?v=32',

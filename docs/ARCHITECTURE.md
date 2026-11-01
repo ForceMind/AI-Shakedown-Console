@@ -130,7 +130,7 @@ Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 Pow
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-当前网页候选为 `v32`，shell/runtime 缓存与样式查询参数为 v32-r4，脚本为 v32-r3，manifest 与图标仍为 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+当前网页候选为 `v32`，shell/runtime 缓存与脚本查询参数为 v32-r5，样式为 v32-r4，manifest 与图标仍为 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
 
 ### Android WebView 壳
 
@@ -211,6 +211,8 @@ Temperature、Top P、Top K 和最大输出字段在各自开关开启且数值�
 前端导出的 JSON envelope 使用 `format: "ai-shakedown-console-chat-backup"` 和 `formatVersion: 1`。主体包含 `backupId`、激活对话、全部对话快照和被引用附件：图片使用 base64，文本/PDF 使用 UTF-8 字符串。连接设置、API Key、配置库、自定义智能体库和本机配对信息不进入备份。
 
 导入按 `backupId + 源对话 ID + 索引` 生成稳定来源键，用于阻止同一文件重复导入；对话、消息和附件 ID 全部重新生成，分支父项与附件引用同步重映射。数据先写 IndexedDB，再追加 localStorage 对话；任一步失败会回滚本次新增附件与内存状态。导入只追加，不覆盖目标浏览器已有数据。
+
+完整备份恢复分两阶段解析分支引用：先为全部导入对话建立各自消息 ID 映射，再从父对话映射解析 `branchAtMessageId`，避免复制的旧消息 ID 指向子对话或受导入顺序影响。映射只存在于导入过程内存，不加入保存格式。
 
 ## 智能体资源
 

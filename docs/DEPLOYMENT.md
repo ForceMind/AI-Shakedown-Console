@@ -98,7 +98,7 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v32.zip \
 
 若发布候选仍显示为同一个 `v32`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v32-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
 
-当前 `ui-chatgpt` 网页候选为 `v32`：Service Worker shell/runtime 缓存和样式查询参数使用 v32-r4，脚本继续使用 v32-r3，manifest 与图标保持 v32。保留 v31 的流式阅读位置修复；APK 原生版本和下载/预缓存 URL 保持 `AI-Shakedown-Console-v31-debug.apk?v=31-r1`。本轮只生成 ZIP 并推送分支，不部署，不重建 APK。
+当前 `ui-chatgpt` 网页候选为 `v32`：Service Worker shell/runtime 缓存和脚本查询参数使用 v32-r5，CSS 继续使用 v32-r4，manifest 与图标保持 v32。保留 v31 的流式阅读位置修复；APK 原生版本和下载/预缓存 URL 保持 `AI-Shakedown-Console-v31-debug.apk?v=31-r1`。本轮只生成 ZIP 并推送分支，不部署，不重建 APK。
 
 ## Android APK 构建
 
@@ -122,6 +122,7 @@ node scripts/validate-worker-assets.mjs
 node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
 node scripts/validate-chat-cancellation.mjs
+node scripts/validate-backup-branches.mjs
 aapt dump badging AI-Shakedown-Console-v31-debug.apk
 zipalign -c -v 4 AI-Shakedown-Console-v31-debug.apk
 apksigner verify --verbose --print-certs AI-Shakedown-Console-v31-debug.apk

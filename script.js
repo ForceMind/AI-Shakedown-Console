@@ -4098,7 +4098,7 @@ function backupSourceConversationId(source, index) {
     return typeof source?.id === 'string' && source.id ? source.id.slice(0, 200) : `conversation-${index + 1}`;
 }
 
-function importedBackupConversation(source, index, targetId, fileName, backupId, conversationIdMap, attachmentIdMap) {
+function importedBackupConversation(source, index, targetId, fileName, backupId, conversationIdMap, attachmentIdMap, messageIdMaps = new Map()) {
     const messageIdMap = new Map();
     const history = (Array.isArray(source?.history) ? source.history : []).map(normalizeStoredMessage).filter(Boolean).map((message) => {
         const id = createId('message');
@@ -4106,6 +4106,7 @@ function importedBackupConversation(source, index, targetId, fileName, backupId,
         return { ...message, id, attachments: remapBackupAttachments(message.attachments, attachmentIdMap) };
     });
     const sourceId = backupSourceConversationId(source, index);
+    if (!messageIdMaps.has(sourceId)) messageIdMaps.set(sourceId, messageIdMap);
     return {
         id: targetId,
         title: typeof source?.title === 'string' && source.title.trim() ? source.title.trim().slice(0, 52) : `导入对话 ${index + 1}`,
@@ -4177,9 +4178,18 @@ async function importConversationBackup() {
         for (const { sourceId, targetId } of selected) {
             if (!conversationIdMap.has(sourceId)) conversationIdMap.set(sourceId, targetId);
         }
+        const messageIdMaps = new Map();
         const imported = selected.map(({ source, index, targetId }) => importedBackupConversation(
-            source, index, targetId, file.name, backupId, conversationIdMap, attachmentIdMap
+            source, index, targetId, file.name, backupId, conversationIdMap, attachmentIdMap, messageIdMaps
         ));
+        // A branch point belongs to the parent conversation, not the edited
+        // branch's own history. Resolve after every message map exists so the
+        // backup's conversation order (including nested branches) is irrelevant.
+        selected.forEach(({ source }, index) => {
+            const parentId = typeof source?.parentConversationId === 'string' ? source.parentConversationId.slice(0, 200) : '';
+            const branchPoint = messageIdMaps.get(parentId)?.get(source?.branchAtMessageId);
+            if (branchPoint) imported[index].branchAtMessageId = branchPoint;
+        });
         state.conversations = [...state.conversations, ...imported];
         state.activeConversationId = conversationIdMap.get(typeof backup.activeConversationId === 'string' ? backup.activeConversationId.slice(0, 200) : '') || imported.at(-1).id;
         if (!persistConversations()) throw new Error('浏览器空间不足，无法保存导入的对话');
