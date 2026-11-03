@@ -9,8 +9,14 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 | 版本 | 状态 |
 | --- | --- |
 | v31 / `main`、`dev` | 支持 |
-| v33 / `ui-chatgpt` | UI 候选，未部署；沿用 v31 数据与连接边界 |
+| v33-r2 / `ui-chatgpt` | 发布候选；新增受限备份端口，保留旧数据 Origin |
 | v29 及更早 | 仅历史存档，建议升级 |
+
+## Android 域名与备份端口
+
+APK 默认使用 `https://ai-chat.xincreates.com`，仅为旧数据恢复保留 `https://ai-shakedown-console.pages.dev`。不重定向旧 Origin，不删除旧数据；备份追加导入新域名，不迁移凭据。
+
+用户通过原生菜单选择系统输出文档后，APK 才向当前精确 HTTPS Origin 发送一次性消息端口。端口只接收完整备份的长度、分块、结束或错误消息；限制 512 MiB 总量与 64 KiB 编码块，逐块确认，超时/导航/销毁关闭资源。不注入 Java 对象或通用命令，不使用任意目标 Origin、任意输出路径或网络上传。输出是未加密敏感 JSON，失败的部分文件不可导入。
 
 ## 凭据与浏览器存储
 

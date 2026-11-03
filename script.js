@@ -944,10 +944,48 @@ async function installPwa() {
 function showPwaUpdate(worker) {
     if (state.pwaUpdateWorker === worker) return;
     state.pwaUpdateWorker = worker;
-    showActionToast('发现内容更新，刷新后即可使用', '立即刷新', () => {
+    showActionToast('发现内容更新，刷新后即可使用', '立即刷新', () => applyPwaUpdate(worker));
+}
+
+function assertConversationStorageCurrent() {
+    if ('conversationSnapshot' in state && localStorage.getItem(CONVERSATIONS_STORAGE_KEY) !== state.conversationSnapshot) {
+        throw new Error('另一窗口已更新会话，已阻止覆盖；请先复制当前草稿，再重新打开页面');
+    }
+}
+
+function applyPwaUpdate(worker) {
+    if (state.pwaRefreshing) return;
+    if (state.busy || state.chatBackupBusy) {
+        showActionToast('请先完成或停止当前操作，再刷新更新', '立即刷新', () => applyPwaUpdate(worker));
+        return;
+    }
+    try {
+        assertConversationStorageCurrent();
+        persistActiveDraft();
+        // persistConversations reports storage errors itself; verify the snapshot
+        // before discarding this document and its in-memory draft.
+        const stored = JSON.parse(localStorage.getItem(CONVERSATIONS_STORAGE_KEY) || 'null');
+        if (JSON.stringify(stored) !== JSON.stringify({ activeConversationId: state.activeConversationId, conversations: state.conversations })) throw new Error('草稿尚未保存');
         state.pwaRefreshing = true;
+        if (worker.state === 'activated') { reloadForPwaUpdate(); return; }
         worker.postMessage({ type: 'SKIP_WAITING' });
-    });
+        window.setTimeout(() => {
+            if (!state.pwaRefreshing) return;
+            state.pwaRefreshing = false;
+            showActionToast('更新未完成，页面和草稿仍保留，请重试', '重试更新', () => applyPwaUpdate(worker));
+        }, 12000);
+    } catch (error) {
+        state.pwaRefreshing = false;
+        showToast(`暂不刷新：${error.message}`, true);
+    }
+}
+
+function reloadForPwaUpdate() {
+    if (!state.pwaRefreshing) return;
+    state.pwaRefreshing = false;
+    const url = new URL(window.location.href);
+    url.searchParams.set('refresh', Date.now().toString());
+    window.location.replace(url.href);
 }
 
 async function initializePwa() {
@@ -967,7 +1005,7 @@ async function initializePwa() {
     if (new URLSearchParams(window.location.search).has('no-sw')) return;
     if (!('serviceWorker' in navigator) || !globalThis.isSecureContext) return;
     try {
-        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const assetVersion = '33-r2';
         const registration = await navigator.serviceWorker.register(`/assets/service-worker.js?v=${assetVersion}`, {
             scope: '/',
             updateViaCache: 'none'
@@ -980,10 +1018,7 @@ async function initializePwa() {
                 if (worker.state === 'installed' && navigator.serviceWorker.controller) showPwaUpdate(worker);
             });
         });
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!state.pwaRefreshing) return;
-            window.location.reload();
-        });
+        navigator.serviceWorker.addEventListener('controllerchange', reloadForPwaUpdate);
     } catch (error) {
         console.warn('PWA 初始化失败', error);
     }
@@ -1442,7 +1477,7 @@ async function downloadLocalCodexLauncher() {
     try {
         const token = createLocalCodexToken();
         const port = LOCAL_CODEX_DEFAULT_PORT + crypto.getRandomValues(new Uint16Array(1))[0] % 90;
-        const assetVersion = APP_VERSION.replace(/^v/, '');
+        const assetVersion = '33-r2';
         const bridgeUrl = new URL(`assets/local-codex-bridge.mjs?v=${assetVersion}`, window.location.href);
         const returnUrl = new URL(window.location.href);
         returnUrl.search = '';
@@ -3025,7 +3060,10 @@ function syncConversationSidebarMode() {
 
 function restoreConversations() {
     let stored = null;
-    try { stored = JSON.parse(localStorage.getItem(CONVERSATIONS_STORAGE_KEY) || 'null'); } catch (_) { /* Start fresh. */ }
+    try {
+        state.conversationSnapshot = localStorage.getItem(CONVERSATIONS_STORAGE_KEY);
+        stored = JSON.parse(state.conversationSnapshot || 'null');
+    } catch (_) { /* Existing storage error handling remains in writeStoredValue. */ }
     const savedConversations = Array.isArray(stored?.conversations) ? stored.conversations : [];
     state.conversations = savedConversations.map((item, index) => ({
         id: typeof item?.id === 'string' ? item.id : createId('conversation'),
@@ -3068,10 +3106,10 @@ function restoreConversations() {
 }
 
 function persistConversations() {
-    return writeStoredValue(CONVERSATIONS_STORAGE_KEY, {
-        activeConversationId: state.activeConversationId,
-        conversations: state.conversations
-    });
+    const value = { activeConversationId: state.activeConversationId, conversations: state.conversations };
+    const saved = writeStoredValue(CONVERSATIONS_STORAGE_KEY, value);
+    if (saved) state.conversationSnapshot = JSON.stringify(value);
+    return saved;
 }
 
 function persistActiveDraft() {
@@ -4016,46 +4054,80 @@ async function serializeBackupAttachment(record) {
     return { ...metadata, encoding: 'utf-8', data: String(record.data ?? '') };
 }
 
+async function buildConversationBackup() {
+    assertConversationStorageCurrent();
+    persistActiveDraft();
+    const attachments = [];
+    let missingAttachments = 0;
+    for (const id of referencedAttachmentIds()) {
+        const record = await getAttachmentRecord(id);
+        if (!record) { missingAttachments++; continue; }
+        attachments.push(await serializeBackupAttachment(record));
+    }
+    const now = new Date();
+    return {
+        backup: {
+            format: CHAT_BACKUP_FORMAT, formatVersion: CHAT_BACKUP_FORMAT_VERSION,
+            backupId: createId('backup'), appVersion: APP_VERSION,
+            exportedAt: now.toISOString(), activeConversationId: state.activeConversationId,
+            conversations: state.conversations.map(backupConversationSnapshot), attachments
+        },
+        missingAttachments, stamp: now.toISOString().slice(0, 19).replaceAll(':', '-')
+    };
+}
+
 async function exportAllConversations() {
     if (state.busy || state.chatBackupBusy) return;
-    persistActiveDraft();
+    if (/; wv\)/i.test(navigator.userAgent) && new URLSearchParams(location.search).get('shell') === 'v33-r2') {
+        showToast('请用 APK 顶部“站点与备份”菜单 → 保存完整备份，保存后可在正式域名导入');
+        return;
+    }
     setChatBackupBusy(true, 'export');
     try {
-        const attachmentIds = [...referencedAttachmentIds()];
-        const attachments = [];
-        let missingAttachments = 0;
-        for (const id of attachmentIds) {
-            const record = await getAttachmentRecord(id);
-            if (!record) {
-                missingAttachments += 1;
-                continue;
-            }
-            attachments.push(await serializeBackupAttachment(record));
-        }
-        const now = new Date();
-        const backup = {
-            format: CHAT_BACKUP_FORMAT,
-            formatVersion: CHAT_BACKUP_FORMAT_VERSION,
-            backupId: createId('backup'),
-            appVersion: APP_VERSION,
-            exportedAt: now.toISOString(),
-            activeConversationId: state.activeConversationId,
-            conversations: state.conversations.map(backupConversationSnapshot),
-            attachments
-        };
-        const stamp = now.toISOString().slice(0, 19).replaceAll(':', '-');
-        downloadTextFile(
-            `AI-Shakedown-Console-全部对话-${stamp}.json`,
-            JSON.stringify(backup),
-            'application/json;charset=utf-8'
-        );
-        showToast(`已备份 ${backup.conversations.length} 个对话和 ${attachments.length} 个附件${missingAttachments ? `，${missingAttachments} 个附件数据已丢失` : ''}`, missingAttachments > 0);
+        const { backup, missingAttachments, stamp } = await buildConversationBackup();
+        downloadTextFile(`AI-Shakedown-Console-全部对话-${stamp}.json`, JSON.stringify(backup), 'application/json;charset=utf-8');
+        showToast(`已备份 ${backup.conversations.length} 个对话和 ${backup.attachments.length} 个附件${missingAttachments ? `，${missingAttachments} 个附件数据已丢失` : ''}`, missingAttachments > 0);
     } catch (error) {
         showToast(`导出失败：${error.message}`, true);
-    } finally {
-        setChatBackupBusy(false);
+    } finally { setChatBackupBusy(false); }
+}
+
+// An ephemeral native-created message port can only request the chat backup.
+// No Java object, file path, credentials or general command interface is exposed.
+async function handleAndroidBackupRequest(event) {
+    if (event.source !== null || event.data !== 'AI_SHAKEDOWN_EXPORT_BACKUP_V1' || event.ports?.length !== 1) return;
+    const port = event.ports[0];
+    if (state.busy || state.chatBackupBusy) { port.postMessage(JSON.stringify({ type:'error', message:'请先停止生成或等待当前备份完成' })); port.close(); return; }
+    setChatBackupBusy(true, 'export');
+    let bytes, offset = 0, finished = false;
+    let timer;
+    const finish = () => {
+        if (finished) return;
+        finished = true; bytes = null; window.clearTimeout(timer); port.close(); setChatBackupBusy(false);
+    };
+    const touch = () => { window.clearTimeout(timer); timer = window.setTimeout(finish, 30000); };
+    try {
+        const { backup, missingAttachments } = await buildConversationBackup();
+        if (missingAttachments) throw new Error('存在缺失附件，请先恢复附件再迁移；旧数据未改动');
+        bytes = new TextEncoder().encode(JSON.stringify(backup));
+        if (bytes.byteLength > MAX_CHAT_BACKUP_FILE_BYTES) throw new Error('备份超过 512 MiB 限制');
+        port.onmessage = ({ data }) => {
+            if (finished) return;
+            if (data === 'cancel' || data === 'saved') { finish(); return; }
+            if (data !== 'next') return;
+            touch();
+            if (offset >= bytes.length) { port.postMessage(JSON.stringify({ type:'end' })); return; }
+            const chunk = bytes.subarray(offset, offset + 49152);
+            offset += chunk.byteLength;
+            port.postMessage(JSON.stringify({ type:'chunk', data:arrayBufferToBase64(chunk) }));
+        };
+        port.start(); touch();
+        port.postMessage(JSON.stringify({ type:'start', size:bytes.byteLength }));
+    } catch (error) {
+        port.postMessage(JSON.stringify({ type:'error', message:error.message })); finish();
     }
 }
+window.addEventListener('message', handleAndroidBackupRequest);
 
 function decodeBackupBase64(value, name) {
     const maximumEncodedLength = Math.ceil(MAX_IMAGE_ATTACHMENT_BYTES / 3) * 4 + 8;
@@ -4866,3 +4938,10 @@ function initImageViewer() {
     stage.addEventListener('dblclick', () => zoomImageViewer(imageViewer.scale > 1 ? 1 : 2));
 }
 initImageViewer();
+
+window.addEventListener('ai-shakedown-save-draft', event => {
+    if (state.busy || state.chatBackupBusy) { event.preventDefault(); return; }
+    try { assertConversationStorageCurrent(); } catch (error) { event.preventDefault(); showToast(error.message, true); return; }
+    persistActiveDraft();
+    if (!persistConversations()) event.preventDefault();
+});

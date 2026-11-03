@@ -2,6 +2,7 @@ package com.forcemind.aishakedownconsole;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -32,13 +33,18 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 public final class MainActivity extends Activity {
-    private static final String APP_URL = "https://ai-shakedown-console.pages.dev/?source=android";
+    private static final String APP_URL = "https://ai-chat.xincreates.com/?source=android&shell=v33-r2";
+    private static final String LEGACY_URL = "https://ai-shakedown-console.pages.dev/?source=android&shell=v33-r2";
     private static final String TRUSTED_SCHEME = "https";
-    private static final String TRUSTED_HOST = "ai-shakedown-console.pages.dev";
+    private static final String TRUSTED_HOST = "ai-chat.xincreates.com";
+    private static final String LEGACY_HOST = "ai-shakedown-console.pages.dev";
     private static final int FILE_CHOOSER_REQUEST = 4107;
     private static final long PROGRESS_DELAY_MS = 180L;
 
     private WebView webView;
+    private String lastTrustedUrl = APP_URL;
+    private AndroidBackupExport backupExport;
+    private static final int BACKUP_DOCUMENT_REQUEST = 4108;
     private ProgressBar progress;
     private View errorPanel;
     private ValueCallback<Uri[]> fileChooserCallback;
@@ -61,13 +67,21 @@ public final class MainActivity extends Activity {
         Button retryButton = findViewById(R.id.retry_button);
         retryButton.setOnClickListener((view) -> {
             errorPanel.setVisibility(View.GONE);
-            webView.reload();
+            retryPage();
         });
 
         applySystemBarInsets(root);
         configureWebView();
+        backupExport = new AndroidBackupExport(this, webView);
+        findViewById(R.id.site_menu).setOnClickListener(view -> showSiteMenu());
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             webView.loadUrl(APP_URL);
+        } else {
+            String restoredUrl = webView.getUrl();
+            if (restoredUrl != null && isTrusted(Uri.parse(restoredUrl))) {
+                lastTrustedUrl = restoredUrl;
+                ((android.widget.TextView) findViewById(R.id.site_address)).setText(Uri.parse(restoredUrl).getHost());
+            } else webView.loadUrl(APP_URL);
         }
     }
 
@@ -112,7 +126,53 @@ public final class MainActivity extends Activity {
 
     private boolean isTrusted(Uri uri) {
         return TRUSTED_SCHEME.equalsIgnoreCase(uri.getScheme())
-            && TRUSTED_HOST.equalsIgnoreCase(uri.getHost());
+            && (uri.getPort() == -1 || uri.getPort() == 443)
+            && uri.getUserInfo() == null
+            && (TRUSTED_HOST.equalsIgnoreCase(uri.getHost()) || LEGACY_HOST.equalsIgnoreCase(uri.getHost()));
+    }
+
+    private void showSiteMenu() {
+        new AlertDialog.Builder(this).setTitle("站点与旧数据")
+            .setItems(new String[]{"打开正式域名", "查看旧地址数据", "保存完整备份", "重新加载当前站点"}, (dialog, which) -> {
+                if (which == 0) switchSite(APP_URL);
+                if (which == 1) new AlertDialog.Builder(this).setTitle("旧地址数据仍保留")
+                    .setMessage("旧聊天与附件保存在旧地址，未被删除。打开后用此菜单保存完整备份，再回正式域名的连接设置中导入。两个地址的数据互不覆盖，API Key 与连接配置不会随聊天备份迁移。")
+                    .setPositiveButton("打开旧数据", (d, w) -> switchSite(LEGACY_URL)).setNegativeButton("取消", null).show();
+                if (which == 2) chooseBackupFile();
+                if (which == 3) retryPage();
+            }).show();
+    }
+
+    private void switchSite(String url) {
+        if (!isTrusted(Uri.parse(url))) return;
+        final String target = Uri.parse(url).buildUpon().appendQueryParameter("refresh", Long.toString(System.currentTimeMillis())).build().toString();
+        if (backupExport.isActive()) { Toast.makeText(this, "请先完成备份", Toast.LENGTH_LONG).show(); return; }
+        if (errorPanel.getVisibility() == View.VISIBLE) { webView.loadUrl(target); return; }
+        webView.evaluateJavascript("window.dispatchEvent(new Event('ai-shakedown-save-draft', {cancelable:true}))", result -> {
+            if ("true".equals(result)) webView.loadUrl(target);
+            else Toast.makeText(this, "请先停止生成或完成备份，并确认草稿已保存", Toast.LENGTH_LONG).show();
+        });
+    }
+
+    private void retryPage() {
+        if (backupExport != null && backupExport.isActive()) return;
+        Uri current = Uri.parse(lastTrustedUrl);
+        if (!isTrusted(current)) current = Uri.parse(APP_URL);
+        Uri.Builder next = current.buildUpon().clearQuery();
+        for (String key : current.getQueryParameterNames()) {
+            if (!"refresh".equals(key)) for (String value : current.getQueryParameters(key)) next.appendQueryParameter(key, value);
+        }
+        next.appendQueryParameter("refresh", Long.toString(System.currentTimeMillis()));
+        errorPanel.setVisibility(View.GONE);
+        webView.loadUrl(next.build().toString());
+    }
+
+    private void chooseBackupFile() {
+        if (backupExport.isActive() || !isTrusted(Uri.parse(webView.getUrl() == null ? "" : webView.getUrl()))) return;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json")
+            .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, "AI-Shakedown-Console-chat-backup-" + System.currentTimeMillis() + ".json");
+        try { startActivityForResult(intent, BACKUP_DOCUMENT_REQUEST); }
+        catch (ActivityNotFoundException error) { Toast.makeText(this, "没有可用的系统文件保存器", Toast.LENGTH_LONG).show(); }
     }
 
     private boolean handleNavigation(Uri uri) {
@@ -164,6 +224,11 @@ public final class MainActivity extends Activity {
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            if (isTrusted(Uri.parse(url))) {
+                lastTrustedUrl = url;
+                ((android.widget.TextView) findViewById(R.id.site_address)).setText(Uri.parse(url).getHost());
+            }
+            if (backupExport != null) backupExport.cancel();
             beginPageLoad();
             errorPanel.setVisibility(View.GONE);
         }
@@ -228,6 +293,13 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == BACKUP_DOCUMENT_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                Uri current = Uri.parse(webView.getUrl() == null ? "" : webView.getUrl());
+                if (isTrusted(current)) backupExport.start(data.getData(), Uri.parse("https://" + current.getHost()));
+            }
+            return;
+        }
         if (requestCode != FILE_CHOOSER_REQUEST || fileChooserCallback == null) return;
         Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
         fileChooserCallback.onReceiveValue(result);
@@ -260,6 +332,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (backupExport != null) backupExport.destroy();
         progressHandler.removeCallbacksAndMessages(null);
         pageLoading = false;
         if (fileChooserCallback != null) {

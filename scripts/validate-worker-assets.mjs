@@ -35,7 +35,7 @@ assert.equal(apkResponse.headers.get('Cache-Control'), 'public, max-age=31536000
 assert.equal(apkResponse.headers.get('X-Content-Type-Options'), 'nosniff');
 assert.deepEqual([...new Uint8Array(await apkResponse.arrayBuffer())], [0x50, 0x4b, 0x03, 0x04]);
 
-const currentApkResponse = await worker.fetch(new Request('https://example.test/assets/AI-Shakedown-Console-v33-debug.apk?v=33'), env);
+const currentApkResponse = await worker.fetch(new Request('https://example.test/assets/AI-Shakedown-Console-v33-debug.apk?v=33-r2'), env);
 assert.equal(currentApkResponse.headers.get('Content-Type'), 'application/vnd.android.package-archive');
 assert.equal(currentApkResponse.headers.get('Content-Disposition'), 'attachment; filename="AI-Shakedown-Console-v33-debug.apk"');
 assert.deepEqual([...new Uint8Array(await currentApkResponse.arrayBuffer())], [0x50, 0x4b, 0x03, 0x04]);
@@ -50,8 +50,8 @@ assert.equal(passthroughResponse.headers.get('X-Passthrough'), 'yes');
 assert.equal(passthroughResponse.headers.get('Content-Disposition'), null);
 
 const serviceWorker = fs.readFileSync(path.join(root, 'assets', 'service-worker.js'), 'utf8');
-assert.match(serviceWorker, /shell-v33/);
-assert.match(serviceWorker, /runtime-v33/);
-assert.match(serviceWorker, /cache\.put\('\/index\.html', response\.clone\(\)\)/);
+assert.match(serviceWorker, /shell-v33-r2/);
+assert.match(serviceWorker, /runtime-v33-r2/);
+assert.match(serviceWorker, /cache\.put\('\/index\.html', clean\.clone\(\)\)/);
 
 console.log('Worker asset header validation passed.');

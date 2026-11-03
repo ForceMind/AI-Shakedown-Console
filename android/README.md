@@ -3,7 +3,7 @@
 本目录包含 AI Shakedown Console 的最小 Android WebView 壳。它不复制网页业务逻辑，而是固定加载：
 
 ```text
-https://ai-shakedown-console.pages.dev/?source=android
+https://ai-chat.xincreates.com/?source=android&shell=v33-r2
 ```
 
 ## 能力与边界
@@ -11,13 +11,15 @@ https://ai-shakedown-console.pages.dev/?source=android
 - 支持 Android 7.0（API 24）及以上；
 - 使用 Android System WebView，启用 JavaScript、DOM Storage 和站点数据库；
 - 通过系统文件选择器上传附件，不申请存储、相机、麦克风或定位权限；
-- 只在应用内打开正式站点 Origin，其他 HTTP(S) 链接交给系统浏览器；
+- 应用内保留正式域名与旧 Pages 数据 Origin，其他 HTTP(S) 链接交给系统浏览器；
 - 禁止明文 HTTP、混合内容、第三方 Cookie、网页弹窗和网页权限请求；
 - SSL 验证失败时直接停止，不提供绕过入口；
 - Android 15+ 对状态栏、刘海、横屏切口和底部导航栏应用动态安全区，软键盘使用 `adjustResize`；
 - Android WebView 的站点数据与 Chrome/PWA 相互独立，不会自动继承 API Key、配置或对话；
 - 本机 CLI 桥接仅支持桌面端，Android APK 不提供本机 Codex/Claude/Gemini CLI 连接；
 - 这是便于侧载测试的简单 APK，不是带长期发布签名的 Play 商店包。
+
+顶部“站点与备份”菜单可访问旧地址数据、保存完整 JSON、回到正式域名及重试页面。两个 Origin 不自动合并；保存后在正式域名导入可追加迁移，旧数据不清除。导出采用用户选定文档后建立的一次性消息端口，不使用 `addJavascriptInterface`。详见 [Android 使用指南](../docs/ANDROID.md)。
 
 ## 本地构建
 

@@ -130,18 +130,20 @@ Windows 下载物是 `.cmd`：它用 `%~f0` 读取自身 marker 后的明文 Pow
 - 绕过所有 `/api/` 请求；
 - 新版本激活时删除旧项目缓存。
 
-当前网页候选为 `v32`，shell/runtime 缓存与脚本查询参数为 v32-r5，样式为 v32-r4，manifest 与图标仍为 v32；Android APK 独立保留 v31 和原下载 URL。若保持同一公开版本，内部缓存可使用 `v32-rN` 修订号。Service Worker 注册使用 `updateViaCache: "none"` 并主动检查更新，避免浏览器或已安装 PWA 在同版本候选包之间继续复用旧脚本；这类修订不会改变页面显示版本或发布 ZIP 名称。
+当前公开网页版本 v33，内部 shell/runtime 缓存与自有资源查询参数为 v33-r2，APK 下载为 `AI-Shakedown-Console-v33-debug.apk?v=33-r2`。Service Worker 注册保持 `updateViaCache: "none"`。更新前核对草稿持久化，阻止生成/备份中刷新及重复激活；过期窗口在更新、原生站点切换和导出前被拒绝写回旧快照。此保护不提供通用多窗口编辑自动合并。
+
+导航缓存读取异常回退网络；运行时资源缓存写入失败仍返回成功网络响应。强制刷新遇到 HTTP 错误时可使用完好缓存外壳；缓存的重定向响应被规范化后再用于导航。
 
 ### Android WebView 壳
 
-`android/` 是独立的原生构建模块，不进入 Cloudflare Pages ZIP。`MainActivity` 只负责承载正式站点、生命周期、返回键、加载进度、失败重试和系统文件选择器；网页协议、对话和存储逻辑仍由同一线上前端负责。
+`android/` 是独立的原生构建模块，不进入 Cloudflare Pages ZIP。`MainActivity` 负责承载新旧站点、生命周期、返回键、加载进度、失败重试和系统文件选择器；网页协议、对话和存储逻辑仍由同一线上前端负责。
 
 信任边界：
 
-- WebView 内只保留 `https://ai-shakedown-console.pages.dev`，其他 HTTP(S) 导航交给系统浏览器；
+- WebView 默认使用 `https://ai-chat.xincreates.com`，为旧数据保留 `https://ai-shakedown-console.pages.dev`；只接受精确主机、HTTPS 和标准端口，其他 HTTP(S) 导航交给系统浏览器；
 - 禁止明文流量、混合内容、第三方 Cookie、弹窗、网页权限请求和 JavaScript 原生接口；
 - SSL 错误直接取消，主文档或 HTTP 错误显示原生失败页与重试动作；
-- APK 只声明 `INTERNET`，文件通过系统选择器的 URI 返回；
+- APK 只声明 `INTERNET`，附件通过系统选择器的 URI 返回；完整备份在用户选定输出文档后，通过绑定当前 Origin 的短期消息端口按字节分块写入。端口只接受备份长度/块/结束/错误，无 Java 对象、任意文件路径或原生命令；失败、导航与销毁关闭端口和流；
 - Android 15+ 根容器把 `WindowInsets.Type.systemBars() | displayCutout()` 应用为四边 padding，再用 `WindowInsets.Builder` 只把已处理类型设为 `Insets.NONE`；IME Insets 不被消费，继续交给 WebView 触发可视视口收缩。API 24–34 保持系统原有布局，软键盘统一使用 `adjustResize`；
 - Android 系统备份和设备迁移规则排除全部应用数据，Chrome/PWA 与 APK WebView 存储彼此独立；
 - Android 不运行桌面启动器或本机 CLI 桥接，手机端只使用远程 HTTPS API。

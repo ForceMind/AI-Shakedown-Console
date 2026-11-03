@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>跨 Origin 完整备份恢复回归</title>
+<style>body{margin:0;font:14px system-ui}header{padding:10px;background:#eee}button{padding:8px}iframe{border:0;width:100%;height:85vh}</style>
+<header><button id="import">通过文件输入流程导入测试备份</button><span id="status" role="status">仅在独立测试 Origin 使用；原有数据保留。</span></header>
+<iframe id="app" src="/?no-sw=1&amp;refresh=1"></iframe>
+<script type="module">
+document.querySelector('#import').onclick=async()=>{
+    if(location.hostname!=='127.0.0.1')throw Error('仅允许本地测试');
+    const response=await fetch('/tests/fixtures/v33-chat-backup.json',{cache:'no-store'});
+    if(!response.ok)throw Error('测试备份不可用');
+    const file=new File([await response.blob()],'v33-chat-backup.json',{type:'application/json'}),files=new DataTransfer();files.items.add(file);
+    const input=document.querySelector('#app').contentDocument.querySelector('#chat-backup-file');
+    input.files=files.files;input.dispatchEvent(new Event('change',{bubbles:true}));
+    document.querySelector('#status').textContent='已触发实际文件导入处理器，请检查导入结果和重复导入提示；此控件不验证系统文件选择器。';
+};
+</script>

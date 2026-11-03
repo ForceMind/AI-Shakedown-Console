@@ -67,7 +67,7 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-`v33` UI 候选包（本轮只打包，不部署）：
+`v33` 部署包（当前内容修订 v33-r2，验收后发布）：
 
 ```bash
 zip -r AI-Shakedown-Console-cf-pages-worker-v33.zip \
@@ -98,7 +98,7 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v33.zip \
 
 若发布候选仍显示为同一个 `v33`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v33-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
 
-当前 `ui-chatgpt` 网页与 APK 候选统一为 `v33`，shell/runtime 缓存和自有资源查询参数同步为 v33，APK 下载及预缓存为 `AI-Shakedown-Console-v33-debug.apk?v=33`。已生成候选 ZIP；实际浏览器回归完成前不部署。
+当前 `ui-chatgpt` 网页与 APK 候选统一为 `v33`，shell/runtime 缓存为 v33-r2，自有资源查询参数为 33-r2，APK 下载及预缓存为 `AI-Shakedown-Console-v33-debug.apk?v=33-r2`。Android versionCode 34 / versionName v33-r2，默认使用自定义域名并保留旧地址恢复菜单。浏览器回归记录见 UI 改版记录；Android 真机验收单列。
 
 ## Android APK 构建
 
@@ -123,6 +123,9 @@ node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
 node scripts/validate-chat-cancellation.mjs
 node scripts/validate-backup-branches.mjs
+node scripts/validate-pwa-update.mjs
+node scripts/validate-android-backup.mjs
+node scripts/validate-image-viewer.mjs
 aapt dump badging AI-Shakedown-Console-v33-debug.apk
 zipalign -c -v 4 AI-Shakedown-Console-v33-debug.apk
 apksigner verify --verbose --print-certs AI-Shakedown-Console-v33-debug.apk
@@ -261,7 +264,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v33.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-原有浏览器存储键在 `v33` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。Android APK 使用独立 WebView 存储，不会自动读取浏览器/PWA 数据；通过“导出全部 / 导入备份”迁移对话和附件，API Key 与连接配置仍需在 APK 中重新填写。Windows 桥接状态、生成参数开关、附件数据库和 Codex 保存开关无需迁移。
+原有浏览器存储键在 `v33` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。Android APK 使用独立 WebView 存储，不会自动读取浏览器/PWA 数据；APK 内旧地址数据通过“站点与备份 → 保存完整备份”保存，再在正式域名导入；不清除旧 Origin。API Key 与连接配置仍需在新域名重新填写。Windows 桥接状态、生成参数开关、附件数据库和 Codex 保存开关无需迁移。
 
 ## 更新智能体库
 

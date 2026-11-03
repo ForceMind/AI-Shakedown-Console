@@ -54,7 +54,7 @@
 ## 文档约定
 
 - 命令默认在项目根目录运行，除非文中另有说明。
-- 当前分支网页/PWA 候选为 `v33`，Android 壳与 APK 同步为 `v33`；`main` / `dev` 为 v31 基线，`proxy-6` 表示 Worker 接口版本。
+- 当前分支网页/PWA 内容修订为 `v33-r2`（公开版本 v33），Android 壳为 `v33-r2` / versionCode 34；`main` / `dev` 为 v31 基线，`proxy-6` 表示 Worker 接口版本。
 - 页面显示文字以当前发布版为准；文档中的目录和按钮名称与中文版界面一致。
 - 本机桥接统称“本机 AI”，实际支持 Codex、Antigravity、Gemini CLI、Claude Code 和 OpenCode。
 

@@ -1,74 +1,57 @@
 # Android APK 使用与构建
 
-Android APK 是线上站点的轻量 WebView 容器。v33 使用原包名、原签名和原站点地址，versionCode 为 33，可升级同签名旧版；构建、Lint、签名和 ZIP 对齐已验证，真机覆盖安装与键盘操作尚未验收。v33 网页与 APK 已生成候选，实际页面回归受浏览器工具不可用阻塞，尚未部署。
+v33-r2 默认打开 `https://ai-chat.xincreates.com/?source=android&shell=v33-r2`。包名和固定签名不变，versionCode 为 34，可覆盖安装固定签名线的旧版；无需卸载或清除应用数据。旧 Pages 地址的数据仍保存在原 WebView Origin，未删除、未自动合并到新域名。
 
-## 安装
+## 安装与更新
 
-1. 在 AI Shakedown Console 网页设置区展开默认收起的“Android APK”，点击“下载 APK”；也可直接下载 [`AI-Shakedown-Console-v33-debug.apk`](../assets/AI-Shakedown-Console-v33-debug.apk)。
-2. 在系统设置中仅为当前文件管理器或浏览器允许“安装未知应用”。
-3. 打开 APK 并确认安装。
-4. 首次启动需要联网加载正式站点。
+从网页设置中的“Android APK”下载，或使用 [`AI-Shakedown-Console-v33-debug.apk`](../assets/AI-Shakedown-Console-v33-debug.apk)。这是侧载 Debug APK，不是 Play 商店发布包。
 
-这是 Debug 签名测试包，不适合直接提交到应用商店。本工作区已在被 Git 忽略的 `.android-signing/debug.keystore` 保留本次签名密钥，后续本地构建会继续使用同一签名并可覆盖安装。构建脚本在密钥缺失时会直接失败，不会退回到另一把默认调试密钥；请把该文件单独做安全备份，丢失后无法为已安装应用生成可升级的新 APK。从旧的一次性签名 APK 升级到本次 v30-r5 时仍需先卸载一次。卸载会同时删除 APK WebView 内保存的 API Key、配置、对话和附件引用，操作前先在应用中“导出全部”。
+网页的“发现内容更新 → 立即刷新”更新的是网页/PWA，不会修改已安装 APK 的内置地址。默认域名与原生备份菜单需要覆盖安装此 APK 后才生效。
 
-v31 Debug APK 的 SHA-256：
+v33-r2 APK 的 SHA-256：
 
 ```text
-40c4076da5c276b68868cea2a6def8ea384c8796701c88016996733d9de769f6
+885b1d3f4f894ce9506f44a99813998bd1481cf98752557e2dfb0579e441b034
 ```
 
-固定签名证书的 SHA-256 指纹：
+固定签名证书 SHA-256：
 
 ```text
 09:DF:BD:43:4D:09:74:0A:B6:39:C3:0E:B9:87:03:D0:96:5B:8F:D6:C1:8D:F2:5A:03:66:30:78:67:56:D6:2A
 ```
 
-发布新的覆盖安装包前，必须用 `apksigner verify --verbose --print-certs` 核对该指纹。APK 文件哈希会随代码变化，证书指纹则必须保持不变。
+构建要求保留 `.android-signing/debug.keystore`；缺失时停止构建，不生成替代密钥。更早的一次性签名 APK 不属于固定签名升级线，必须先保全数据，不能直接按当前覆盖安装承诺处理。
 
-## 手机端数据
+## 旧地址数据与迁移
 
-APK、Chrome、浏览器 PWA 是三个独立的站点存储环境：
+两个 HTTPS Origin 的存储互相隔离。新域名暂时没有旧聊天，不等于旧记录被删除。
 
-- 不共享 API Key、连接配置、Cookie、对话或附件；
-- 可通过网页内“导出全部 / 导入备份”迁移对话和附件；
-- 完整备份仍不包含 API Key 或连接配置；
-- Android 系统备份对该 APK 已关闭，避免把 WebView 中的凭据和对话自动复制到云备份。
+1. 在 APK 顶部打开“站点与备份 → 查看旧地址数据”，确认后访问原 `ai-shakedown-console.pages.dev` 的 WebView 数据。
+2. 停止生成后，使用同一菜单的“保存完整备份”，在 Android 系统文件保存器中选择位置。不要使用旧 WebView 对 Blob 下载的不完整支持来迁移。
+3. 选择“打开正式域名”，进入网页“连接设置 → 完整备份与恢复 → 导入备份”，选择刚保存的 JSON。
+4. 检查聊天、分支、草稿和附件。导入只追加并防止重复，不清除旧 Origin，也不覆盖新域名已有对话。
 
-## 网络与安全
+完整备份不加密，包含聊天与引用的附件、System、草稿和当前智能体元数据；不含 API Key、连接配置、配对令牌、CLI 认证或自定义智能体库。密钥与连接配置仍需在新域名重新填写。浏览器、PWA 与 APK 的存储也互不共享。
 
-- APK 只申请 `INTERNET` 权限；
-- 不申请相机、麦克风、定位或广泛存储权限；
-- 附件选择通过 Android 系统文件选择器完成；
-- 正式站点以外的 HTTP(S) 链接会交给默认浏览器；
-- 禁止明文 HTTP 和 HTTPS 页面混合内容，因此 API 或自建网关必须提供 HTTPS，或通过受控的同域 Worker 代理；
-- SSL 证书错误不会被忽略；
-- APK 未注入 JavaScript 原生桥，不把 Android 系统对象暴露给网页。
-- Android 15+ 强制 edge-to-edge 时，原生根容器按 `systemBars + displayCutout` 动态增加四边安全区；已处理类型在传入 WebView 前归零，避免网页再次产生双重安全区。
-- Activity 显式使用 `adjustResize`，且 IME Insets 不在原生层消费；软键盘弹出时由 WebView 缩小可视视口并自动滚动到焦点输入框，键盘隐藏后同步恢复。
+备份仅在用户选定系统文档后，向当前受信任 Origin 建立一次性消息端口，按 UTF-8 字节分块写入，最大 512 MiB。失败、超时或页面切换会关闭端口与输出流；未完成文件不能用于导入，旧数据不受影响。不会向网页暴露 Java 对象、任意路径访问或通用原生命令。
 
-本机 CLI 桥接不适用于手机：`127.0.0.1` 在 Android 中指手机自身，Windows/macOS/Linux 启动脚本也不能在 APK 中运行。手机端应使用远程 HTTPS API。
+如果旧页面尚未更新，先用菜单重新加载；若保存超时，先确认网页已获得 v33-r2，再重试。新旧站点地址都精确限定为 HTTPS、标准端口与可信主机。
 
-## 已知限制
+## 更新失败与重试
 
-- APK 依赖 Android System WebView；系统 WebView 过旧会影响现代 JavaScript、IndexedDB 或文件选择行为，应通过应用商店更新系统 WebView。
-- 系统文件选择器支持附件上传，但 Blob 下载、备份导出和外部文件保存会受具体 Android System WebView 版本影响；如下载没有出现，使用 Chrome 打开线上站点完成导出。
-- 当前仅生成侧载用 Debug APK，没有 Play 商店签名、自动更新或 Digital Asset Links。
+刷新前保存并核对草稿及附件引用；生成或备份处理中不刷新。另一窗口已改变会话时，更新、站点切换和导出会阻止旧快照覆盖，需先复制未保存草稿并重新打开页面；这不等于实现了所有并发编辑的自动合并。
 
-### 页面进入状态栏或底部导航栏
+缓存读写异常不会丢弃可用网络页面；刷新网络失败或返回错误时优先保留完好的缓存外壳。APK 的“重新加载”使用最后一个可信站点的明确刷新地址，可从错误页重试，也可通过原生菜单访问旧数据；不清理 WebView 数据、不忽略 SSL 错误。
 
-Android 15 对目标 API 35 应用强制 edge-to-edge。旧 APK 没有处理系统栏 Insets 时，网页标题、状态文字或输入区会与状态栏、刘海、手势条重叠。v31 APK 延续并验证了 v30-r5 的原生安全区处理，同时把 IME Insets 继续交给 WebView 收缩可视视口；必须重新下载并安装新 APK，网页部署本身不能修正旧 APK 的原生窗口布局。
+`net::ERR_FAILED` 是通用导航失败，本次已修复并回归更新链路中的可复现缺口，不能据此断言所有设备、网络和 WebView 版本的同名错误均已消除。
 
-### 点击下载却打开乱码页面
+## 安全与验证范围
 
-这是服务器响应头错误，不是 APK 内容变成文字。正确响应必须包含：
-
-```text
-Content-Type: application/vnd.android.package-archive
-Content-Disposition: attachment; filename="AI-Shakedown-Console-v33-debug.apk"
-X-Content-Type-Options: nosniff
-```
-
-v31-r1 Worker 已强制这些响应头并更新 PWA 缓存。部署后可用 `curl -I` 检查线上 APK；如果仍看到旧头，先确认 Cloudflare 部署内容与 Service Worker 已更新。
+- 仅申请 `INTERNET`，不增加相机、麦克风、定位或广泛存储权限；附件由系统文件选择器提供，备份由系统文档保存器提供。
+- 应用内仅接受正式域名和保留的旧 Pages HTTPS Origin，其他 HTTP(S) 链接交给系统浏览器；本机 CLI 桥接仍只支持桌面。
+- 明文 HTTP、混合内容、第三方 Cookie、网页弹窗和网页权限请求保持禁止；证书错误停止加载。
+- Android 15+ 继续处理系统栏与刘海 Insets，键盘使用 `adjustResize`。
+- 构建、Lint、签名和 ZIP 对齐已检查；浏览器已回归更新、排版、图片与跨 Origin 数据迁移。消息端口的浏览器测试使用测试端点模拟原生握手；Android 真机覆盖升级、系统文档保存器、软键盘和触摸手势仍需单独验收。
 
 ## 维护者构建
 

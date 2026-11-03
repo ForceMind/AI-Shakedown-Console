@@ -28,8 +28,12 @@ assert.match(manifest, /android:usesCleartextTraffic="false"/);
 assert.match(manifest, /android:windowSoftInputMode="adjustResize"/);
 assert.match(networkSecurity, /cleartextTrafficPermitted="false"/);
 
-assert.match(activity, /https:\/\/ai-shakedown-console\.pages\.dev\/\?source=android/);
-assert.match(activity, /TRUSTED_HOST = "ai-shakedown-console\.pages\.dev"/);
+assert.match(activity, /APP_URL = "https:\/\/ai-chat\.xincreates\.com\/\?source=android&shell=v33-r2"/);
+assert.match(activity, /LEGACY_URL = "https:\/\/ai-shakedown-console\.pages\.dev\/\?source=android/);
+assert.doesNotMatch(activity, /clearCache|deleteDatabase|deleteAllData|removeAllCookies/);
+assert.match(activity, /ACTION_CREATE_DOCUMENT/);
+assert.match(activity, /ai-shakedown-save-draft/);
+assert.match(activity, /TRUSTED_HOST = "ai-chat\.xincreates\.com"/);
 assert.match(activity, /setMixedContentMode\(WebSettings\.MIXED_CONTENT_NEVER_ALLOW\)/);
 assert.match(activity, /setCacheMode\(WebSettings\.LOAD_DEFAULT\)/);
 assert.match(activity, /PROGRESS_DELAY_MS = 180L/);
@@ -56,8 +60,8 @@ assert.match(appBuild, /applicationId 'com\.forcemind\.aishakedownconsole'/);
 assert.match(appBuild, /minSdk 24/);
 assert.match(appBuild, /targetSdk 35/);
 assert.match(appBuild, /buildToolsVersion '35\.0\.0'/);
-assert.match(appBuild, /versionCode 33/);
-assert.match(appBuild, /versionName 'v33'/);
+assert.match(appBuild, /versionCode 34/);
+assert.match(appBuild, /versionName 'v33-r2'/);
 assert.match(appBuild, /rootProject\.file\('\.\.\/\.android-signing\/debug\.keystore'\)/);
 assert.match(appBuild, /if \(!localDebugKeystore\.exists\(\)\)/);
 assert.match(appBuild, /throw new GradleException/);
@@ -71,14 +75,14 @@ assert.match(wrapperProperties, /distributionSha256Sum=d725d707bfabd4dfdc958c624
 const webApkPath = path.join(root, 'assets', 'AI-Shakedown-Console-v33-debug.apk');
 const webApk = fs.readFileSync(webApkPath);
 const webApkSha256 = crypto.createHash('sha256').update(webApk).digest('hex');
-assert.equal(webApkSha256, '04f543bfed03dae0bd7705ced123b6d7225d62398623ae6e1d11522e55f4dc37');
-assert.match(page, /href="assets\/AI-Shakedown-Console-v33-debug\.apk\?v=33"/);
+assert.equal(webApkSha256, '885b1d3f4f894ce9506f44a99813998bd1481cf98752557e2dfb0579e441b034');
+assert.match(page, /href="assets\/AI-Shakedown-Console-v33-debug\.apk\?v=33-r2"/);
 assert.match(page, /<details class="advanced-settings utility-settings backup-disclosure"/);
 assert.match(page, /<details class="advanced-settings utility-settings android-apk-disclosure"/);
 assert.doesNotMatch(page, /<details class="advanced-settings utility-settings (?:backup|android-apk)-disclosure"[^>]*\sopen(?:\s|>|=)/);
 assert.match(styles, /\.utility-settings-content \.secondary-button\s*\{[^}]*width:\s*100%/s);
-assert.match(serviceWorker, /shell-v33/);
-assert.match(serviceWorker, /AI-Shakedown-Console-v33-debug\.apk\?v=33/);
+assert.match(serviceWorker, /shell-v33-r2/);
+assert.match(serviceWorker, /AI-Shakedown-Console-v33-debug\.apk\?v=33-r2/);
 
 for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
     const icon = path.join(root, `android/app/src/main/res/mipmap-${density}/ic_launcher.png`);

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = fs.readFileSync(path.join(root, 'assets/service-worker.js'), 'utf8');
+const source = fs.readFileSync(process.env.PWA_TEST_SOURCE || path.join(root, 'assets/service-worker.js'), 'utf8');
 const listeners = {};
 const cacheStores = new Map();
 let fetchImpl;
@@ -95,7 +95,7 @@ async function runNavigation(fetchValue, navigationRequest = request) {
 
 // A warm launch returns the shell before the network refresh completes.
 cacheStores.clear();
-const shell = cacheFor('ai-shakedown-console-shell-v33');
+const shell = cacheFor('ai-shakedown-console-shell-v33-r2');
 await shell.put('/index.html', new FakeResponse('cached-shell'));
 let resolveNetwork;
 const refresh = new Promise(resolve => { resolveNetwork = resolve; });
@@ -112,7 +112,7 @@ assert.equal((await shell.match('/')).body, 'new-shell');
 cacheStores.clear();
 const cold = await runNavigation(Promise.resolve(new FakeResponse('first-shell')));
 assert.equal(cold.response.body, 'first-shell');
-assert.equal((await cacheFor('ai-shakedown-console-shell-v33').match('/index.html')).body, 'first-shell');
+assert.equal((await cacheFor('ai-shakedown-console-shell-v33-r2').match('/index.html')).body, 'first-shell');
 
 cacheStores.clear();
 const offline = await runNavigation(Promise.reject(new Error('offline')));
@@ -120,7 +120,7 @@ assert.equal(offline.response.status, 503);
 assert.match(offline.response.body, /尚未缓存/);
 
 // Network errors and HTTP errors never replace a working shell.
-const activeShell = cacheFor('ai-shakedown-console-shell-v33');
+const activeShell = cacheFor('ai-shakedown-console-shell-v33-r2');
 await activeShell.put('/index.html', new FakeResponse('working-shell'));
 const offlineWarm = await runNavigation(Promise.reject(new Error('offline')));
 assert.equal(offlineWarm.response.body, 'working-shell');
@@ -149,8 +149,32 @@ assert.equal(apk.response.headers.get('Content-Type'), 'application/vnd.android.
 
 // Cache quota/write failures must not turn a successful first launch into a 503.
 cacheStores.clear();
-cacheFor('ai-shakedown-console-shell-v33').put = async () => { throw new Error('quota'); };
+cacheFor('ai-shakedown-console-shell-v33-r2').put = async () => { throw new Error('quota'); };
 const quota = await runNavigation(Promise.resolve(new FakeResponse('network-without-cache')));
 assert.equal(quota.response.body, 'network-without-cache');
+
+// Broken cache reads must not reject a navigation that has a healthy network.
+cacheStores.clear();
+const broken = cacheFor('ai-shakedown-console-shell-v33-r2');
+broken.match = async () => { throw new Error('CacheStorage read failure'); };
+const readFailure = await runNavigation(Promise.resolve(new FakeResponse('network-after-cache-error')));
+assert.equal(readFailure.response.body, 'network-after-cache-error');
+
+// A forced update with HTTP failure still uses the intact shell.
+cacheStores.clear();
+await cacheFor('ai-shakedown-console-shell-v33-r2').put('/index.html', new FakeResponse('intact-shell'));
+const refreshHttpFailure = await runNavigation(Promise.resolve(new FakeResponse('bad-gateway', { status: 502 })), { ...request, url: 'https://app.test/?source=android&refresh=123' });
+assert.equal(refreshHttpFailure.response.body, 'intact-shell');
+
+// Runtime asset writes/reads failing do not discard successful fetched scripts.
+cacheStores.clear();
+cacheFor('ai-shakedown-console-runtime-v33-r2').put = async () => { throw new Error('quota'); };
+const runtimeWrite = await runNavigation(Promise.resolve(new FakeResponse('script', { contentType:'application/javascript' })), { ...request, mode:'cors', url:'https://app.test/script.js?v=33-r2' });
+assert.equal(runtimeWrite.response.body, 'script');
+const oldMatch = context.caches.match;
+context.caches.match = async () => { throw new Error('broken runtime cache'); };
+const runtimeRead = await runNavigation(Promise.resolve(new FakeResponse('style', { contentType:'text/css' })), { ...request, mode:'cors', url:'https://app.test/style.css?v=33-r2' });
+assert.equal(runtimeRead.response.body, 'style');
+context.caches.match = oldMatch;
 
 console.log('PWA cache validation passed: warm/cold/offline launches, background refresh, manual refresh, HTTP/content errors, APK navigation and cache-write failure.');

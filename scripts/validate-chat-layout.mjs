@@ -12,12 +12,12 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/manifest.web
 assert.match(source, /const APP_VERSION = 'v33'/);
 assert.match(fs.readFileSync(path.join(root, '_worker.js'), 'utf8'), /const APP_VERSION = 'v33'/);
 assert.match(fs.readFileSync(path.join(root, 'assets/local-codex-bridge.mjs'), 'utf8'), /const BRIDGE_VERSION = 'v33'/);
-assert.match(serviceWorker, /shell-v33/);
-assert.match(serviceWorker, /runtime-v33/);
-for (const asset of ['script.js?v=33', 'style.css?v=33', 'assets/manifest.webmanifest?v=33']) {
+assert.match(serviceWorker, /shell-v33-r2/);
+assert.match(serviceWorker, /runtime-v33-r2/);
+for (const asset of ['script.js?v=33-r2', 'style.css?v=33-r2', 'assets/manifest.webmanifest?v=33-r2']) {
     assert.ok(html.includes(asset) && serviceWorker.includes(asset), `Mismatched precache URL: ${asset}`);
 }
-assert.ok(manifest.icons.every((icon) => icon.src.endsWith('?v=33')));
+assert.ok(manifest.icons.every((icon) => icon.src.endsWith('?v=33-r2')));
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(ids).size, ids.length, 'HTML IDs must be unique');
 for (const [, id] of source.matchAll(/\$\('([^']+)'\)/g)) {
