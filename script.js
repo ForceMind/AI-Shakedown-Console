@@ -551,7 +551,13 @@ async function renderAttachmentThumbnail(image, id) {
     } catch (_) { /* Keep the generic icon when attachment data is unavailable. */ }
 }
 
+function resizeComposerInput() {
+    elements.messageInput.style.height = 'auto';
+    elements.messageInput.style.height = `${elements.messageInput.scrollHeight}px`;
+}
+
 function renderComposerAttachments() {
+    resizeComposerInput();
     elements.attachmentPreviewList.replaceChildren();
     elements.attachmentPreviewList.hidden = !state.composerAttachments.length;
     for (const attachment of state.composerAttachments) {
@@ -805,8 +811,7 @@ function bindEvents() {
         }
     });
     elements.messageInput.addEventListener('input', () => {
-        elements.messageInput.style.height = 'auto';
-        elements.messageInput.style.height = `${elements.messageInput.scrollHeight}px`;
+        resizeComposerInput();
         persistActiveDraft();
     });
     elements.messageInput.addEventListener('paste', handleComposerPaste);
@@ -827,7 +832,10 @@ function bindEvents() {
         if (!elements.conversationMenu.contains(event.target)) elements.conversationMenu.open = false;
     });
     elements.drawerOverlay.addEventListener('click', closeWorkspaceSidebar);
-    window.addEventListener('resize', syncWorkspaceMode);
+    window.addEventListener('resize', () => {
+        syncWorkspaceMode();
+        resizeComposerInput();
+    });
     window.addEventListener('focus', resumeLocalBridgeDiscovery);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') resumeLocalBridgeDiscovery();
