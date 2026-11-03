@@ -8,7 +8,7 @@ const DEFAULT_BUILT_IN_AGENT_COUNT = 388;
 const MAX_LOCAL_IMPORT_FILES = 200;
 const MAX_LOCAL_IMPORT_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_LOCAL_IMPORT_TOTAL_BYTES = 60 * 1024 * 1024;
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v33';
 const LOCAL_CODEX_SESSION_KEY = 'ai-shakedown-console.local-codex.v1';
 const HELP_INTRO_STORAGE_KEY = 'ai-shakedown-console.help-intro.v1';
 const PWA_IME_NOTICE_STORAGE_KEY = 'ai-shakedown-console.pwa-ime-notice.v1';
@@ -560,7 +560,14 @@ function renderComposerAttachments() {
         let preview;
         if (attachment.kind === 'image') {
             preview = document.createElement('img');
-            preview.alt = '';
+            preview.alt = attachment.name;
+            preview.tabIndex = 0;
+            preview.setAttribute('role', 'button');
+            preview.setAttribute('aria-label', `预览图片：${attachment.name}`);
+            preview.addEventListener('click', () => openImageViewer(state.composerAttachments, attachment.id));
+            preview.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); preview.click(); }
+            });
             renderAttachmentThumbnail(preview, attachment.id);
         } else {
             preview = document.createElement('i');
@@ -797,7 +804,11 @@ function bindEvents() {
             elements.messageForm.requestSubmit();
         }
     });
-    elements.messageInput.addEventListener('input', persistActiveDraft);
+    elements.messageInput.addEventListener('input', () => {
+        elements.messageInput.style.height = 'auto';
+        elements.messageInput.style.height = `${elements.messageInput.scrollHeight}px`;
+        persistActiveDraft();
+    });
     elements.messageInput.addEventListener('paste', handleComposerPaste);
     elements.messageForm.addEventListener('dragover', handleComposerDragOver);
     elements.messageForm.addEventListener('drop', handleComposerDrop);
@@ -2999,7 +3010,7 @@ function activeConversation() {
 }
 
 function syncConversationSidebarMode() {
-    // v32 always uses the conversation list. The old preference key is retained
+    // v33 always uses the conversation list. The old preference key is retained
     // only in local-data cleanup; stored conversations are never migrated.
     document.body.classList.add('conversation-sidebar-enabled');
 }
@@ -3781,8 +3792,14 @@ function renderMessageAttachments(container, attachments = []) {
     const list = document.createElement('div');
     list.className = 'message-attachments';
     for (const attachment of attachments) {
-        const item = document.createElement('div');
+        const item = document.createElement(attachment.kind === 'image' ? 'button' : 'div');
         item.className = 'message-attachment';
+        if (attachment.kind === 'image') {
+            item.type = 'button';
+            item.classList.add('image-attachment');
+            item.setAttribute('aria-label', `预览图片：${attachment.name}`);
+            item.addEventListener('click', () => openImageViewer(attachments, attachment.id));
+        }
         let preview;
         if (attachment.kind === 'image') {
             preview = document.createElement('img');
@@ -4719,3 +4736,125 @@ try {
 } catch (error) {
     showToast(`初始化失败：${error.message}`, true);
 }
+
+const imageViewer = {
+    items: [], index: 0, scale: 1, x: 0, y: 0, url: null, request: 0, pointers: new Map(), gesture: null
+};
+function transformImageViewer() {
+    $('image-viewer-image').style.transform = `translate(${imageViewer.x}px, ${imageViewer.y}px) scale(${imageViewer.scale})`;
+}
+function resetImageViewer() {
+    Object.assign(imageViewer, { scale: 1, x: 0, y: 0, gesture: null });
+    imageViewer.pointers.clear();
+    transformImageViewer();
+}
+function zoomImageViewer(scale) {
+    imageViewer.scale = Math.max(1, Math.min(6, scale));
+    if (imageViewer.scale === 1) imageViewer.x = imageViewer.y = 0;
+    transformImageViewer();
+}
+async function loadImageViewer(index) {
+    const viewer = $('image-viewer');
+    const image = $('image-viewer-image');
+    const request = ++imageViewer.request;
+    if (imageViewer.url) URL.revokeObjectURL(imageViewer.url);
+    imageViewer.url = null;
+    image.removeAttribute('src');
+    resetImageViewer();
+    imageViewer.index = (index + imageViewer.items.length) % imageViewer.items.length;
+    const item = imageViewer.items[imageViewer.index];
+    $('image-viewer-caption').textContent = item.name;
+    $('image-viewer-count').textContent = `${imageViewer.index + 1} / ${imageViewer.items.length}`;
+    $('image-viewer-error').hidden = true;
+    viewer.querySelectorAll('[data-image-action="prev"], [data-image-action="next"]').forEach(button => button.disabled = imageViewer.items.length < 2);
+    try {
+        const record = await getAttachmentRecord(item.id);
+        if (request !== imageViewer.request || !viewer.open) return;
+        if (!(record?.data instanceof Blob)) throw new Error('图片附件不存在，请从完整备份恢复。');
+        imageViewer.url = URL.createObjectURL(record.data);
+        image.alt = item.name;
+        image.onerror = () => {
+            if (request !== imageViewer.request) return;
+            $('image-viewer-error').textContent = '图片无法读取。';
+            $('image-viewer-error').hidden = false;
+        };
+        image.src = imageViewer.url;
+    } catch (error) {
+        if (request !== imageViewer.request || !viewer.open) return;
+        $('image-viewer-error').textContent = error.message || '图片无法读取。';
+        $('image-viewer-error').hidden = false;
+    }
+}
+function openImageViewer(attachments, id) {
+    imageViewer.items = attachments.filter(item => item.kind === 'image');
+    const index = imageViewer.items.findIndex(item => item.id === id);
+    if (index < 0) return;
+    const viewer = $('image-viewer');
+    if (!viewer.open) viewer.showModal();
+    // History entry lets Android Back close the viewer before leaving the chat.
+    if (!history.state?.imageViewer) history.pushState({ imageViewer: true }, '');
+    loadImageViewer(index);
+}
+function closeImageViewer(fromHistory = false) {
+    const viewer = $('image-viewer');
+    if (!viewer.open) return;
+    ++imageViewer.request;
+    viewer.close();
+    $('image-viewer-image').removeAttribute('src');
+    if (imageViewer.url) URL.revokeObjectURL(imageViewer.url);
+    imageViewer.url = null;
+    resetImageViewer();
+    if (!fromHistory && history.state?.imageViewer) history.back();
+}
+function initImageViewer() {
+    const viewer = $('image-viewer');
+    viewer.addEventListener('cancel', event => { event.preventDefault(); closeImageViewer(); });
+    window.addEventListener('popstate', () => closeImageViewer(true));
+    viewer.addEventListener('click', event => {
+        const action = event.target.closest('[data-image-action]')?.dataset.imageAction;
+        if (action === 'close') closeImageViewer();
+        if (action === 'reset') resetImageViewer();
+        if (action === 'in') zoomImageViewer(imageViewer.scale * 1.5);
+        if (action === 'out') zoomImageViewer(imageViewer.scale / 1.5);
+        if (action === 'prev') loadImageViewer(imageViewer.index - 1);
+        if (action === 'next') loadImageViewer(imageViewer.index + 1);
+    });
+    viewer.addEventListener('keydown', event => {
+        if (event.key === 'Escape') event.stopPropagation();
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            loadImageViewer(imageViewer.index + (event.key === 'ArrowRight' ? 1 : -1));
+        }
+    });
+    const stage = $('image-viewer-stage');
+    const distance = () => {
+        const [a,b] = [...imageViewer.pointers.values()];
+        return b ? Math.hypot(a.x-b.x, a.y-b.y) : 0;
+    };
+    stage.addEventListener('pointerdown', event => {
+        stage.setPointerCapture(event.pointerId);
+        imageViewer.pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
+        imageViewer.gesture = { distance: distance(), scale: imageViewer.scale };
+    });
+    stage.addEventListener('pointermove', event => {
+        const old = imageViewer.pointers.get(event.pointerId);
+        if (!old) return;
+        imageViewer.pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
+        if (imageViewer.pointers.size === 2 && imageViewer.gesture?.distance) {
+            zoomImageViewer(imageViewer.gesture.scale * distance() / imageViewer.gesture.distance);
+        } else if (imageViewer.pointers.size === 1 && imageViewer.scale > 1) {
+            const image = $('image-viewer-image');
+            const maxX = image.clientWidth * (imageViewer.scale - 1) / 2;
+            const maxY = image.clientHeight * (imageViewer.scale - 1) / 2;
+            imageViewer.x = Math.max(-maxX, Math.min(maxX, imageViewer.x + event.clientX-old.x));
+            imageViewer.y = Math.max(-maxY, Math.min(maxY, imageViewer.y + event.clientY-old.y));
+            transformImageViewer();
+        }
+    });
+    for (const name of ['pointerup','pointercancel','lostpointercapture']) stage.addEventListener(name, event => {
+        imageViewer.pointers.delete(event.pointerId);
+        imageViewer.gesture = { distance: distance(), scale: imageViewer.scale };
+    });
+    stage.addEventListener('dblclick', () => zoomImageViewer(imageViewer.scale > 1 ? 1 : 2));
+}
+initImageViewer();

@@ -67,10 +67,10 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-`v32` UI 候选包（本轮只打包，不部署）：
+`v33` UI 候选包（本轮只打包，不部署）：
 
 ```bash
-zip -r AI-Shakedown-Console-cf-pages-worker-v32.zip \
+zip -r AI-Shakedown-Console-cf-pages-worker-v33.zip \
   index.html script.js style.css _worker.js vendor agents assets
 ```
 
@@ -96,9 +96,9 @@ zip -r AI-Shakedown-Console-cf-pages-worker-v32.zip \
 
 只改其中一处会导致页面、PWA 或本机启动器继续使用旧资源。
 
-若发布候选仍显示为同一个 `v32`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v32-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
+若发布候选仍显示为同一个 `v33`，不要改公开版本号或 ZIP 名称；应把 Service Worker 的 shell/runtime 缓存修订从 `v33-rN` 增加到新的 `rN`，同时保持预缓存资源查询参数与 `index.html` 一致。注册必须保留 `updateViaCache: "none"`，否则已安装 PWA 可能继续使用 HTTP 缓存中的旧 Service Worker 脚本。
 
-当前 `ui-chatgpt` 网页候选为 `v32`：Service Worker shell/runtime 缓存和脚本查询参数使用 v32-r5，CSS 继续使用 v32-r4，manifest 与图标保持 v32。保留 v31 的流式阅读位置修复；APK 原生版本和下载/预缓存 URL 保持 `AI-Shakedown-Console-v31-debug.apk?v=31-r1`。本轮只生成 ZIP 并推送分支，不部署，不重建 APK。
+当前 `ui-chatgpt` 网页与 APK 候选统一为 `v33`，shell/runtime 缓存和自有资源查询参数同步为 v33，APK 下载及预缓存为 `AI-Shakedown-Console-v33-debug.apk?v=33`。已生成候选 ZIP；实际浏览器回归完成前不部署。
 
 ## Android APK 构建
 
@@ -109,9 +109,9 @@ cd android
 ./gradlew lintDebug assembleDebug
 cd ..
 cp android/app/build/outputs/apk/debug/app-debug.apk \
-  AI-Shakedown-Console-v31-debug.apk
+  AI-Shakedown-Console-v33-debug.apk
 cp android/app/build/outputs/apk/debug/app-debug.apk \
-  assets/AI-Shakedown-Console-v31-debug.apk
+  assets/AI-Shakedown-Console-v33-debug.apk
 ```
 
 验证命令：
@@ -123,10 +123,10 @@ node scripts/validate-chat-layout.mjs
 node scripts/validate-chat-compat.mjs
 node scripts/validate-chat-cancellation.mjs
 node scripts/validate-backup-branches.mjs
-aapt dump badging AI-Shakedown-Console-v31-debug.apk
-zipalign -c -v 4 AI-Shakedown-Console-v31-debug.apk
-apksigner verify --verbose --print-certs AI-Shakedown-Console-v31-debug.apk
-shasum -a 256 AI-Shakedown-Console-v31-debug.apk
+aapt dump badging AI-Shakedown-Console-v33-debug.apk
+zipalign -c -v 4 AI-Shakedown-Console-v33-debug.apk
+apksigner verify --verbose --print-certs AI-Shakedown-Console-v33-debug.apk
+shasum -a 256 AI-Shakedown-Console-v33-debug.apk
 ```
 
 `apksigner` 输出的签名证书 SHA-256 必须为：
@@ -135,7 +135,7 @@ shasum -a 256 AI-Shakedown-Console-v31-debug.apk
 09:DF:BD:43:4D:09:74:0A:B6:39:C3:0E:B9:87:03:D0:96:5B:8F:D6:C1:8D:F2:5A:03:66:30:78:67:56:D6:2A
 ```
 
-根目录 APK 是独立构建产物；同一字节内容会复制到 `assets/AI-Shakedown-Console-v31-debug.apk`，随 Cloudflare Pages ZIP 发布供网页下载。Debug 包只用于侧载测试；长期分发必须另行建立受保护的发布签名流程，签名私钥和密码不得进入仓库、ZIP 或 APK。
+根目录 APK 是独立构建产物；同一字节内容会复制到 `assets/AI-Shakedown-Console-v33-debug.apk`，随 Cloudflare Pages ZIP 发布供网页下载。Debug 包只用于侧载测试；长期分发必须另行建立受保护的发布签名流程，签名私钥和密码不得进入仓库、ZIP 或 APK。
 
 ## 正式发布清单
 
@@ -174,7 +174,7 @@ Windows 校验脚本会确认前端下载 `.cmd`、包装层保持 ASCII 且低�
 - [ ] `assets/manifest.webmanifest` 是有效 JSON。
 - [ ] 192、512、maskable 512 和 Apple 180 图标尺寸正确。
 - [ ] Service Worker 缓存名与版本一致。
-- [ ] v32 预缓存包含 `AI-Shakedown-Console-v31-debug.apk`，网页设置区下载链接与 APK 文件名、版本和 SHA-256 一致。
+- [ ] v33 预缓存包含 `AI-Shakedown-Console-v33-debug.apk`，网页设置区下载链接与 APK 文件名、版本和 SHA-256 一致。
 - [ ] Worker 对 APK 返回 `application/vnd.android.package-archive`、附件文件名、`nosniff` 和不可变缓存，不因导航请求带 `Accept: text/html` 而按网页处理。
 - [ ] 预缓存 URL 查询参数与 `index.html` 一致。
 - [ ] 新 Service Worker 能删除旧的 `ai-shakedown-console-*` 缓存。
@@ -212,9 +212,9 @@ Windows 校验脚本会确认前端下载 `.cmd`、包装层保持 ASCII 且低�
 ### 5. 发布包
 
 ```bash
-unzip -t AI-Shakedown-Console-cf-pages-worker-v32.zip
-zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v32.zip
-shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v32.zip
+unzip -t AI-Shakedown-Console-cf-pages-worker-v33.zip
+zipinfo -1 AI-Shakedown-Console-cf-pages-worker-v33.zip
+shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v33.zip
 ```
 
 - [ ] ZIP 顶层只有 `_worker.js`、`index.html`、`script.js`、`style.css`、`vendor/`、`agents/`、`assets/`，且 `assets/` 内包含已验证的 Android APK。
@@ -234,7 +234,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v32.zip
 
 ## 部署后检查
 
-1. 打开线上页面，确认侧栏底部显示 `v32`。
+1. 打开线上页面，确认侧栏底部显示 `v33`。
 2. 用中文输入法完成候选词选择，确认输入正常。
 3. 检查远程 API 直连或同域代理。
 4. 检查一个本机 AI 启动器能下载且文件名不包含版本号。
@@ -243,7 +243,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v32.zip
 
    ```json
    {
-     "appVersion": "v32",
+     "appVersion": "v33",
      "workerVersion": "proxy-6",
      "allowedUpstreamsConfigured": true,
      "assetsBindingConfigured": true
@@ -261,7 +261,7 @@ shasum -a 256 AI-Shakedown-Console-cf-pages-worker-v32.zip
 - 智能体正文和其他带版本静态资源：长期 immutable 缓存；
 - PWA：版本化 shell/runtime 缓存，激活时删除旧项目缓存。
 
-原有浏览器存储键在 `v32` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。Android APK 使用独立 WebView 存储，不会自动读取浏览器/PWA 数据；通过“导出全部 / 导入备份”迁移对话和附件，API Key 与连接配置仍需在 APK 中重新填写。Windows 桥接状态、生成参数开关、附件数据库和 Codex 保存开关无需迁移。
+原有浏览器存储键在 `v33` 保持兼容，升级不会主动清空连接、API Key、自定义智能体或对话。Android APK 使用独立 WebView 存储，不会自动读取浏览器/PWA 数据；通过“导出全部 / 导入备份”迁移对话和附件，API Key 与连接配置仍需在 APK 中重新填写。Windows 桥接状态、生成参数开关、附件数据库和 Codex 保存开关无需迁移。
 
 ## 更新智能体库
 

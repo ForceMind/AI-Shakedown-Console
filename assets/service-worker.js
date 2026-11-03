@@ -1,18 +1,18 @@
 const CACHE_PREFIX = 'ai-shakedown-console-';
-const SHELL_CACHE = `${CACHE_PREFIX}shell-v32-r5`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v32-r5`;
+const SHELL_CACHE = `${CACHE_PREFIX}shell-v33`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v33`;
 const APP_SHELL = [
     '/',
     '/index.html',
-    '/style.css?v=32-r4',
-    '/script.js?v=32-r5',
-    '/assets/manifest.webmanifest?v=32',
-    '/assets/favicon.svg?v=32',
-    '/assets/apple-touch-icon.png?v=32',
-    '/assets/icon-192.png?v=32',
-    '/assets/icon-512.png?v=32',
-    '/assets/icon-maskable-512.png?v=32',
-    '/assets/AI-Shakedown-Console-v31-debug.apk?v=31-r1',
+    '/style.css?v=33',
+    '/script.js?v=33',
+    '/assets/manifest.webmanifest?v=33',
+    '/assets/favicon.svg?v=33',
+    '/assets/apple-touch-icon.png?v=33',
+    '/assets/icon-192.png?v=33',
+    '/assets/icon-512.png?v=33',
+    '/assets/icon-maskable-512.png?v=33',
+    '/assets/AI-Shakedown-Console-v33-debug.apk?v=33',
     '/vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
     '/vendor/bootstrap-icons/fonts/bootstrap-icons.woff',

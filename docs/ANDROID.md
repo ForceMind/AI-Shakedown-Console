@@ -1,10 +1,10 @@
 # Android APK 使用与构建
 
-Android APK 是线上 AI Shakedown Console 的轻量 WebView 容器，适合在手机桌面直接启动。网页仍由 Cloudflare Pages 提供，因此网页功能更新不要求每次重新安装 APK；只有原生壳权限、目标网址、Android API 或签名变化时才需要更新 APK。当前网页候选为 v32，尚未部署；本轮 APK 保持 v31 原文件、版本及签名。后续网页候选获批部署后，无需重装 APK 即可获取网页 UI；v31 APK 已包含进度条延迟改动。
+Android APK 是线上站点的轻量 WebView 容器。v33 使用原包名、原签名和原站点地址，versionCode 为 33，可升级同签名旧版；构建、Lint、签名和 ZIP 对齐已验证，真机覆盖安装与键盘操作尚未验收。v33 网页与 APK 已生成候选，实际页面回归受浏览器工具不可用阻塞，尚未部署。
 
 ## 安装
 
-1. 在 AI Shakedown Console 网页设置区展开默认收起的“Android APK”，点击“下载 APK”；也可直接下载 [`AI-Shakedown-Console-v31-debug.apk`](../assets/AI-Shakedown-Console-v31-debug.apk)。
+1. 在 AI Shakedown Console 网页设置区展开默认收起的“Android APK”，点击“下载 APK”；也可直接下载 [`AI-Shakedown-Console-v33-debug.apk`](../assets/AI-Shakedown-Console-v33-debug.apk)。
 2. 在系统设置中仅为当前文件管理器或浏览器允许“安装未知应用”。
 3. 打开 APK 并确认安装。
 4. 首次启动需要联网加载正式站点。
@@ -64,7 +64,7 @@ Android 15 对目标 API 35 应用强制 edge-to-edge。旧 APK 没有处理系�
 
 ```text
 Content-Type: application/vnd.android.package-archive
-Content-Disposition: attachment; filename="AI-Shakedown-Console-v31-debug.apk"
+Content-Disposition: attachment; filename="AI-Shakedown-Console-v33-debug.apk"
 X-Content-Type-Options: nosniff
 ```
 

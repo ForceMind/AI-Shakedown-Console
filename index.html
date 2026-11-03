@@ -11,11 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="AI Shakedown">
     <meta name="description" content="多协议 AI 模型连接、本机登录工具与智能体对话工作台">
     <title>AI Shakedown Console</title>
-    <link rel="manifest" href="assets/manifest.webmanifest?v=32">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=32">
-    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=32">
+    <link rel="manifest" href="assets/manifest.webmanifest?v=33">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=33">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=33">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css?v=1.11.3">
-    <link rel="stylesheet" href="style.css?v=32-r4">
+    <link rel="stylesheet" href="style.css?v=33">
 </head>
 <body class="chat-focused conversation-sidebar-enabled sidebar-conversations">
     <main class="workspace">
@@ -311,8 +311,8 @@
                     <div class="details-content utility-settings-content">
                         <p class="field-hint">Android 7+ · v31 Debug 测试包。APK 数据与浏览器/PWA 独立，覆盖安装失败时请先导出备份。</p>
                         <a class="secondary-button compact android-apk-download"
-                            href="assets/AI-Shakedown-Console-v31-debug.apk?v=31-r1"
-                            download="AI-Shakedown-Console-v31-debug.apk"
+                            href="assets/AI-Shakedown-Console-v33-debug.apk?v=33"
+                            download="AI-Shakedown-Console-v33-debug.apk"
                             type="application/vnd.android.package-archive">
                             <i class="bi bi-download"></i><span>下载 APK</span>
                         </a>
@@ -471,7 +471,7 @@
                 </div>
             </details>
             </section>
-            <footer class="sidebar-footer"><span><i class="bi bi-lock" aria-hidden="true"></i> 对话保存在此浏览器</span><small class="build-version" title="当前版本">v32</small></footer>
+            <footer class="sidebar-footer"><span><i class="bi bi-lock" aria-hidden="true"></i> 对话保存在此浏览器</span><small class="build-version" title="当前版本">v33</small></footer>
         </aside>
 
         <section class="chat-panel" aria-label="模型对话">
@@ -533,6 +533,18 @@
 
             <form class="composer" id="message-form">
                 <div class="composer-surface">
+                    <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
+                    <div class="message-compose-row">
+                        <div class="message-input-wrap">
+                            <textarea id="message-input" rows="2" placeholder="发送消息，开始一个想法…" autocomplete="off" inputmode="text" lang="zh-CN" spellcheck="true" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
+                            <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
+                        </div>
+                    </div>
+                    <div class="composer-action-row">
+                        <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
+                            <i class="bi bi-paperclip"></i>
+                        </button>
+                        <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.jsonl,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sql,.sh,.ps1,.toml,.ini,.log,.pdf" multiple hidden>
                     <div class="system-prompt-control">
                         <div class="system-prompt-status">
                             <span class="system-field"><i class="bi bi-braces-asterisk" aria-hidden="true"></i>System</span>
@@ -548,16 +560,6 @@
                             <i class="bi bi-sliders" aria-hidden="true"></i><span>提示词</span>
                         </button>
                     </div>
-                    <div class="attachment-preview-list" id="attachment-preview-list" aria-live="polite" hidden></div>
-                    <div class="message-compose-row">
-                        <button class="attachment-button" id="attachment-button" type="button" title="添加附件" aria-label="添加附件" hidden>
-                            <i class="bi bi-paperclip"></i>
-                        </button>
-                        <input id="attachment-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.jsonl,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sql,.sh,.ps1,.toml,.ini,.log,.pdf" multiple hidden>
-                        <div class="message-input-wrap">
-                            <textarea id="message-input" rows="2" placeholder="发送消息，开始一个想法…" autocomplete="off" inputmode="text" lang="zh-CN" spellcheck="true" aria-keyshortcuts="Meta+Enter Control+Enter"></textarea>
-                            <button class="composer-help-button" id="help-open" type="button" title="使用帮助" aria-label="打开使用帮助">?</button>
-                        </div>
                         <button class="send-button" id="send-button" type="submit" title="发送消息" aria-label="发送消息">
                             <i class="bi bi-arrow-up"></i>
                             <span>发送</span>
@@ -570,6 +572,17 @@
 
     </main>
 
+    <dialog id="image-viewer" class="image-viewer" aria-label="图片预览">
+        <header><span id="image-viewer-caption"></span><div>
+            <button type="button" data-image-action="out" aria-label="缩小">−</button>
+            <button type="button" data-image-action="reset">适应窗口</button>
+            <button type="button" data-image-action="in" aria-label="放大">＋</button>
+            <button type="button" data-image-action="close" aria-label="关闭图片预览">×</button>
+        </div></header>
+        <div class="image-viewer-stage" id="image-viewer-stage"><img id="image-viewer-image" alt="" draggable="false"></div>
+        <footer><button type="button" data-image-action="prev" aria-label="上一张">←</button><span id="image-viewer-count"></span><button type="button" data-image-action="next" aria-label="下一张">→</button></footer>
+        <p id="image-viewer-error" role="status" hidden></p>
+    </dialog>
     <div class="modal-backdrop" id="system-prompt-modal" hidden>
         <section class="system-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="system-prompt-title" aria-describedby="system-prompt-description">
             <header class="help-header">
@@ -874,6 +887,6 @@
     <div class="toast-region" id="toast-region" aria-live="assertive"></div>
     <script src="vendor/marked.min.js?v=15.0.12"></script>
     <script src="vendor/purify.min.js?v=3.2.6"></script>
-    <script type="module" src="script.js?v=32-r5"></script>
+    <script type="module" src="script.js?v=33"></script>
 </body>
 </html>

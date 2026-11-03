@@ -56,8 +56,8 @@ assert.match(appBuild, /applicationId 'com\.forcemind\.aishakedownconsole'/);
 assert.match(appBuild, /minSdk 24/);
 assert.match(appBuild, /targetSdk 35/);
 assert.match(appBuild, /buildToolsVersion '35\.0\.0'/);
-assert.match(appBuild, /versionCode 31/);
-assert.match(appBuild, /versionName 'v31'/);
+assert.match(appBuild, /versionCode 33/);
+assert.match(appBuild, /versionName 'v33'/);
 assert.match(appBuild, /rootProject\.file\('\.\.\/\.android-signing\/debug\.keystore'\)/);
 assert.match(appBuild, /if \(!localDebugKeystore\.exists\(\)\)/);
 assert.match(appBuild, /throw new GradleException/);
@@ -68,17 +68,17 @@ assert.match(rootBuild, /com\.android\.application' version '8\.7\.3'/);
 assert.match(wrapperProperties, /gradle-8\.9-bin\.zip/);
 assert.match(wrapperProperties, /distributionSha256Sum=d725d707bfabd4dfdc958c624003b3c80accc03f7037b5122c4b1d0ef15cecab/);
 
-const webApkPath = path.join(root, 'assets', 'AI-Shakedown-Console-v31-debug.apk');
+const webApkPath = path.join(root, 'assets', 'AI-Shakedown-Console-v33-debug.apk');
 const webApk = fs.readFileSync(webApkPath);
 const webApkSha256 = crypto.createHash('sha256').update(webApk).digest('hex');
-assert.equal(webApkSha256, '40c4076da5c276b68868cea2a6def8ea384c8796701c88016996733d9de769f6');
-assert.match(page, /href="assets\/AI-Shakedown-Console-v31-debug\.apk\?v=31-r1"/);
+assert.equal(webApkSha256, '04f543bfed03dae0bd7705ced123b6d7225d62398623ae6e1d11522e55f4dc37');
+assert.match(page, /href="assets\/AI-Shakedown-Console-v33-debug\.apk\?v=33"/);
 assert.match(page, /<details class="advanced-settings utility-settings backup-disclosure"/);
 assert.match(page, /<details class="advanced-settings utility-settings android-apk-disclosure"/);
 assert.doesNotMatch(page, /<details class="advanced-settings utility-settings (?:backup|android-apk)-disclosure"[^>]*\sopen(?:\s|>|=)/);
 assert.match(styles, /\.utility-settings-content \.secondary-button\s*\{[^}]*width:\s*100%/s);
-assert.match(serviceWorker, /shell-v32-r5/);
-assert.match(serviceWorker, /AI-Shakedown-Console-v31-debug\.apk\?v=31-r1/);
+assert.match(serviceWorker, /shell-v33/);
+assert.match(serviceWorker, /AI-Shakedown-Console-v33-debug\.apk\?v=33/);
 
 for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
     const icon = path.join(root, `android/app/src/main/res/mipmap-${density}/ic_launcher.png`);

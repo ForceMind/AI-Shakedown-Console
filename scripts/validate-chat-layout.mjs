@@ -9,15 +9,15 @@ const source = fs.readFileSync(path.join(root, 'script.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const serviceWorker = fs.readFileSync(path.join(root, 'assets/service-worker.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/manifest.webmanifest'), 'utf8'));
-assert.match(source, /const APP_VERSION = 'v32'/);
-assert.match(fs.readFileSync(path.join(root, '_worker.js'), 'utf8'), /const APP_VERSION = 'v32'/);
-assert.match(fs.readFileSync(path.join(root, 'assets/local-codex-bridge.mjs'), 'utf8'), /const BRIDGE_VERSION = 'v32'/);
-assert.match(serviceWorker, /shell-v32-r5/);
-assert.match(serviceWorker, /runtime-v32-r5/);
-for (const asset of ['script.js?v=32-r5', 'style.css?v=32-r4', 'assets/manifest.webmanifest?v=32']) {
+assert.match(source, /const APP_VERSION = 'v33'/);
+assert.match(fs.readFileSync(path.join(root, '_worker.js'), 'utf8'), /const APP_VERSION = 'v33'/);
+assert.match(fs.readFileSync(path.join(root, 'assets/local-codex-bridge.mjs'), 'utf8'), /const BRIDGE_VERSION = 'v33'/);
+assert.match(serviceWorker, /shell-v33/);
+assert.match(serviceWorker, /runtime-v33/);
+for (const asset of ['script.js?v=33', 'style.css?v=33', 'assets/manifest.webmanifest?v=33']) {
     assert.ok(html.includes(asset) && serviceWorker.includes(asset), `Mismatched precache URL: ${asset}`);
 }
-assert.ok(manifest.icons.every((icon) => icon.src.endsWith('?v=32')));
+assert.ok(manifest.icons.every((icon) => icon.src.endsWith('?v=33')));
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(ids).size, ids.length, 'HTML IDs must be unique');
 for (const [, id] of source.matchAll(/\$\('([^']+)'\)/g)) {

@@ -94,3 +94,12 @@
 - 两个正式域名及快照的首页、脚本、样式、Service Worker、manifest、智能体目录均回读 200 且与 ZIP 字节一致；首页 `X-App-Version: v32`，脚本/缓存 v32-r5、样式 v32-r4。
 - ZIP 仍为 419 文件、2,739,926 字节，SHA-256 保持 `486a03bf1b040db40fe805dd28f1073ed508911a3cadee70fd273d7e819ffbf1`。本次仅补发布记录，无应用代码改动。
 - 真实模型、手机真机和 PWA 安装更新仍未验收；不宣称这些范围已经通过。
+
+## v33 附件与 APK 候选（2026-11-03）
+
+- 已批准：稳定三层输入区、图片查看器、同签名 APK，回归后打包、推送及部署。
+- 已实现：单行附件滚动、独立文字区与操作栏；原图读取、多图切换、1～6 倍缩放、拖动与双指操作、关闭/返回、缺失及异步清理。
+- Android versionCode 33/versionName v33，原包名及 Origin 保持不变；lintDebug/assembleDebug、ZIP 对齐、签名验证通过，证书与固定指纹相符。APK SHA-256：`04f543bfed03dae0bd7705ced123b6d7225d62398623ae6e1d11522e55f4dc37`。
+- 浏览器能力实际返回 Local browser use is disabled in Work settings；尚未进行本批次桌面/手机布局、触摸操作或真机升级验收，不复用 v32 结果冒充 v33 通过。
+- 当前阶段：候选打包推送，正式站点保留 v32-r5；恢复浏览器能力后完成布局、查看器、聊天与附件回归，再按已有授权部署。真机若不可用仍明确列出边界。
+- 候选 ZIP：`AI-Shakedown-Console-cf-pages-worker-v33.zip`，420 文件，2,773,333 字节；SHA-256 `8e67f62ea0593f12df57c3833fe8bb771b718078b61bfa966c6888a284df69a1`。仅包含可部署输入及保留的旧 APK，不含签名密钥或工具链。

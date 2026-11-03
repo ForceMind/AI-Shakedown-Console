@@ -14,7 +14,7 @@
     · <a href="./docs/USER_GUIDE.md">使用指南</a>
     · <a href="./docs/LOCAL_AI.md">本机 AI</a>
     · <a href="./docs/ANDROID.md">Android APK</a>
-    · <a href="./assets/AI-Shakedown-Console-v31-debug.apk"><strong>下载 APK</strong></a>
+    · <a href="./assets/AI-Shakedown-Console-v33-debug.apk"><strong>下载 APK</strong></a>
     · <a href="./docs/DEPLOYMENT.md">部署</a>
     · <a href="./docs/TROUBLESHOOTING.md">排查问题</a>
   </p>
@@ -24,7 +24,7 @@
 
 AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode；`android/` 另提供需要 Android 工具链的轻量 APK 壳。
 
-网页已发布 `v32-r5`：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。源码保留在 `ui-chatgpt`；`main` / `dev` 保留 v31 基线，Android APK 保持 v31。
+当前开发候选为 `v33`；线上已发布 `v32-r5`：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。源码保留在 `ui-chatgpt`；`main` / `dev` 保留 v31 基线，Android APK 已生成同签名 v33 候选，尚未上线。
 
 ## 为什么使用它
 
@@ -160,7 +160,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v32-r5` 已于 2026-11-03 发布到现有 Cloudflare Pages 站点，保留 v31 的协议、桥接、附件、备份与智能体能力。桌面/手机视口及本地模拟聊天回归已完成；跨 Origin 恢复和重复导入经浏览器操作及导出数据比对通过，分支起点、附件和已有数据保留。线上核心资源已回读核对；手机真机、真实模型和 PWA 安装更新仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
+v33 候选新增稳定附件输入布局及图片查看器，APK 同签名升级；浏览器补验受工具禁用阻塞，尚未部署。`v32-r5` 已于 2026-11-03 发布到现有 Cloudflare Pages 站点，保留 v31 的协议、桥接、附件、备份与智能体能力。桌面/手机视口及本地模拟聊天回归已完成；跨 Origin 恢复和重复导入经浏览器操作及导出数据比对通过，分支起点、附件和已有数据保留。线上核心资源已回读核对；手机真机、真实模型和 PWA 安装更新仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

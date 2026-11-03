@@ -8,3 +8,5 @@ android/local.properties
 android/**/build/
 .android-signing/
 .android-toolchain/
+
+!assets/AI-Shakedown-Console-v33-debug.apk
