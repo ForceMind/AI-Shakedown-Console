@@ -24,7 +24,7 @@
 
 AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode；`android/` 另提供需要 Android 工具链的轻量 APK 壳。
 
-当前 `ui-chatgpt` 分支是 `v32` 界面候选：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。`main` / `dev` 保留已整理的 v31 基线；本候选未部署，在线入口仍指向已有站点，Android APK 保持 v31。
+网页已发布 `v32-r5`：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。源码保留在 `ui-chatgpt`；`main` / `dev` 保留 v31 基线，Android APK 保持 v31。
 
 ## 为什么使用它
 
@@ -160,7 +160,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-`v32` 是网页 UI 候选，保留 v31 的协议、桥接、附件、备份与智能体能力。当前修订 v32-r5 修复备份分支起点恢复并生成部署 ZIP；UI 的桌面/手机尺寸浏览器检查沿用 v32-r4 结果，分支恢复的跨 Origin 浏览器补验待工具恢复后完成。不部署；手机真机与真实服务仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
+`v32-r5` 已于 2026-11-03 发布到现有 Cloudflare Pages 站点，保留 v31 的协议、桥接、附件、备份与智能体能力。桌面/手机视口及本地模拟聊天回归已完成；跨 Origin 恢复和重复导入经浏览器操作及导出数据比对通过，分支起点、附件和已有数据保留。线上核心资源已回读核对；手机真机、真实模型和 PWA 安装更新仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

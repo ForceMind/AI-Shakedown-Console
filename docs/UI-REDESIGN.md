@@ -84,3 +84,13 @@
 - 浏览器能力检查明确返回“Local browser use is disabled in Work settings”。本轮跨 Origin 恢复和重复导入的浏览器补验未完成，待工具恢复；不以 Node VM/内存存储测试替代真实浏览器和 IndexedDB 验收。
 - 缓存与脚本 URL 为 v32-r5，样式仍为 v32-r4；当前 ZIP 为 `AI-Shakedown-Console-cf-pages-worker-v32.zip`，419 文件，2,739,926 字节，逐一匹配源文件并检查 manifest/图标尺寸；上一份 v32-r4 ZIP 保留。
 - SHA-256：`486a03bf1b040db40fe805dd28f1073ed508911a3cadee70fd273d7e819ffbf1`。候选同步目标 `origin/ui-chatgpt`，未部署，未合入 main/dev。
+
+## v32-r5 补验与正式部署（2026-11-03）
+
+- 用户确认浏览器手动操作正常。源端 `127.0.0.1:43501` 到目标端 `127.0.0.1:43502` 的实际备份导出比对通过：4 个对话、16 条消息、3 个附件；每个源对话仅一份，所有导入 ID 正确重映射，分支起点指向父对话消息。
+- 图片、文本与 PDF 提取内容及附件元数据一致；System、智能体和草稿保留；目标原有消息 ID、内容和草稿未被覆盖。此结果来自浏览器操作、刷新检查与实际导出数据比对，不是纯自动化浏览器测试。
+- 用户授权无阻塞项即可部署。将提交 `88db3fd1deedd95cd600fc27799d7111b580d75b` 对应的原 ZIP 解压后发布到现有 `ai-shakedown-console` Pages 项目，生产部署标识 `353c623e`，Git 分支未合并。
+- 正式入口：<https://ai-shakedown-console.pages.dev/>、<https://ai-chat.xincreates.com/>；部署快照：<https://353c623e.ai-shakedown-console.pages.dev/>。
+- 两个正式域名及快照的首页、脚本、样式、Service Worker、manifest、智能体目录均回读 200 且与 ZIP 字节一致；首页 `X-App-Version: v32`，脚本/缓存 v32-r5、样式 v32-r4。
+- ZIP 仍为 419 文件、2,739,926 字节，SHA-256 保持 `486a03bf1b040db40fe805dd28f1073ed508911a3cadee70fd273d7e819ffbf1`。本次仅补发布记录，无应用代码改动。
+- 真实模型、手机真机和 PWA 安装更新仍未验收；不宣称这些范围已经通过。
