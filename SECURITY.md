@@ -9,7 +9,7 @@ AI Shakedown Console 同时接触浏览器凭据、远程 API 和本机 CLI。�
 | 版本 | 状态 |
 | --- | --- |
 | v31 / `main`、`dev` | 支持 |
-| v33-r2 / `ui-chatgpt` | 发布候选；新增受限备份端口，保留旧数据 Origin |
+| v33-r2 / `ui-chatgpt` | 已发布；新增受限备份端口，保留旧数据 Origin |
 | v29 及更早 | 仅历史存档，建议升级 |
 
 ## Android 域名与备份端口

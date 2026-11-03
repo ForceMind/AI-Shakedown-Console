@@ -24,7 +24,7 @@
 
 AI Shakedown Console 的网页版本是无需构建步骤的多协议 AI 工作台。它既能直接连接 OpenAI Compatible、Anthropic 和 Gemini API，也能通过安全的本机桥接复用已经登录的 Codex、Antigravity、Gemini CLI、Claude Code 与 OpenCode；`android/` 另提供需要 Android 工具链的轻量 APK 壳。
 
-当前开发候选为 `v33-r2`；线上已发布 `v32-r5`：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。源码保留在 `ui-chatgpt`；`main` / `dev` 保留 v31 基线，Android APK 已生成同签名 v33-r2 候选，默认使用自定义域名并保留旧地址数据入口，尚未上线。
+网页已发布 `v33-r2`（公开版本 v33）：参考 ChatGPT 的会话侧栏、顶部模型入口、简洁消息区和圆角输入框。源码保留在 `ui-chatgpt`；`main` / `dev` 保留 v31 基线，Android APK 已更新至同签名 v33-r2，默认使用自定义域名并保留旧地址数据入口。
 
 ## 为什么使用它
 
@@ -160,7 +160,7 @@ scripts/                             智能体角色库导入工具
 
 ## 项目状态
 
-v33-r2 已完成桌面/手机视口回归、图片查看、Service Worker 更新失败回退和跨 Origin 备份恢复检查，待发布。APK 使用原签名，默认正式域名，旧地址数据仍可通过原生菜单访问与导出。Android 真机覆盖安装、系统文件保存器、软键盘及双指手势仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
+v33-r2 已部署到正式站点，通过桌面/手机视口回归、图片查看、Service Worker 更新失败回退、跨 Origin 备份恢复及线上资源核对。APK 使用原签名，默认正式域名，旧地址数据仍可通过原生菜单访问与导出。Android 真机覆盖安装、系统文件保存器、软键盘及双指手势仍未验收。设计范围与交付记录见 [UI 改版记录](./docs/UI-REDESIGN.md)。
 
 暂不纳入本版本的方向包括：包含连接配置的加密整站迁移、账号云同步、自动化端到端回归，以及由 Tauri 管理本机进程的原生桌面版。详见 [架构说明中的演进边界](./docs/ARCHITECTURE.md#演进边界)。
 

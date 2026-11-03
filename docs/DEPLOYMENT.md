@@ -67,7 +67,7 @@ Worker 只允许 HTTPS 上游、GET/POST 方法和不超过 20 MiB 的请求体�
 
 ## 手动创建发布包
 
-`v33` 部署包（当前内容修订 v33-r2，验收后发布）：
+`v33` 部署包（当前已发布内容修订 v33-r2）：
 
 ```bash
 zip -r AI-Shakedown-Console-cf-pages-worker-v33.zip \

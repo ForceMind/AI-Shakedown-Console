@@ -121,3 +121,11 @@
 - ZIP：AI-Shakedown-Console-cf-pages-worker-v33.zip，420 文件，2,783,426 字节，SHA-256 d89b69d31136ffe5d13ee685176daa647c996a8b7c269d5cd1ada5b7ed01b7f6。逐文件匹配工作区、manifest/图标通过；旧包保留为 v33-before-r2.zip，未含密钥、工具链、测试或用户截图。
 - 当前进入发布：推送 ui-chatgpt 后，按既有授权部署同一 ZIP；main/dev 不合并。线上结果在完成后追加。
 - 最终原生构建还验证恢复页面后保留实际可信站点地址，使旧地址页面的重试仍留在旧 Origin。
+
+### 正式发布结果
+
+- 发布实现提交 `2054417df442572b46d4a5b44dfa4b71c1954b10` 已推送并回读 `origin/ui-chatgpt`。部署同一验收 ZIP 到原 Pages 项目，生产部署 `6041014e`：<https://6041014e.ai-shakedown-console.pages.dev/>。未合并或改动 Git main/dev。
+- 正式自定义域名 <https://ai-chat.xincreates.com/>、旧 Pages 兼容地址及部署快照共 33 项回读通过：首页、脚本、样式、Service Worker、manifest、388 角色索引、三个图标、APK 与 API 状态。所有站点文件与验收包逐字节一致；Worker 返回 v33、Service Worker scope /、APK MIME/附件下载头与哈希正确。
+- 旁边浏览器打开正式域名，实际渲染 v33，加载 script.js?v=33-r2 和 style.css?v=33-r2，未见控制台 error/warn；未使用真实模型或上传真实用户数据。
+- 根目录与 assets APK、线上下载内容均为 59,955 字节，SHA-256 `885b1d3f4f894ce9506f44a99813998bd1481cf98752557e2dfb0579e441b034`。ZIP 仍为 420 文件、2,783,426 字节，SHA-256 `d89b69d31136ffe5d13ee685176daa647c996a8b7c269d5cd1ada5b7ed01b7f6`。
+- 仍单列验证边界：Android 真机覆盖安装、系统文档保存器、软键盘、双指手势，以及真实模型服务；浏览器与协议测试不替代这些结果。
